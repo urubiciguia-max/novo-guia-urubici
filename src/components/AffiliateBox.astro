@@ -1,0 +1,98 @@
+---
+import AffiliateButton from './AffiliateButton.astro';
+
+/**
+ * Caixa de afiliado destacada pra dentro do corpo do post — estende o
+ * AffiliateButton (que ja centraliza rel="sponsored noopener noreferrer" +
+ * target="_blank") com icone e cor por provider, no estilo do site antigo
+ * (icones como 🛡️ 🌊 🏨).
+ *
+ * `provider` bate com o enum definido em src/content/config.ts
+ * (`affiliates[].provider`) — mantenha os dois em sincronia se um provider
+ * novo entrar.
+ */
+type Provider = 'amazon' | 'booking' | 'rentcars' | 'mercadolivre' | 'outro';
+
+interface Props {
+  label: string;
+  url: string;
+  provider: Provider;
+}
+
+const { label, url, provider } = Astro.props;
+
+const PROVIDER_META: Record<Provider, { icon: string; name: string; variant: 'amazon' | 'booking' | 'ml' | 'coral' | 'navy' }> = {
+  amazon: { icon: '📦', name: 'Amazon', variant: 'amazon' },
+  booking: { icon: '🏨', name: 'Booking.com', variant: 'booking' },
+  rentcars: { icon: '🚗', name: 'Rentcars', variant: 'coral' },
+  mercadolivre: { icon: '🛍️', name: 'Mercado Livre', variant: 'ml' },
+  outro: { icon: '🔗', name: 'Parceiro', variant: 'navy' },
+};
+
+const meta = PROVIDER_META[provider];
+---
+
+<div class="affiliate-box">
+  <span class="affiliate-box-icon" aria-hidden="true">{meta.icon}</span>
+  <div class="affiliate-box-body">
+    <p class="affiliate-box-provider">{meta.name}</p>
+    <p class="affiliate-box-label">{label}</p>
+  </div>
+  <AffiliateButton href={url} variant={meta.variant} size="sm" class="affiliate-box-cta">
+    Ver oferta
+  </AffiliateButton>
+</div>
+
+<style>
+  .affiliate-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: #fff;
+    margin-block: 16px;
+  }
+
+  .affiliate-box-icon {
+    flex: 0 0 auto;
+    font-size: 1.75rem;
+    line-height: 1;
+  }
+
+  .affiliate-box-body {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .affiliate-box-provider {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--coral);
+  }
+
+  .affiliate-box-label {
+    margin: 2px 0 0;
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+
+  .affiliate-box-cta {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 480px) {
+    .affiliate-box {
+      flex-wrap: wrap;
+    }
+
+    .affiliate-box-cta {
+      width: 100%;
+    }
+  }
+</style>

@@ -1,0 +1,107 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import BreadcrumbList from '../components/schema/BreadcrumbList.astro';
+import PostCard from '../components/PostCard.astro';
+
+/**
+ * Hub page da categoria real do WP "Guia Prático" (ver src/content/config.ts
+ * — enum `category`). Listagem estatica (SSG): sem pagincao/busca via JS por
+ * enquanto — volume de posts e baixo (migracao de 37 posts do WP no total).
+ * Se o volume crescer bastante na Fase 4, trocar por Astro `paginate()`
+ * (continua 100% estatico, zero JS) sem precisar redesenhar a pagina.
+ */
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && data.category === 'Guia Prático');
+const posts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const breadcrumbItems = [
+  { name: 'Início', url: '/' },
+  { name: 'Guia Prático', url: '/guia-pratico' },
+];
+---
+
+<Layout
+  title="Guia Prático"
+  description="Tudo que você precisa resolver antes da viagem pra Urubici: quando ir, como chegar, o que levar e outras dúvidas práticas."
+>
+  <BreadcrumbList slot="schema" items={breadcrumbItems} />
+
+  <DisclosureStrip />
+  <Header />
+
+  <main id="conteudo-principal">
+    <div class="container">
+      <Breadcrumb items={breadcrumbItems} />
+    </div>
+
+    <section class="section hub-section" aria-labelledby="hub-heading">
+      <div class="container">
+        <p class="eyebrow">Guia Prático</p>
+        <h1 id="hub-heading" class="hub-title">O que resolver antes de viajar pra Urubici</h1>
+        <p class="hub-description">
+          Planejamento de viagem: quando ir, como chegar, o que levar na
+          mala e as dúvidas mais comuns de quem ainda não veio pra serra.
+        </p>
+
+        {posts.length > 0 ? (
+          <div class="posts-grid">
+            {posts.map((post) => (
+              <PostCard
+                href={`/${post.slug}`}
+                title={post.data.title}
+                excerpt={post.data.description}
+                tag={post.data.category}
+              />
+            ))}
+          </div>
+        ) : (
+          <p class="hub-empty">
+            Ainda não publicamos posts nesta categoria — volte em breve ou dá
+            uma olhada no <a href="/o-que-fazer" class="link-under">O Que Fazer</a>.
+          </p>
+        )}
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .hub-section {
+    padding-top: 24px;
+  }
+
+  .hub-title {
+    font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+    margin-top: 8px;
+    margin-bottom: 12px;
+    max-width: 680px;
+  }
+
+  .hub-description {
+    max-width: 640px;
+    margin-bottom: 32px;
+  }
+
+  .hub-empty {
+    padding: 32px 0;
+    font-size: 1rem;
+  }
+
+  .posts-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 860px) {
+    .posts-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

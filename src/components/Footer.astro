@@ -1,15 +1,22 @@
 ---
 const explorarLinks = [
-  { label: 'Sobre a cidade', href: '/sobre-a-cidade' },
-  { label: 'Roteiros e trilhas', href: '/roteiros' },
-  { label: 'Pra levar na mala', href: '/pra-levar' },
-  { label: 'Negócios locais', href: '/negocios-locais' },
+  { label: 'Guia prático', href: '/guia-pratico' },
+  { label: 'O que fazer', href: '/o-que-fazer' },
+  { label: 'Onde comer', href: '/onde-comer-urubici' },
+  { label: 'Onde ficar', href: '/onde-ficar' },
 ];
 
 const reservasLinks = [
-  { label: 'Onde ficar', href: '/onde-ficar' },
   { label: 'Aluguel de carro', href: 'https://rentcars.com', external: true },
   { label: 'Hospedagem no Booking', href: 'https://booking.com', external: true },
+  { label: 'Mais parceiros', href: '/links' },
+];
+
+const institucionalLinks = [
+  { label: 'Sobre nós', href: '/sobre-nos' },
+  { label: 'Contato', href: '/contato' },
+  { label: 'Termos de uso', href: '/termos-de-uso' },
+  { label: 'Política de privacidade', href: '/politica-de-privacidade' },
 ];
 ---
 
@@ -51,6 +58,15 @@ const reservasLinks = [
               <a href={link.href} class="link-under">{link.label}</a>
             )}
           </li>
+        ))}
+      </ul>
+    </nav>
+
+    <nav class="footer-col" aria-label="Institucional">
+      <h3 class="footer-col-title">Institucional</h3>
+      <ul>
+        {institucionalLinks.map((link) => (
+          <li><a href={link.href} class="link-under">{link.label}</a></li>
         ))}
       </ul>
     </nav>
@@ -126,7 +142,7 @@ const reservasLinks = [
 
   @media (min-width: 860px) {
     .footer-grid {
-      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
     }
   }
 </style>

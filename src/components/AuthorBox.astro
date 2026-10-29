@@ -1,0 +1,84 @@
+---
+/**
+ * Caixa de autoria do post — reforca EEAT (ver .cursorrules secao 3).
+ * `author` vem do frontmatter do post (`author` tem default "Equipe Guia de
+ * Urubici" no schema, ver src/content/config.ts), entao esse componente
+ * quase sempre vai renderizar o padrao, mas aceita autor nomeado tambem.
+ */
+interface Props {
+  author: string;
+  pubDate: Date;
+  updatedDate?: Date;
+}
+
+const { author, pubDate, updatedDate } = Astro.props;
+
+const initials = author
+  .split(' ')
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((word) => word[0]?.toUpperCase())
+  .join('');
+
+const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+---
+
+<aside class="author-box" aria-label="Sobre quem escreveu este conteúdo">
+  <span class="author-avatar" aria-hidden="true">{initials}</span>
+  <div class="author-info">
+    <p class="author-name">{author}</p>
+    <p class="author-meta">
+      Publicado em <time datetime={pubDate.toISOString()}>{dateFormatter.format(pubDate)}</time>
+      {updatedDate && (
+        <>
+          {' · '}atualizado em <time datetime={updatedDate.toISOString()}>{dateFormatter.format(updatedDate)}</time>
+        </>
+      )}
+    </p>
+    <p class="author-tagline">Conteúdo verificado pela equipe local do Guia Urubici.</p>
+  </div>
+</aside>
+
+<style>
+  .author-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-soft);
+  }
+
+  .author-avatar {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .author-name {
+    margin: 0;
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 0.95rem;
+  }
+
+  .author-meta {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+  }
+
+  .author-tagline {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+  }
+</style>

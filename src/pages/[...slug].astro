@@ -1,0 +1,206 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import AuthorBox from '../components/AuthorBox.astro';
+import FAQAccordion from '../components/FAQAccordion.astro';
+import AffiliateBox from '../components/AffiliateBox.astro';
+import RelatedPosts from '../components/RelatedPosts.astro';
+import Article from '../components/schema/Article.astro';
+import FAQPage from '../components/schema/FAQPage.astro';
+import BreadcrumbList from '../components/schema/BreadcrumbList.astro';
+
+/**
+ * Catch-all de posts — slug plano na raiz, sem prefixo de categoria (ex:
+ * /cachoeiras-secretas-urubici/), pra manter 100% da URL equity do WP antigo
+ * (ver nota em src/content/config.ts). O slug da Content Collection vem do
+ * nome do arquivo em src/content/posts/ (sem subpastas) — por isso
+ * `post.slug` ja cai certinho na raiz, sem precisar de logica extra aqui.
+ *
+ * Paginas institucionais estaticas (sobre-nos.astro, contato.astro, etc.) e
+ * as hub pages (guia-pratico.astro, etc.) SAO rotas estaticas e o Astro
+ * prioriza elas sobre esta rota dinamica — confirmado no `npm run build`
+ * (nenhum post usa esses slugs, entao nao ha colisao hoje; se um dia um post
+ * precisar de um desses slugs reservados, o build vai falhar com rota
+ * duplicada, o que e o comportamento certo de alerta).
+ *
+ * Gera paginas pra TODOS os posts, incluindo draft — e intencional nesta
+ * fase de scaffold (so existe conteudo de exemplo, nada linkado de verdade
+ * nas hub pages/nav, que ja filtram draft). Antes do go-live com conteudo
+ * real (Fase 4), avaliar gate por `import.meta.env.PROD` se quiser blindar
+ * tambem a pagina individual.
+ */
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'posts'>;
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+
+const CATEGORY_HUB: Partial<Record<CollectionEntry<'posts'>['data']['category'], string>> = {
+  'Guia Prático': '/guia-pratico',
+  'O Que Fazer': '/o-que-fazer',
+  'Onde Comer': '/onde-comer-urubici',
+};
+
+const breadcrumbItems = [
+  { name: 'Início', url: '/' },
+  ...(CATEGORY_HUB[post.data.category]
+    ? [{ name: post.data.category, url: CATEGORY_HUB[post.data.category]! }]
+    : []),
+  { name: post.data.title, url: `/${post.slug}` },
+];
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft);
+const relatedPosts = (post.data.relatedSlugs ?? [])
+  .map((slug) => allPosts.find((p) => p.slug === slug))
+  .filter((p): p is CollectionEntry<'posts'> => Boolean(p))
+  .map((p) => ({
+    href: `/${p.slug}`,
+    title: p.data.title,
+    excerpt: p.data.description,
+    tag: p.data.category,
+  }));
+
+const canonicalUrl = new URL(`/${post.slug}`, Astro.site).toString();
+const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro.site).toString();
+---
+
+<Layout
+  title={post.data.title}
+  description={post.data.description}
+  ogType="article"
+  ogImage={post.data.cover?.src}
+>
+  <Article
+    slot="schema"
+    headline={post.data.title}
+    description={post.data.description}
+    image={resolvedOgImage}
+    datePublished={post.data.pubDate}
+    dateModified={post.data.updatedDate}
+    authorName={post.data.author}
+    url={canonicalUrl}
+  />
+  {post.data.faq && post.data.faq.length > 0 && (
+    <FAQPage slot="schema" items={post.data.faq} />
+  )}
+  <BreadcrumbList slot="schema" items={breadcrumbItems} />
+
+  <DisclosureStrip />
+  <Header />
+
+  <main id="conteudo-principal">
+    <div class="container">
+      <Breadcrumb items={breadcrumbItems} />
+    </div>
+
+    <article class="post container">
+      <header class="post-header">
+        <span class="badge badge--green">{post.data.category}</span>
+        <h1>{post.data.title}</h1>
+        <p class="post-description">{post.data.description}</p>
+      </header>
+
+      <AuthorBox author={post.data.author} pubDate={post.data.pubDate} updatedDate={post.data.updatedDate} />
+
+      <div class="post-body">
+        <Content />
+      </div>
+
+      {post.data.affiliates && post.data.affiliates.length > 0 && (
+        <div class="post-affiliates">
+          {post.data.affiliates.map((affiliate) => (
+            <AffiliateBox label={affiliate.label} url={affiliate.url} provider={affiliate.provider} />
+          ))}
+        </div>
+      )}
+
+      {post.data.faq && post.data.faq.length > 0 && <FAQAccordion items={post.data.faq} />}
+    </article>
+
+    {relatedPosts.length > 0 && (
+      <div class="container">
+        <RelatedPosts posts={relatedPosts} />
+      </div>
+    )}
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .post {
+    max-width: 760px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+
+  .post-header {
+    margin-bottom: 20px;
+  }
+
+  .post-header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .post-description {
+    font-size: 1.05rem;
+    margin: 0 0 20px;
+  }
+
+  .post-body {
+    margin-top: 24px;
+    font-size: 1rem;
+  }
+
+  .post-body :global(h2) {
+    font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+    margin-top: 32px;
+    margin-bottom: 12px;
+  }
+
+  .post-body :global(h3) {
+    font-size: 1.1rem;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+
+  .post-body :global(ul),
+  .post-body :global(ol) {
+    padding-left: 1.25em;
+    margin: 0 0 1em;
+  }
+
+  .post-body :global(blockquote) {
+    margin: 0 0 1.5em;
+    padding: 12px 18px;
+    border-left: 3px solid var(--coral);
+    background: var(--bg-soft);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+    font-size: 0.95rem;
+  }
+
+  .post-body :global(a) {
+    color: var(--coral);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .post-affiliates {
+    margin-top: 24px;
+  }
+</style>

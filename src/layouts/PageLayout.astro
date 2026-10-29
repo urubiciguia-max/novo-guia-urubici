@@ -1,0 +1,82 @@
+---
+import Layout from './Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+/**
+ * Layout generico pra paginas institucionais simples (sobre-nos, contato,
+ * links, termos-de-uso, politica-de-privacidade). Sem FAQ/afiliado/
+ * breadcrumb de post — so titulo + conteudo. O schema Organization ja e
+ * global no Layout base, nao precisa duplicar aqui.
+ */
+interface Props {
+  title: string;
+  description: string;
+  heading: string;
+  noindex?: boolean;
+}
+
+const { title, description, heading, noindex = false } = Astro.props;
+---
+
+<Layout title={title} description={description} noindex={noindex}>
+  <DisclosureStrip />
+  <Header />
+
+  <main id="conteudo-principal">
+    <section class="section page-section">
+      <div class="container page-container">
+        <h1>{heading}</h1>
+        <div class="page-content">
+          <slot />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-section {
+    padding-top: 40px;
+  }
+
+  .page-container {
+    max-width: 760px;
+  }
+
+  .page-container h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin-bottom: 24px;
+  }
+
+  .page-content :global(h2) {
+    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+    margin-top: 32px;
+    margin-bottom: 12px;
+  }
+
+  .page-content :global(h3) {
+    font-size: 1.1rem;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+
+  .page-content :global(p) {
+    font-size: 1rem;
+  }
+
+  .page-content :global(ul),
+  .page-content :global(ol) {
+    padding-left: 1.25em;
+    margin: 0 0 1em;
+  }
+
+  .page-content :global(a:not(.btn)) {
+    color: var(--coral);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

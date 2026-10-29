@@ -1,0 +1,95 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import AffiliateBox from '../components/AffiliateBox.astro';
+
+/**
+ * Pagina "Links" — curadoria de parceiros/recursos uteis (afiliados) +
+ * atalhos pras outras paginas do site. Nao usa PageLayout puro porque
+ * precisa do AffiliateBox (fora do escopo de pagina institucional "simples"
+ * — tecnicamente isso e so composicao a mais dentro do mesmo layout base).
+ */
+const partners = [
+  { label: 'Compare hospedagem em Urubici no Booking.com', url: 'https://booking.com', provider: 'booking' as const },
+  { label: 'Alugue um carro pra subir a serra com segurança', url: 'https://rentcars.com', provider: 'rentcars' as const },
+  { label: 'Roupa e equipamento de frio na Amazon', url: 'https://amazon.com.br', provider: 'amazon' as const },
+  { label: 'Itens de trilha com frete rápido no Mercado Livre', url: 'https://mercadolivre.com.br', provider: 'mercadolivre' as const },
+];
+---
+
+<Layout
+  title="Links"
+  description="Parceiros e recursos recomendados pelo Guia Urubici pra planejar sua viagem: hospedagem, aluguel de carro e equipamento."
+>
+  <DisclosureStrip />
+  <Header />
+
+  <main id="conteudo-principal">
+    <section class="section page-section">
+      <div class="container page-container">
+        <h1>Links úteis</h1>
+        <p>
+          Reunimos aqui os parceiros que recomendamos de verdade pra montar
+          sua viagem — e alguns deles são afiliados (identificados abaixo).
+        </p>
+
+        <h2>Parceiros recomendados</h2>
+        <div class="partners-list">
+          {partners.map((p) => (
+            <AffiliateBox label={p.label} url={p.url} provider={p.provider} />
+          ))}
+        </div>
+
+        <h2>Dentro do site</h2>
+        <ul class="internal-links">
+          <li><a href="/guia-pratico" class="link-under">Guia Prático</a></li>
+          <li><a href="/o-que-fazer" class="link-under">O Que Fazer</a></li>
+          <li><a href="/onde-comer-urubici" class="link-under">Onde Comer</a></li>
+          <li><a href="/onde-ficar" class="link-under">Onde Ficar</a></li>
+          <li><a href="/sobre-nos" class="link-under">Sobre Nós</a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-section {
+    padding-top: 40px;
+  }
+
+  .page-container {
+    max-width: 760px;
+  }
+
+  .page-container h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin-bottom: 12px;
+  }
+
+  .page-container h2 {
+    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+    margin-top: 32px;
+    margin-bottom: 14px;
+  }
+
+  .partners-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .internal-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-weight: 500;
+  }
+</style>

@@ -1,0 +1,54 @@
+---
+import PostCard from './PostCard.astro';
+
+/**
+ * Lista de posts relacionados — reaproveita o PostCard existente (mesmo
+ * card usado na home e nas hub pages), so muda o contexto/heading.
+ */
+interface RelatedPost {
+  href: string;
+  title: string;
+  excerpt: string;
+  tag: string;
+}
+
+interface Props {
+  posts: RelatedPost[];
+}
+
+const { posts } = Astro.props;
+---
+
+{posts.length > 0 && (
+  <section class="related-posts" aria-labelledby="related-heading">
+    <h2 id="related-heading">Continue lendo</h2>
+    <div class="related-grid">
+      {posts.map((post) => (
+        <PostCard href={post.href} title={post.title} excerpt={post.excerpt} tag={post.tag} />
+      ))}
+    </div>
+  </section>
+)}
+
+<style>
+  .related-posts {
+    margin-block: 32px;
+  }
+
+  .related-posts h2 {
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+    margin-bottom: 16px;
+  }
+
+  .related-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 860px) {
+    .related-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

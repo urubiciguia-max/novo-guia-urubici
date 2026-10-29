@@ -1,0 +1,91 @@
+---
+/**
+ * FAQ do post em <details>/<summary> nativo — zero JS (ver .cursorrules
+ * secao 4). O JSON-LD FAQPage correspondente e renderizado separadamente no
+ * <head> via src/components/schema/FAQPage.astro, usando os MESMOS items
+ * (passe `post.data.faq` pros dois na pagina que usa este componente).
+ */
+interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+interface Props {
+  items: FaqItem[];
+}
+
+const { items } = Astro.props;
+---
+
+{items.length > 0 && (
+  <section class="faq-accordion" aria-labelledby="faq-heading">
+    <h2 id="faq-heading">Perguntas frequentes</h2>
+    <div class="faq-list">
+      {items.map((item) => (
+        <details class="faq-item">
+          <summary class="faq-question">{item.question}</summary>
+          <p class="faq-answer">{item.answer}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+)}
+
+<style>
+  .faq-accordion {
+    margin-block: 32px;
+  }
+
+  .faq-accordion h2 {
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+    margin-bottom: 16px;
+  }
+
+  .faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .faq-item {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: 4px 18px;
+  }
+
+  .faq-question {
+    cursor: pointer;
+    padding-block: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    list-style: none;
+  }
+
+  .faq-question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .faq-question::after {
+    content: '+';
+    flex: 0 0 auto;
+    font-size: 1.2rem;
+    color: var(--coral);
+    transition: transform var(--ease);
+  }
+
+  .faq-item[open] .faq-question::after {
+    transform: rotate(45deg);
+  }
+
+  .faq-answer {
+    margin: 0 0 16px;
+    font-size: 0.95rem;
+  }
+</style>

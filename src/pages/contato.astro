@@ -1,0 +1,40 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+/**
+ * Pagina de contato SEM formulario — nao existe endpoint de backend pra
+ * receber submissao ainda (isso e territorio do Jurandir, nao inventamos
+ * endpoint). So canais estaticos (e-mail/redes) por enquanto. Se quiser um
+ * form de verdade, alinhar com o Jurandir antes.
+ */
+---
+
+<PageLayout
+  title="Contato"
+  description="Fale com o Guia Urubici: dúvidas, sugestões de pauta ou parceria com negócios locais da Serra Catarinense."
+  heading="Contato"
+>
+  <p>
+    Prefira o canal que for mais fácil pra você — respondemos o quanto antes.
+  </p>
+
+  <h2>E-mail</h2>
+  <p>
+    Dúvidas gerais, sugestão de pauta ou correção de informação:
+    <a href="mailto:contato@guiaurubici.com.br">contato@guiaurubici.com.br</a>
+  </p>
+
+  <h2>Negócios locais</h2>
+  <p>
+    Pousada, restaurante, guia de trilha ou loja em Urubici? Escreva pra
+    <a href="mailto:parcerias@guiaurubici.com.br">parcerias@guiaurubici.com.br</a>
+    contando um pouco do seu negócio.
+  </p>
+
+  <h2>Antes de escrever</h2>
+  <p>
+    Pode ser que sua dúvida já esteja respondida no
+    <a href="/guia-pratico">Guia Prático</a> ou no
+    <a href="/o-que-fazer">O Que Fazer</a>.
+  </p>
+</PageLayout>

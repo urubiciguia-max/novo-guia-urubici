@@ -1,0 +1,104 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import BreadcrumbList from '../components/schema/BreadcrumbList.astro';
+import PostCard from '../components/PostCard.astro';
+
+/**
+ * Hub page da categoria real do WP "Onde Comer". Mesma nota de paginacao de
+ * src/pages/guia-pratico.astro se aplica aqui.
+ */
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && data.category === 'Onde Comer');
+const posts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const breadcrumbItems = [
+  { name: 'Início', url: '/' },
+  { name: 'Onde Comer', url: '/onde-comer-urubici' },
+];
+---
+
+<Layout
+  title="Onde Comer em Urubici"
+  description="Fondue, cucina colonial e vinho quente: onde comer bem em Urubici depois de um dia de trilha na serra."
+>
+  <BreadcrumbList slot="schema" items={breadcrumbItems} />
+
+  <DisclosureStrip />
+  <Header />
+
+  <main id="conteudo-principal">
+    <div class="container">
+      <Breadcrumb items={breadcrumbItems} />
+    </div>
+
+    <section class="section hub-section" aria-labelledby="hub-heading">
+      <div class="container">
+        <p class="eyebrow">Onde Comer</p>
+        <h1 id="hub-heading" class="hub-title">Onde comer bem em Urubici</h1>
+        <p class="hub-description">
+          Fondue, cucina colonial e vinho quente — os restaurantes e
+          cantinas que valem a parada depois de um dia inteiro de trilha.
+        </p>
+
+        {posts.length > 0 ? (
+          <div class="posts-grid">
+            {posts.map((post) => (
+              <PostCard
+                href={`/${post.slug}`}
+                title={post.data.title}
+                excerpt={post.data.description}
+                tag={post.data.category}
+              />
+            ))}
+          </div>
+        ) : (
+          <p class="hub-empty">
+            Ainda não publicamos posts nesta categoria — volte em breve ou dá
+            uma olhada no <a href="/o-que-fazer" class="link-under">O Que Fazer</a>.
+          </p>
+        )}
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .hub-section {
+    padding-top: 24px;
+  }
+
+  .hub-title {
+    font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+    margin-top: 8px;
+    margin-bottom: 12px;
+    max-width: 680px;
+  }
+
+  .hub-description {
+    max-width: 640px;
+    margin-bottom: 32px;
+  }
+
+  .hub-empty {
+    padding: 32px 0;
+    font-size: 1rem;
+  }
+
+  .posts-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 860px) {
+    .posts-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

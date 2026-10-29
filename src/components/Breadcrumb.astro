@@ -1,0 +1,73 @@
+---
+/**
+ * Breadcrumb visivel (trilha de navegacao). Nao confundir com o JSON-LD
+ * BreadcrumbList (src/components/schema/BreadcrumbList.astro) — os dois sao
+ * usados em paralelo na mesma pagina: este aqui e o <nav> renderizado, o
+ * outro e o <script type="application/ld+json"> pro schema.
+ *
+ * Mesma forma de item ({name, url}) nos dois componentes de proposito, pra
+ * nao precisar mapear duas vezes na pagina que usa ambos.
+ */
+interface Crumb {
+  name: string;
+  url: string;
+}
+
+interface Props {
+  items: Crumb[];
+}
+
+const { items } = Astro.props;
+---
+
+<nav class="breadcrumb" aria-label="Trilha de navegação">
+  <ol class="breadcrumb-list">
+    {items.map((item, index) => {
+      const isLast = index === items.length - 1;
+      return (
+        <li class="breadcrumb-item">
+          {isLast ? (
+            <span aria-current="page">{item.name}</span>
+          ) : (
+            <a href={item.url} class="link-under">{item.name}</a>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</nav>
+
+<style>
+  .breadcrumb {
+    padding-block: 16px;
+  }
+
+  .breadcrumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.8rem;
+    color: var(--body-text);
+  }
+
+  .breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .breadcrumb-item:not(:last-child)::after {
+    content: '/';
+    color: var(--line);
+    font-weight: 600;
+  }
+
+  .breadcrumb-item [aria-current='page'] {
+    color: var(--ink);
+    font-weight: 600;
+  }
+</style>

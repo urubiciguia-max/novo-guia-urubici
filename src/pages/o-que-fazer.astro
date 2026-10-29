@@ -1,0 +1,105 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import BreadcrumbList from '../components/schema/BreadcrumbList.astro';
+import PostCard from '../components/PostCard.astro';
+
+/**
+ * Hub page da categoria real do WP "O Que Fazer". Mesma nota de paginacao
+ * de src/pages/guia-pratico.astro se aplica aqui.
+ */
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && data.category === 'O Que Fazer');
+const posts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const breadcrumbItems = [
+  { name: 'Início', url: '/' },
+  { name: 'O Que Fazer', url: '/o-que-fazer' },
+];
+---
+
+<Layout
+  title="O Que Fazer"
+  description="Cachoeiras, trilhas e passeios em Urubici: roteiros prontos pra aproveitar a Serra Catarinense sem perder tempo."
+>
+  <BreadcrumbList slot="schema" items={breadcrumbItems} />
+
+  <DisclosureStrip />
+  <Header />
+
+  <main id="conteudo-principal">
+    <div class="container">
+      <Breadcrumb items={breadcrumbItems} />
+    </div>
+
+    <section class="section hub-section" aria-labelledby="hub-heading">
+      <div class="container">
+        <p class="eyebrow">O Que Fazer</p>
+        <h1 id="hub-heading" class="hub-title">Cachoeiras, trilhas e passeios em Urubici</h1>
+        <p class="hub-description">
+          Roteiros testados pra aproveitar a Serra Catarinense: ordem certa
+          pra visitar as cachoeiras, trilhas de fácil e difícil acesso e
+          mirantes que valem o frio.
+        </p>
+
+        {posts.length > 0 ? (
+          <div class="posts-grid">
+            {posts.map((post) => (
+              <PostCard
+                href={`/${post.slug}`}
+                title={post.data.title}
+                excerpt={post.data.description}
+                tag={post.data.category}
+              />
+            ))}
+          </div>
+        ) : (
+          <p class="hub-empty">
+            Ainda não publicamos posts nesta categoria — volte em breve ou dá
+            uma olhada no <a href="/guia-pratico" class="link-under">Guia Prático</a>.
+          </p>
+        )}
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .hub-section {
+    padding-top: 24px;
+  }
+
+  .hub-title {
+    font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+    margin-top: 8px;
+    margin-bottom: 12px;
+    max-width: 680px;
+  }
+
+  .hub-description {
+    max-width: 640px;
+    margin-bottom: 32px;
+  }
+
+  .hub-empty {
+    padding: 32px 0;
+    font-size: 1rem;
+  }
+
+  .posts-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 860px) {
+    .posts-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
