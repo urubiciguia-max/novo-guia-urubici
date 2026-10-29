@@ -21,7 +21,11 @@ const { href, title, excerpt } = Astro.props;
 
 <style>
   .hero {
+    /* .section já dá padding-block:56px/88px; a próxima seção soma seu
+       próprio padding-top, então aqui zeramos o de baixo pra não dobrar
+       o espaço entre a imagem do hero e o conteúdo seguinte */
     padding-top: 32px;
+    padding-bottom: 0;
   }
 
   .hero-card {
