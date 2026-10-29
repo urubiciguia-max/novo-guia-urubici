@@ -7,7 +7,6 @@ import CategoryNav from '../components/CategoryNav.astro';
 import PostCard from '../components/PostCard.astro';
 import HighlightCard from '../components/HighlightCard.astro';
 import StayCard from '../components/StayCard.astro';
-import GearCard from '../components/GearCard.astro';
 import AffiliateButton from '../components/AffiliateButton.astro';
 import Newsletter from '../components/Newsletter.astro';
 import Footer from '../components/Footer.astro';
@@ -88,12 +87,6 @@ const stays = [
   },
 ];
 
-const gear = [
-  { icon: '🧥', name: 'Jaqueta impermeável', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
-  { icon: '🥾', name: 'Bota de trilha', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
-  { icon: '🔋', name: 'Power bank', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
-  { icon: '🧤', name: 'Luvas térmicas', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
-];
 ---
 
 <Layout
@@ -190,24 +183,6 @@ const gear = [
       </div>
     </section>
 
-    <section class="section section--soft" aria-labelledby="mala-heading">
-      <div class="container">
-        <p class="eyebrow">Pra levar na mala</p>
-        <h2 id="mala-heading" class="section-title">Equipamento que realmente faz diferença no frio</h2>
-
-        <div class="gear-grid">
-          {gear.map((item) => (
-            <GearCard
-              icon={item.icon}
-              name={item.name}
-              amazonUrl={item.amazonUrl}
-              mercadoLivreUrl={item.mercadoLivreUrl}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-
     <section class="section section--soft" aria-labelledby="negocios-heading">
       <div class="container negocios-banner">
         <h2 id="negocios-heading" class="section-title">Tem um negócio em Urubici?</h2>
@@ -290,12 +265,6 @@ const gear = [
     font-size: 0.9rem;
   }
 
-  .gear-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .negocios-banner {
     text-align: center;
     max-width: 640px;
@@ -325,8 +294,5 @@ const gear = [
       justify-content: space-between;
     }
 
-    .gear-grid {
-      grid-template-columns: repeat(4, 1fr);
-    }
   }
 </style>
