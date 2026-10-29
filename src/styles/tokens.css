@@ -9,11 +9,11 @@
   --body-text: #4a4f52;
   --bg: #ffffff;
   --bg-soft: #f4f5f6;
-  --coral: #f2502e;
-  --coral-dark: #d8431f;
-  --green: #1faa59;
+  --green: #0f5934;
+  --green-dark: #0a3d24;
+  --green-bright: #42d78c;
   --amber: #ffb22e;
-  --navy: #132c4d;
+  --charcoal: #353b3e;
   --line: rgba(26, 26, 26, 0.1);
 
   /* cores de parceiros/afiliados (usar so no contexto do CTA deles) */
@@ -100,7 +100,7 @@ button {
 }
 
 :focus-visible {
-  outline: 3px solid var(--navy);
+  outline: 3px solid var(--charcoal);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -152,7 +152,7 @@ button {
   position: absolute;
   left: 50%;
   transform: translateX(-50%) translateY(-120%);
-  background: var(--navy);
+  background: var(--charcoal);
   color: #fff;
   padding: 10px 18px;
   border-radius: var(--radius-pill);
@@ -189,8 +189,8 @@ button {
   color: var(--ink);
 }
 
-.badge--navy {
-  background: var(--navy);
+.badge--charcoal {
+  background: var(--charcoal);
   color: #fff;
 }
 
@@ -213,28 +213,28 @@ button {
   transform: translateY(-2px);
 }
 
-.btn--coral {
-  background: var(--coral);
+.btn--green {
+  background: var(--green);
   color: #fff;
 }
 
-.btn--coral:hover {
-  background: var(--coral-dark);
+.btn--green:hover {
+  background: var(--green-dark);
 }
 
-.btn--outline-coral {
+.btn--outline-green {
   background: transparent;
-  color: var(--coral);
-  border-color: var(--coral);
+  color: var(--green);
+  border-color: var(--green);
 }
 
-.btn--outline-coral:hover {
-  background: var(--coral);
+.btn--outline-green:hover {
+  background: var(--green);
   color: #fff;
 }
 
-.btn--navy {
-  background: var(--navy);
+.btn--charcoal {
+  background: var(--charcoal);
   color: #fff;
 }
 
@@ -272,7 +272,7 @@ button {
   bottom: 0;
   width: 0;
   height: 2px;
-  background: var(--coral);
+  background: var(--green);
   transition: width var(--ease);
 }
 
@@ -282,7 +282,7 @@ button {
 }
 
 .placeholder-gradient {
-  background-image: linear-gradient(135deg, var(--navy) 0%, #1a4a7a 50%, var(--green) 100%);
+  background-image: linear-gradient(135deg, var(--charcoal) 0%, var(--green) 100%);
 }
 
 .eyebrow {
@@ -290,5 +290,5 @@ button {
   letter-spacing: 0.08em;
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--coral);
+  color: var(--green);
 }

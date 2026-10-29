@@ -4,7 +4,7 @@
  * Amazon, Mercado Livre...). Centraliza o rel/target corretos pra nunca
  * esquecer num componente novo.
  */
-type Variant = 'coral' | 'navy' | 'booking' | 'amazon' | 'ml';
+type Variant = 'green' | 'charcoal' | 'booking' | 'amazon' | 'ml';
 
 interface Props {
   href: string;
@@ -13,7 +13,7 @@ interface Props {
   class?: string;
 }
 
-const { href, variant = 'coral', size = 'md', class: className = '' } = Astro.props;
+const { href, variant = 'green', size = 'md', class: className = '' } = Astro.props;
 ---
 
 <a
@@ -26,17 +26,17 @@ const { href, variant = 'coral', size = 'md', class: className = '' } = Astro.pr
 </a>
 
 <style>
-  .affiliate-btn--coral {
-    background: var(--coral);
+  .affiliate-btn--green {
+    background: var(--green);
     color: #fff;
   }
 
-  .affiliate-btn--coral:hover {
-    background: var(--coral-dark);
+  .affiliate-btn--green:hover {
+    background: var(--green-dark);
   }
 
-  .affiliate-btn--navy {
-    background: var(--navy);
+  .affiliate-btn--charcoal {
+    background: var(--charcoal);
     color: #fff;
   }
 

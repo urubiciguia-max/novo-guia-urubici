@@ -12,7 +12,7 @@ const { href, title, excerpt, tag } = Astro.props;
 <a href={href} class="post-card card">
   <div class="post-card-thumb placeholder-gradient" aria-hidden="true"></div>
   <div class="post-card-body">
-    <span class="badge badge--green">{tag}</span>
+    <span class="badge badge--charcoal">{tag}</span>
     <h3 class="post-card-title">{title}</h3>
     <p class="post-card-excerpt">{excerpt}</p>
   </div>
@@ -27,7 +27,9 @@ const { href, title, excerpt, tag } = Astro.props;
 
   .post-card-thumb {
     aspect-ratio: 4 / 3;
-    background-image: linear-gradient(135deg, var(--navy) 0%, #2d6ea8 60%, var(--amber) 130%);
+    /* azul hardcoded (#2d6ea8) aposentado junto com --navy: nao existe azul
+       na paleta nova. Gradiente direto charcoal -> amber, sem meio-termo. */
+    background-image: linear-gradient(135deg, var(--charcoal) 0%, var(--amber) 130%);
   }
 
   .post-card-body {

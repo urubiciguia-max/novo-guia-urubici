@@ -21,12 +21,12 @@ interface Props {
 
 const { label, url, provider } = Astro.props;
 
-const PROVIDER_META: Record<Provider, { icon: string; name: string; variant: 'amazon' | 'booking' | 'ml' | 'coral' | 'navy' }> = {
+const PROVIDER_META: Record<Provider, { icon: string; name: string; variant: 'amazon' | 'booking' | 'ml' | 'green' | 'charcoal' }> = {
   amazon: { icon: '📦', name: 'Amazon', variant: 'amazon' },
   booking: { icon: '🏨', name: 'Booking.com', variant: 'booking' },
-  rentcars: { icon: '🚗', name: 'Rentcars', variant: 'coral' },
+  rentcars: { icon: '🚗', name: 'Rentcars', variant: 'green' },
   mercadolivre: { icon: '🛍️', name: 'Mercado Livre', variant: 'ml' },
-  outro: { icon: '🔗', name: 'Parceiro', variant: 'navy' },
+  outro: { icon: '🔗', name: 'Parceiro', variant: 'charcoal' },
 };
 
 const meta = PROVIDER_META[provider];
@@ -72,7 +72,7 @@ const meta = PROVIDER_META[provider];
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--coral);
+    color: var(--green);
   }
 
   .affiliate-box-label {

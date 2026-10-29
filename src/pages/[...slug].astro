@@ -108,7 +108,7 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
 
     <article class="post container">
       <header class="post-header">
-        <span class="badge badge--green">{post.data.category}</span>
+        <span class="badge badge--charcoal">{post.data.category}</span>
         <h1>{post.data.title}</h1>
         <p class="post-description">{post.data.description}</p>
       </header>
@@ -188,14 +188,14 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
   .post-body :global(blockquote) {
     margin: 0 0 1.5em;
     padding: 12px 18px;
-    border-left: 3px solid var(--coral);
+    border-left: 3px solid var(--green);
     background: var(--bg-soft);
     border-radius: 0 var(--radius-card) var(--radius-card) 0;
     font-size: 0.95rem;
   }
 
   .post-body :global(a) {
-    color: var(--coral);
+    color: var(--green);
     text-decoration: underline;
     text-underline-offset: 2px;
   }

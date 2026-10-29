@@ -25,15 +25,21 @@
         placeholder="seuemail@exemplo.com"
         class="newsletter-input"
       />
-      <button type="submit" class="btn btn--navy newsletter-submit">Quero receber</button>
+      <button type="submit" class="btn btn--charcoal newsletter-submit">Quero receber</button>
     </form>
   </div>
 </section>
 
 <style>
   .newsletter {
-    background: linear-gradient(135deg, var(--coral) 0%, var(--coral-dark) 100%);
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
     color: #fff;
+  }
+
+  /* override local: o :focus-visible global usa --charcoal, que sobre esse
+     fundo verde escuro cai pra ~1.1:1 (ilegivel). Branco resolve. */
+  .newsletter :focus-visible {
+    outline-color: #fff;
   }
 
   .newsletter-inner {
@@ -68,7 +74,7 @@
   }
 
   .newsletter-input:focus-visible {
-    outline: 3px solid var(--navy);
+    outline: 3px solid #fff;
     outline-offset: 2px;
   }
 

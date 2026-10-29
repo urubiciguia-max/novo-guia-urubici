@@ -79,7 +79,7 @@ const institucionalLinks = [
 
 <style>
   .site-footer {
-    background: var(--navy);
+    background: var(--charcoal);
     color: rgba(255, 255, 255, 0.8);
     padding-top: 56px;
   }
@@ -96,7 +96,10 @@ const institucionalLinks = [
   }
 
   .footer-brand .wordmark-accent {
-    color: var(--coral);
+    /* fundo escuro (--charcoal): --green puro cai pra 1.35:1 de contraste,
+       quase invisivel. --green-bright (6.15:1) e o unico verde aprovado
+       pra texto sobre fundo escuro nessa paleta. */
+    color: var(--green-bright);
   }
 
   .footer-disclosure {
@@ -127,7 +130,8 @@ const institucionalLinks = [
   }
 
   .footer-col .link-under::after {
-    background: var(--coral);
+    /* mesma excecao do wordmark-accent acima: --green-bright, nao --green */
+    background: var(--green-bright);
   }
 
   .footer-bottom {
