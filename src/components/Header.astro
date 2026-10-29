@@ -68,6 +68,7 @@ const navLinks = [
   }
 
   .header-inner {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -117,8 +118,11 @@ const navLinks = [
 
   /* --- toggle (hamburger / summary) --- */
 
+  /* o painel do menu (.nav-panel) é absolute e precisa de largura cheia:
+     o container posicionado é o .header-inner (acima), nao este elemento —
+     se ficasse aqui, o painel ficaria preso aos 44px do botao do hamburguer */
   .nav-disclosure {
-    position: relative;
+    position: static;
   }
 
   .nav-toggle {
