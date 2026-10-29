@@ -92,3 +92,25 @@ GITHUB_CLIENT_SECRET=...
   `postMessage(..., '*')` no payload com o token, só no handshake inicial
   (que não carrega segredo).
 - Nenhuma rota loga `code`, `state` ou `access_token`.
+
+### Auditoria do Severino (2026-10-29) — "Severino liberou. Sem P0."
+
+Revisão estática (sem deploy, sem OAuth App criado ainda). Nenhum achado
+crítico ou que bloqueie o deploy. Aplicado direto no código (worktree
+`feat/cms-decap`, ainda não mergeada):
+
+| Severidade | Achado | Status |
+|---|---|---|
+| Médio | `/auth` repassava o `scope` da query string pro GitHub sem filtro. É protocolo válido do Decap (`backend.scope`), mas como `/auth` é público e sem auth, um link malicioso tipo `.../auth?scope=delete_repo,admin:org` seria repassado verbatim. Adicionado `sanitizeScope()` com allowlist fixa (`repo`, `public_repo`, `user`, `read:user`) — mantém compatível com o default do Decap (`repo,user`), bloqueia escalonamento. | Corrigido |
+| Baixo | Respostas HTML (principalmente `/callback` de sucesso, que carrega o `access_token` no corpo) não tinham `Cache-Control: no-store`. | Corrigido — header aplicado em todas as respostas via `SECURITY_HEADERS` |
+| Baixo | `JSON.stringify` embutido direto em `<script>` não escapa `</script>`; hoje o único dado variável vem do GitHub (não do usuário), mas sem *output encoding* explícito. | Corrigido — `safeJsonForScript()` escapa `<` |
+| Baixo | Nenhum header anti-clickjacking nas páginas do Worker. | Corrigido — `X-Frame-Options: DENY` + `Content-Security-Policy: frame-ancestors 'none'` + `X-Content-Type-Options: nosniff` |
+| Baixo / aceito | Sem rate limiting próprio em `/auth`/`/callback`. Pior caso é consumo de quota do Worker (free tier do Cloudflare já limita por conta); nenhuma rota cara é exposta sem validação antes de chamar o GitHub. Aceitável para o escopo atual — revisar se abuso real aparecer. | Documentado, não bloqueia |
+| Informativo | `public/admin/index.html` carrega `decap-cms@^3.0.0` via unpkg (range semver, sem SRI) — é o padrão oficial de "sem build step" do próprio Decap, mas significa que o bundle pode mudar de versão sem aviso. Recomendação pro Jurandir/Genilson: considerar pinar versão exata quando estabilizar. | Documentado, fora do escopo do Worker |
+| Positivo | `state` em cookie HttpOnly+Secure+SameSite=Lax, de uso único — mais robusto que boa parte dos providers de referência da comunidade (muitos não usam cookie, só o round-trip pelo popup). Validação de origem do `postMessage` final está correta (usa `e.origin` já validado, nunca `*`, e o `*` do handshake inicial não carrega segredo). `redirect_uri` é fixo (`${url.origin}/callback`), sem parâmetro aceito do cliente — sem open redirect. Zero dependências de runtime no Worker (só `fetch`/`crypto`/`URL` nativos) — zero superfície de supply chain no artefato deployado. | — |
+
+**Pendência operacional (não é bug, é TODO de deploy já marcado pelo Jurandir):**
+domínio final ainda não decidido (`astro.config.mjs` tem `site` placeholder,
+`wrangler.toml` já aponta pro domínio do Pages atual) — confirmar
+`ALLOWED_ORIGINS` e `base_url` do `config.yml` quando o domínio de produção
+fechar, antes do deploy real.

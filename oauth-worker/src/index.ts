@@ -50,8 +50,43 @@ const DEFAULT_SCOPE = 'repo,user';
 const STATE_COOKIE = 'decap_oauth_state';
 const PROVIDER = 'github';
 
+/**
+ * [Severino — audit 2026-10-29, achado Medio, fix aplicado]
+ * Decap manda `scope` como query param pro /auth (faz parte do protocolo:
+ * `backend.scope` em config.yml, default "repo,user") e o padrao de
+ * referencia repassa esse valor pro GitHub sem filtro. Como /auth e publico
+ * e sem auth, isso por si so vira superficie de phishing: um link malicioso
+ * `.../auth?scope=delete_repo,admin:org` e tecnicamente "protocolo valido" e
+ * seria repassado verbatim pro GitHub, arriscando o usuario autorizar escopo
+ * muito mais amplo do que o Decap precisa. Mitigacao: clampar pra uma
+ * allowlist fixa de escopos aceitaveis (os que o backend `github` do Decap
+ * realmente usa) em vez de confiar no valor vindo da query string.
+ */
+const ALLOWED_SCOPES = new Set(['repo', 'public_repo', 'user', 'read:user']);
+
+function sanitizeScope(requested: string | null): string {
+  if (!requested) return DEFAULT_SCOPE;
+  const filtered = requested
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => ALLOWED_SCOPES.has(s));
+  const deduped = Array.from(new Set(filtered));
+  return deduped.length > 0 ? deduped.join(',') : DEFAULT_SCOPE;
+}
+
 function randomState(): string {
   return crypto.randomUUID().replace(/-/g, '');
+}
+
+/**
+ * JSON.stringify não escapa "</script>", então um valor embutido direto
+ * dentro de uma tag <script> podia, em tese, fechar a tag prematuramente.
+ * Hoje o unico dado variavel que cai aqui vem do GitHub (`error_description`
+ * da propria API OAuth), nao do usuario final, mas a escapagem custa nada e
+ * elimina a classe de bug por completo (defesa em profundidade).
+ */
+function safeJsonForScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
 function readCookie(request: Request, name: string): string | null {
@@ -64,10 +99,28 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
+/**
+ * [Severino — audit 2026-10-29, achado Baixo, fix aplicado]
+ * Headers aplicados em toda resposta do Worker:
+ *  - `Cache-Control: no-store` + `Pragma: no-cache`: a pagina de /callback
+ *    carrega o access_token no corpo do HTML — sem isso, em tese um cache
+ *    intermediario ou o historico do navegador poderia reter a resposta.
+ *  - `X-Frame-Options: DENY` + `frame-ancestors 'none'`: nenhuma pagina deste
+ *    Worker precisa ser embutida em iframe; bloqueia clickjacking de borda.
+ *  - `X-Content-Type-Options: nosniff`: evita MIME-sniffing da resposta.
+ */
+const SECURITY_HEADERS: HeadersInit = {
+  'Cache-Control': 'no-store',
+  Pragma: 'no-cache',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "frame-ancestors 'none'",
+  'X-Content-Type-Options': 'nosniff',
+};
+
 function htmlResponse(body: string, status = 200, extraHeaders: HeadersInit = {}): Response {
   return new Response(body, {
     status,
-    headers: { 'content-type': 'text/html; charset=utf-8', ...extraHeaders },
+    headers: { 'content-type': 'text/html; charset=utf-8', ...SECURITY_HEADERS, ...extraHeaders },
   });
 }
 
@@ -113,9 +166,9 @@ function renderPopupPage(
     </p>
     <script>
       (function () {
-        var ALLOWED_EXACT = ${JSON.stringify(allowlist.exact)};
-        var ALLOWED_SUFFIXES = ${JSON.stringify(allowlist.suffixes)};
-        var FINAL_MESSAGE = ${JSON.stringify(finalMessage)};
+        var ALLOWED_EXACT = ${safeJsonForScript(allowlist.exact)};
+        var ALLOWED_SUFFIXES = ${safeJsonForScript(allowlist.suffixes)};
+        var FINAL_MESSAGE = ${safeJsonForScript(finalMessage)};
 
         function isAllowedOrigin(origin) {
           if (ALLOWED_EXACT.indexOf(origin) !== -1) return true;
@@ -158,13 +211,13 @@ export default {
     if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
       return new Response(
         'Worker mal configurado: faltam os secrets GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET. Ver README.md deste worker.',
-        { status: 500 }
+        { status: 500, headers: SECURITY_HEADERS }
       );
     }
     if (!env.ALLOWED_ORIGINS) {
       return new Response(
         'Worker mal configurado: falta a variavel ALLOWED_ORIGINS (allowlist de origens pro postMessage). Ver README.md deste worker.',
-        { status: 500 }
+        { status: 500, headers: SECURITY_HEADERS }
       );
     }
 
@@ -177,7 +230,7 @@ export default {
       const authorizeUrl = new URL(GITHUB_AUTHORIZE_URL);
       authorizeUrl.searchParams.set('client_id', env.GITHUB_CLIENT_ID);
       authorizeUrl.searchParams.set('redirect_uri', redirectUri);
-      authorizeUrl.searchParams.set('scope', url.searchParams.get('scope') || DEFAULT_SCOPE);
+      authorizeUrl.searchParams.set('scope', sanitizeScope(url.searchParams.get('scope')));
       authorizeUrl.searchParams.set('state', state);
 
       return new Response(null, {
@@ -257,9 +310,10 @@ export default {
     if (url.pathname === '/') {
       return new Response('Decap CMS OAuth provider — Guia Urubici. Rotas: GET /auth, GET /callback', {
         status: 200,
+        headers: SECURITY_HEADERS,
       });
     }
 
-    return new Response('Not found', { status: 404 });
+    return new Response('Not found', { status: 404, headers: SECURITY_HEADERS });
   },
 };
