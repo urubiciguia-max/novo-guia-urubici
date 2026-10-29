@@ -1,4 +1,7 @@
 ---
+import { Image } from 'astro:assets';
+import logo from '../assets/logo.webp';
+
 const navLinks = [
   { label: 'O que fazer', href: '/o-que-fazer' },
   { label: 'Onde ficar', href: '/onde-ficar' },
@@ -11,7 +14,7 @@ const navLinks = [
 <header class="site-header">
   <div class="container header-inner">
     <a href="/" class="wordmark">
-      Guia<span class="wordmark-accent">Urubici</span>
+      <Image src={logo} alt="Guia de Urubici" width={172} height={96} loading="eager" />
     </a>
 
     <!--
@@ -58,15 +61,13 @@ const navLinks = [
   }
 
   .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1.25rem;
-    color: var(--ink);
-    white-space: nowrap;
+    display: flex;
+    align-items: center;
   }
 
-  .wordmark-accent {
-    color: var(--coral);
+  .wordmark img {
+    height: 36px;
+    width: auto;
   }
 
   /* --- toggle (hamburger / summary) --- */
