@@ -31,7 +31,10 @@ const { href, title, excerpt } = Astro.props;
   .hero-card {
     position: relative;
     display: block;
-    aspect-ratio: 21 / 9;
+    /* 21/9 fica fino demais no celular (vira uma faixa curta) pra algo
+       que deveria se destacar — mais alto no mobile, cinematografico
+       só a partir do desktop, onde a largura sustenta a proporção */
+    aspect-ratio: 4 / 3;
     border-radius: var(--radius-card);
     overflow: hidden;
     isolation: isolate;
@@ -88,6 +91,10 @@ const { href, title, excerpt } = Astro.props;
   }
 
   @media (min-width: 860px) {
+    .hero-card {
+      aspect-ratio: 21 / 9;
+    }
+
     .hero-overlay {
       padding: 32px 40px;
     }
