@@ -2,14 +2,6 @@
 import { Image } from 'astro:assets';
 import logo from '../assets/logo.webp';
 import CategoryNav from './CategoryNav.astro';
-
-const navLinks = [
-  { label: 'O que fazer', href: '/o-que-fazer', category: true },
-  { label: 'Onde ficar', href: '/onde-ficar', category: true },
-  { label: 'Onde comer', href: '/onde-comer-urubici', category: true },
-  { label: 'Guia prático', href: '/guia-pratico', category: true },
-  { label: 'Sobre nós', href: '/sobre-nos', category: false },
-];
 ---
 
 <header class="site-header">
@@ -25,28 +17,7 @@ const navLinks = [
       </div>
     </div>
 
-    <!--
-      Menu mobile 100% CSS via <details>/<summary> — disclosure nativo,
-      sem JS. <summary> ja vem com foco/teclado/aria-expanded de fabrica.
-      Em >=860px o <details> é "desmontado" visualmente via CSS (display:
-      contents) e o painel de nav fica sempre visivel na horizontal.
-    -->
-    <details class="nav-disclosure">
-      <summary class="nav-toggle" aria-label="Abrir menu de navegação">
-        <span class="nav-toggle-icon" aria-hidden="true"></span>
-      </summary>
-
-      <nav class="nav-panel" aria-label="Navegação principal">
-        <ul class="nav-list">
-          {navLinks.map((link) => (
-            <li class:list={[{ 'nav-item--category': link.category }]}>
-              <a href={link.href} class="link-under">{link.label}</a>
-            </li>
-          ))}
-        </ul>
-        <a href="/guia-pratico" class="btn btn--green nav-cta">Ver guia prático</a>
-      </nav>
-    </details>
+    <a href="/guia-pratico" class="btn btn--green header-cta">Ver guia prático</a>
   </div>
 
   <!-- mesma navegação de categorias, em formato de faixa rolável —
@@ -68,11 +39,10 @@ const navLinks = [
   }
 
   .header-inner {
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: 16px;
     padding-block: 16px;
     flex-wrap: wrap;
   }
@@ -93,6 +63,10 @@ const navLinks = [
     width: auto;
   }
 
+  .header-cta {
+    white-space: nowrap;
+  }
+
   .header-categories--desktop {
     display: none;
   }
@@ -108,146 +82,6 @@ const navLinks = [
 
     .header-categories--mobile {
       display: none;
-    }
-
-    /* os mesmos links ja aparecem como pills ao lado da logo */
-    .nav-item--category {
-      display: none;
-    }
-  }
-
-  /* --- toggle (hamburger / summary) --- */
-
-  /* o painel do menu (.nav-panel) é absolute e precisa de largura cheia:
-     o container posicionado é o .header-inner (acima), nao este elemento —
-     se ficasse aqui, o painel ficaria preso aos 44px do botao do hamburguer */
-  .nav-disclosure {
-    position: static;
-  }
-
-  .nav-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-    list-style: none;
-  }
-
-  .nav-toggle::-webkit-details-marker {
-    display: none;
-  }
-
-  .nav-toggle:hover {
-    background: var(--bg-soft);
-  }
-
-  .nav-toggle-icon,
-  .nav-toggle-icon::before,
-  .nav-toggle-icon::after {
-    display: block;
-    width: 20px;
-    height: 2px;
-    background: var(--ink);
-    border-radius: 2px;
-    transition: transform var(--ease), opacity var(--ease);
-  }
-
-  .nav-toggle-icon {
-    position: relative;
-  }
-
-  .nav-toggle-icon::before,
-  .nav-toggle-icon::after {
-    content: '';
-    position: absolute;
-    left: 0;
-  }
-
-  .nav-toggle-icon::before {
-    top: -6px;
-  }
-
-  .nav-toggle-icon::after {
-    top: 6px;
-  }
-
-  .nav-disclosure[open] .nav-toggle-icon {
-    background: transparent;
-  }
-
-  .nav-disclosure[open] .nav-toggle-icon::before {
-    top: 0;
-    transform: rotate(45deg);
-  }
-
-  .nav-disclosure[open] .nav-toggle-icon::after {
-    top: 0;
-    transform: rotate(-45deg);
-  }
-
-  /* --- painel de navegacao (mobile = drawer abaixo do header) --- */
-
-  .nav-panel {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    left: 0;
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-card);
-    box-shadow: 0 16px 32px rgba(26, 26, 26, 0.12);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .nav-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    font-weight: 500;
-  }
-
-  .nav-cta {
-    width: 100%;
-  }
-
-  @media (min-width: 860px) {
-    .nav-disclosure {
-      display: contents;
-    }
-
-    .nav-toggle {
-      display: none;
-    }
-
-    /* sobrescreve a regra nativa "details:not([open]) > *:not(summary){display:none}" */
-    .nav-panel {
-      display: flex !important;
-      position: static;
-      flex-direction: row;
-      align-items: center;
-      gap: 32px;
-      border: none;
-      box-shadow: none;
-      padding: 0;
-      background: transparent;
-    }
-
-    .nav-list {
-      flex-direction: row;
-      gap: 28px;
-    }
-
-    .nav-cta {
-      width: auto;
     }
   }
 </style>
