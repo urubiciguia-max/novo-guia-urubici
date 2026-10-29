@@ -24,3 +24,4 @@ npm-debug.log*
 
 # Personas / protocolo de orquestracao interno - nao vai pro repo publico
 .claude/agents/
+.agents/
