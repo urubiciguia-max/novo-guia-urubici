@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Guia Urubici — Painel de conteúdo</title>
+    <link rel="icon" href="data:," />
+
+    <!--
+      Identidade visual minima (login + shell do editor) usando os tokens
+      do site (src/styles/tokens.css). Nao precisa ser elaborado — so nao
+      deixar com a cara generica default do Decap.
+    -->
+    <style>
+      :root {
+        --green: #0f5934;
+        --green-dark: #0a3d24;
+        --charcoal: #353b3e;
+        --bg-soft: #f4f5f6;
+      }
+
+      html,
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+
+      /* Tela de login do Decap (antes do CMS.init() pintar o editor por
+         cima) — da uma cara de marca enquanto carrega e no form do GitHub. */
+      body {
+        background: var(--bg-soft);
+      }
+
+      .nc-app-header,
+      header[class*='App'] {
+        background: var(--charcoal) !important;
+      }
+
+      button[class*='AuthButton'],
+      a[href*='authorize'] button {
+        background-color: var(--green) !important;
+        border-color: var(--green) !important;
+      }
+
+      button[class*='AuthButton']:hover {
+        background-color: var(--green-dark) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Decap CMS via CDN (sem build step, puro HTML — padrao oficial). -->
+    <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+    <script>
+      // Estilo aplicado DENTRO do iframe de preview do editor (coluna da
+      // direita). Usa Poppins/Inter + verde/charcoal pra o preview do post
+      // ja parecer com o site de verdade, sem precisar carregar o CSS todo.
+      CMS.registerPreviewStyle(
+        `
+        body {
+          font-family: 'Inter', system-ui, sans-serif;
+          color: #4a4f52;
+          line-height: 1.55;
+          padding: 24px;
+        }
+        h1, h2, h3 {
+          font-family: 'Poppins', system-ui, sans-serif;
+          color: #1a1a1a;
+          line-height: 1.2;
+        }
+        a { color: #0f5934; }
+        `,
+        { raw: true }
+      );
+    </script>
+  </body>
+</html>

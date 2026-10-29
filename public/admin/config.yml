@@ -1,0 +1,107 @@
+# Configuracao do Decap CMS (https://decapcms.org) pro Guia Urubici.
+#
+# Backend github: edita arquivos direto no repo via API do GitHub, cada save
+# e um commit na branch abaixo -> dispara o deploy automatico do Cloudflare
+# Pages que ja existe. Sem banco de dados, sem servidor proprio (so o Worker
+# de OAuth, que so troca o `code` do GitHub por um `access_token` — nao guarda
+# nada).
+backend:
+  name: github
+  repo: urubiciguia-max/novo-guia-urubici
+  branch: main
+  # SUBSTITUIR depois que o Worker de OAuth (oauth-worker/) estiver deployado.
+  # Ver handoff do Jurandir pro Genilson — formato esperado:
+  # https://<nome-do-worker>.<subdominio-cloudflare>.workers.dev
+  base_url: https://SUBSTITUIR-worker-oauth.workers.dev
+
+# Mostra um link "Ver no site" a partir do preview de cada entrada.
+site_url: https://novo-guia-urubici.pages.dev
+
+# -----------------------------------------------------------------------------
+# Media (imagem de capa dos posts)
+# -----------------------------------------------------------------------------
+# DECISAO: media_folder/public_folder relativos (vazio + "./"), NAO
+# "public/uploads". Motivo: o schema `cover` em src/content/config.ts usa o
+# helper `image()` do Astro, que exige caminho relativo ao proprio arquivo .md
+# (pra entrar no pipeline de otimizacao/AVIF/WebP) — nao aceita uma URL
+# absoluta tipo "/uploads/foto.jpg" apontando pra public/. Com os valores
+# abaixo, cada upload feito no editor cai direto em src/content/posts/ (mesma
+# pasta do .md) e o frontmatter grava "./nome-do-arquivo.jpg", que e
+# exatamente o formato que `image()` espera. Isso faz a pasta de posts
+# acumular tambem as imagens — e o trade-off aceito pra manter o schema atual
+# sem mudanca e ganhar otimizacao de imagem automatica. Se um dia isso
+# incomodar, a alternativa e trocar `cover` pra `z.string()` simples em
+# config.ts e usar public/uploads — mas perde o resize/AVIF automatico.
+media_folder: ''
+public_folder: './'
+
+collections:
+  - name: 'posts'
+    label: 'Posts do blog'
+    folder: 'src/content/posts'
+    # Decap cria um arquivo .md por entrada, direto dentro da pasta acima
+    # (sem subpasta por post) — mesmo layout que ja existe hoje.
+    create: true
+    delete: true
+    extension: 'md'
+    format: 'frontmatter'
+    # Nome do arquivo = legacySlug (nao o title). Motivo: src/content/config.ts
+    # documenta que o slug da URL do post (nome do arquivo, sem extensao) TEM
+    # que ser igual ao slug antigo do WordPress pra nao perder SEO/URL equity
+    # na migracao — e literalmente o proposito do campo `legacySlug`. Se
+    # usasse o `slug` default do Decap (baseado no title), o nome do arquivo
+    # ia divergir do legacySlug digitado dentro do post, o que seria um bug
+    # de dia 1. O editor digita o slug kebab-case no campo e ele vira o nome
+    # do arquivo direto.
+    slug: '{{fields.legacySlug}}'
+    summary: '{{title}} — {{category}}'
+    sortable_fields: ['title', 'pubDate', 'category', 'draft']
+    view_filters:
+      - label: 'Rascunhos'
+        field: draft
+        pattern: 'true'
+      - label: 'Publicados'
+        field: draft
+        pattern: 'false'
+    view_groups:
+      - label: 'Categoria'
+        field: category
+    fields:
+      - { label: 'Título', name: 'title', widget: 'string', pattern: ['^.{1,90}$', 'Máximo de 90 caracteres'] }
+      - { label: 'Descrição (meta/SEO)', name: 'description', widget: 'text', pattern: ['^.{1,160}$', 'Máximo de 160 caracteres'] }
+      - { label: 'Data de publicação', name: 'pubDate', widget: 'datetime', format: 'YYYY-MM-DD', date_format: 'YYYY-MM-DD', time_format: false }
+      - { label: 'Data de atualização', name: 'updatedDate', widget: 'datetime', format: 'YYYY-MM-DD', date_format: 'YYYY-MM-DD', time_format: false, required: false }
+      - { label: 'Tags', name: 'tags', widget: 'list', default: [], required: false }
+      - { label: 'Imagem de capa', name: 'cover', widget: 'image', required: false, hint: 'Upload cai em src/content/posts/ (ver comentario de media_folder acima). Deixe vazio enquanto nao houver foto real.' }
+      - { label: 'Texto alternativo da capa', name: 'coverAlt', widget: 'string', required: false }
+      - { label: 'Rascunho (não publica no site)', name: 'draft', widget: 'boolean', default: false }
+      - { label: 'Autor', name: 'author', widget: 'string', default: 'Equipe Guia de Urubici', required: false }
+      - label: 'Categoria'
+        name: 'category'
+        widget: 'select'
+        options: ['Geral', 'Guia Prático', 'O Que Fazer', 'Onde Comer']
+      - label: 'FAQ'
+        name: 'faq'
+        widget: 'list'
+        required: false
+        fields:
+          - { label: 'Pergunta', name: 'question', widget: 'string' }
+          - { label: 'Resposta', name: 'answer', widget: 'text' }
+      - label: 'Links de afiliado'
+        name: 'affiliates'
+        widget: 'list'
+        required: false
+        fields:
+          - { label: 'Texto do botão', name: 'label', widget: 'string' }
+          - { label: 'URL', name: 'url', widget: 'string', pattern: ['^https?://.+', 'Precisa ser uma URL http(s) válida'] }
+          - { label: 'Parceiro', name: 'provider', widget: 'select', options: ['amazon', 'booking', 'rentcars', 'mercadolivre', 'outro'] }
+      - label: 'Slugs relacionados'
+        name: 'relatedSlugs'
+        widget: 'list'
+        required: false
+        hint: 'Slug exato (nome do arquivo sem .md) dos posts relacionados — precisa já existir.'
+      - label: 'Slug legado (WordPress)'
+        name: 'legacySlug'
+        widget: 'string'
+        hint: 'URL antiga, sem domínio e sem barras — ex: cachoeiras-secretas-urubici. Define o nome do arquivo e a URL final do post (ver nota acima).'
+        pattern: ['^[a-z0-9]+(-[a-z0-9]+)*$', 'Só minúsculas, números e hífen (kebab-case), sem espaço ou acento']
