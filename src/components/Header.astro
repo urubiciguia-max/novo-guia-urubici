@@ -16,12 +16,11 @@ const navLinks = [
   <div class="container header-inner">
     <div class="header-brand">
       <a href="/" class="wordmark">
-        <Image src={logo} alt="Guia de Urubici" width={172} height={96} loading="eager" />
+        <Image src={logo} alt="Guia de Urubici" width={220} height={123} loading="eager" />
       </a>
 
-      <!-- pills de categoria ao lado da logo — só no desktop; no mobile elas
-           já aparecem dentro do menu hamburguer abaixo, pra não duplicar -->
-      <div class="header-categories">
+      <!-- pills de categoria ao lado da logo — só no desktop (>=860px) -->
+      <div class="header-categories header-categories--desktop">
         <CategoryNav variant="inline" />
       </div>
     </div>
@@ -48,6 +47,12 @@ const navLinks = [
         <a href="/guia-pratico" class="btn btn--green nav-cta">Ver guia prático</a>
       </nav>
     </details>
+  </div>
+
+  <!-- mesma navegação de categorias, em formato de faixa rolável —
+       só no mobile (<860px), onde não há espaço pra ficar ao lado da logo -->
+  <div class="header-categories header-categories--mobile">
+    <CategoryNav variant="default" />
   </div>
 </header>
 
@@ -83,21 +88,25 @@ const navLinks = [
   }
 
   .wordmark img {
-    height: 60px;
+    height: 72px;
     width: auto;
   }
 
-  .header-categories {
+  .header-categories--desktop {
     display: none;
   }
 
   @media (min-width: 860px) {
     .wordmark img {
-      height: 72px;
+      height: 92px;
     }
 
-    .header-categories {
+    .header-categories--desktop {
       display: block;
+    }
+
+    .header-categories--mobile {
+      display: none;
     }
 
     /* os mesmos links ja aparecem como pills ao lado da logo */
