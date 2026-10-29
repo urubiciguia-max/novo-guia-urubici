@@ -5,7 +5,7 @@ interface Category {
 }
 
 interface Props {
-  variant?: 'default' | 'overlay';
+  variant?: 'default' | 'inline';
 }
 
 const { variant = 'default' } = Astro.props;
@@ -18,8 +18,8 @@ const categories: Category[] = [
 ];
 ---
 
-<nav class={`category-nav ${variant === 'overlay' ? 'category-nav--overlay' : ''}`} aria-label="Categorias do blog">
-  <ul class={variant === 'overlay' ? 'category-list' : 'container category-list'}>
+<nav class={`category-nav ${variant === 'inline' ? 'category-nav--inline' : ''}`} aria-label="Categorias do blog">
+  <ul class={variant === 'inline' ? 'category-list' : 'container category-list'}>
     {categories.map((cat) => (
       <li>
         <a href={cat.href} class="category-pill">{cat.label}</a>
@@ -67,27 +67,18 @@ const categories: Category[] = [
     color: #fff;
   }
 
-  /* variante "overlay": pousa sobre a foto do hero, sem fundo/borda proprios */
-  .category-nav--overlay {
+  /* variante "inline": compacta, pra caber ao lado da logo no header */
+  .category-nav--inline {
     border-bottom: none;
   }
 
-  .category-nav--overlay .category-list {
+  .category-nav--inline .category-list {
     padding-block: 0;
+    gap: 8px;
   }
 
-  .category-nav--overlay .category-pill {
-    background: rgba(255, 255, 255, 0.16);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-  }
-
-  .category-nav--overlay .category-pill:hover,
-  .category-nav--overlay .category-pill:focus-visible {
-    background: var(--green);
-    border-color: var(--green);
-    color: #fff;
+  .category-nav--inline .category-pill {
+    padding: 6px 14px;
+    font-size: 0.8125rem;
   }
 </style>

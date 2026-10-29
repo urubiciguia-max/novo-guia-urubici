@@ -1,21 +1,30 @@
 ---
 import { Image } from 'astro:assets';
 import logo from '../assets/logo.webp';
+import CategoryNav from './CategoryNav.astro';
 
 const navLinks = [
-  { label: 'O que fazer', href: '/o-que-fazer' },
-  { label: 'Onde ficar', href: '/onde-ficar' },
-  { label: 'Onde comer', href: '/onde-comer-urubici' },
-  { label: 'Guia prático', href: '/guia-pratico' },
-  { label: 'Sobre nós', href: '/sobre-nos' },
+  { label: 'O que fazer', href: '/o-que-fazer', category: true },
+  { label: 'Onde ficar', href: '/onde-ficar', category: true },
+  { label: 'Onde comer', href: '/onde-comer-urubici', category: true },
+  { label: 'Guia prático', href: '/guia-pratico', category: true },
+  { label: 'Sobre nós', href: '/sobre-nos', category: false },
 ];
 ---
 
 <header class="site-header">
   <div class="container header-inner">
-    <a href="/" class="wordmark">
-      <Image src={logo} alt="Guia de Urubici" width={172} height={96} loading="eager" />
-    </a>
+    <div class="header-brand">
+      <a href="/" class="wordmark">
+        <Image src={logo} alt="Guia de Urubici" width={172} height={96} loading="eager" />
+      </a>
+
+      <!-- pills de categoria ao lado da logo — só no desktop; no mobile elas
+           já aparecem dentro do menu hamburguer abaixo, pra não duplicar -->
+      <div class="header-categories">
+        <CategoryNav variant="inline" />
+      </div>
+    </div>
 
     <!--
       Menu mobile 100% CSS via <details>/<summary> — disclosure nativo,
@@ -31,7 +40,7 @@ const navLinks = [
       <nav class="nav-panel" aria-label="Navegação principal">
         <ul class="nav-list">
           {navLinks.map((link) => (
-            <li>
+            <li class:list={[{ 'nav-item--category': link.category }]}>
               <a href={link.href} class="link-under">{link.label}</a>
             </li>
           ))}
@@ -57,7 +66,15 @@ const navLinks = [
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 24px;
     padding-block: 16px;
+    flex-wrap: wrap;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 20px;
   }
 
   .wordmark {
@@ -66,13 +83,26 @@ const navLinks = [
   }
 
   .wordmark img {
-    height: 52px;
+    height: 60px;
     width: auto;
+  }
+
+  .header-categories {
+    display: none;
   }
 
   @media (min-width: 860px) {
     .wordmark img {
-      height: 60px;
+      height: 72px;
+    }
+
+    .header-categories {
+      display: block;
+    }
+
+    /* os mesmos links ja aparecem como pills ao lado da logo */
+    .nav-item--category {
+      display: none;
     }
   }
 

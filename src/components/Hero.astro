@@ -1,6 +1,4 @@
 ---
-import CategoryNav from './CategoryNav.astro';
-
 interface Props {
   href: string;
   title: string;
@@ -11,21 +9,14 @@ const { href, title, excerpt } = Astro.props;
 ---
 
 <section class="hero section container" aria-label="Post em destaque">
-  <div class="hero-card placeholder-gradient">
-    <a href={href} class="hero-card-link" aria-label={title}></a>
-
+  <a href={href} class="hero-card placeholder-gradient">
     <span class="badge badge--charcoal hero-badge">Último post</span>
-
-    <div class="hero-categories">
-      <CategoryNav variant="overlay" />
-    </div>
-
     <div class="hero-overlay">
-      <h2 class="hero-title"><a href={href} class="hero-title-link">{title}</a></h2>
+      <h2 class="hero-title">{title}</h2>
       <p class="hero-excerpt">{excerpt}</p>
-      <a href={href} class="hero-link link-under">Ler o post completo</a>
+      <span class="hero-link link-under">Ler o post completo</span>
     </div>
-  </div>
+  </a>
 </section>
 
 <style>
@@ -51,46 +42,23 @@ const { href, title, excerpt } = Astro.props;
     content: '';
     position: absolute;
     inset: 0;
-    z-index: 1;
     background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.1) 55%, transparent 100%);
-  }
-
-  /* cobre o card inteiro e manda o clique pro post; fica abaixo do badge,
-     das categorias e do overlay de texto, que tem seus proprios links */
-  .hero-card-link {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
   }
 
   .hero-badge {
     position: absolute;
     top: 20px;
     left: 20px;
-    z-index: 3;
-  }
-
-  .hero-categories {
-    position: absolute;
-    top: 64px;
-    left: 20px;
-    right: 20px;
-    z-index: 3;
+    z-index: 2;
   }
 
   .hero-overlay {
     position: absolute;
     inset: auto 0 0 0;
-    z-index: 3;
+    z-index: 2;
     padding: 20px;
     color: #fff;
     max-width: 720px;
-    /* deixa cliques "vazarem" pro hero-card-link, exceto nos links de verdade */
-    pointer-events: none;
-  }
-
-  .hero-overlay a {
-    pointer-events: auto;
   }
 
   .hero-title {
