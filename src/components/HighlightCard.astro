@@ -1,0 +1,38 @@
+---
+interface Props {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+const { icon, title, description } = Astro.props;
+---
+
+<div class="highlight-card card">
+  <span class="highlight-card-icon" aria-hidden="true">{icon}</span>
+  <h3 class="highlight-card-title">{title}</h3>
+  <p class="highlight-card-desc">{description}</p>
+</div>
+
+<style>
+  .highlight-card {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .highlight-card-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+  }
+
+  .highlight-card-title {
+    font-size: 1rem;
+  }
+
+  .highlight-card-desc {
+    font-size: 0.875rem;
+    margin: 0;
+  }
+</style>

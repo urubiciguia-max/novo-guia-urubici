@@ -1,0 +1,47 @@
+---
+/**
+ * JSON-LD Product — usar em cards/paginas de equipamento recomendado
+ * ("Pra levar na mala") ou hospedagem, quando fizer sentido marcar preco.
+ */
+interface Props {
+  name: string;
+  description: string;
+  image: string;
+  priceCurrency?: string;
+  price?: string | number;
+  url?: string;
+  brand?: string;
+}
+
+const {
+  name,
+  description,
+  image,
+  priceCurrency = 'BRL',
+  price,
+  url,
+  brand,
+} = Astro.props;
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name,
+  description,
+  image,
+  ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
+  ...(price !== undefined
+    ? {
+        offers: {
+          '@type': 'Offer',
+          priceCurrency,
+          price: String(price),
+          ...(url ? { url } : {}),
+          availability: 'https://schema.org/InStock',
+        },
+      }
+    : {}),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />

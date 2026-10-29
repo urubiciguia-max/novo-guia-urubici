@@ -1,0 +1,7 @@
+# Cloudflare Pages — redirects.
+# Astro copia este arquivo de public/ pra dist/ automaticamente no build.
+# Docs: https://developers.cloudflare.com/pages/configuration/redirects/
+#
+# Ainda sem regras reais — não há conteúdo migrado de outro domínio até agora.
+# Exemplo de sintaxe pra quando precisar (ex: migrar URL antiga pra nova):
+# /pousadas-urubici   /onde-ficar   301

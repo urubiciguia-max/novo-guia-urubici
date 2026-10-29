@@ -1,0 +1,26 @@
+# build output
+dist/
+
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# environment variables
+.env
+.env.production
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# logs
+npm-debug.log*
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Personas / protocolo de orquestracao interno - nao vai pro repo publico
+.claude/agents/

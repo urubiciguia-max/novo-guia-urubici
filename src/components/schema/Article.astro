@@ -1,0 +1,47 @@
+---
+/**
+ * JSON-LD Article — usar nas paginas de post do blog.
+ */
+interface Props {
+  headline: string;
+  description: string;
+  image: string;
+  datePublished: Date | string;
+  dateModified?: Date | string;
+  authorName?: string;
+  url?: string;
+}
+
+const {
+  headline,
+  description,
+  image,
+  datePublished,
+  dateModified,
+  authorName = 'Guia Urubici',
+  url = Astro.url.toString(),
+} = Astro.props;
+
+const toIso = (d: Date | string) => (d instanceof Date ? d.toISOString() : d);
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline,
+  description,
+  image,
+  datePublished: toIso(datePublished),
+  dateModified: toIso(dateModified ?? datePublished),
+  author: {
+    '@type': 'Organization',
+    name: authorName,
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Guia Urubici',
+  },
+  mainEntityOfPage: url,
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />

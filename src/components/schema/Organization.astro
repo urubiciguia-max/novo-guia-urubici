@@ -1,0 +1,33 @@
+---
+/**
+ * JSON-LD Organization — usado 1x na home (e opcionalmente herdado em
+ * outras paginas via Layout) pra firmar EEAT/identidade da marca.
+ */
+interface Props {
+  name?: string;
+  url?: string;
+  logo?: string;
+  description?: string;
+  sameAs?: string[];
+}
+
+const {
+  name = 'Guia Urubici',
+  url = Astro.site?.toString() ?? 'https://www.guiaurubici.com.br',
+  logo = new URL('/favicon.svg', Astro.site ?? 'https://www.guiaurubici.com.br').toString(),
+  description = 'Guia de viagem e turismo sobre Urubici e a Serra Catarinense: roteiros, cachoeiras, onde ficar e o que levar na mala.',
+  sameAs = [],
+} = Astro.props;
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name,
+  url,
+  logo,
+  description,
+  ...(sameAs.length ? { sameAs } : {}),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />

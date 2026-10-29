@@ -1,0 +1,332 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DisclosureStrip from '../components/DisclosureStrip.astro';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import CategoryNav from '../components/CategoryNav.astro';
+import PostCard from '../components/PostCard.astro';
+import HighlightCard from '../components/HighlightCard.astro';
+import StayCard from '../components/StayCard.astro';
+import GearCard from '../components/GearCard.astro';
+import AffiliateButton from '../components/AffiliateButton.astro';
+import Newsletter from '../components/Newsletter.astro';
+import Footer from '../components/Footer.astro';
+
+// Conteudo de exemplo pra montar a home — troque por dados reais
+// (Content Collection / CMS) quando a pauta estiver pronta.
+const recentPosts = [
+  {
+    href: '/roteiros/cachoeiras-urubici-1-dia',
+    title: 'Roteiro de 1 dia nas cachoeiras de Urubici',
+    excerpt: 'Avencal, Bauer e Pericó num só dia: ordem certa, horário pra evitar fila e onde comer no caminho.',
+    tag: 'Roteiros',
+  },
+  {
+    href: '/pra-levar/o-que-levar-serra-catarinense-inverno',
+    title: 'O que levar pra Serra Catarinense no inverno',
+    excerpt: 'Camada térmica, bota impermeável e os erros mais comuns de quem vem do litoral sem saber o frio que pega.',
+    tag: 'Preparo',
+  },
+  {
+    href: '/onde-ficar/melhores-bairros-urubici',
+    title: 'Onde ficar em Urubici: centro ou perto das trilhas?',
+    excerpt: 'Comparamos localização, preço médio e facilidade de acesso às principais atrações da região.',
+    tag: 'Onde ficar',
+  },
+  {
+    href: '/roteiros/morro-da-igreja-por-do-sol',
+    title: 'Morro da Igreja: vale ver o pôr do sol lá em cima?',
+    excerpt: 'Horário de fechamento, taxa de acesso e se compensa trocar o calçadão da praia pelo frio da serra.',
+    tag: 'Roteiros',
+  },
+];
+
+const highlights = [
+  {
+    icon: '🏔️',
+    title: 'Serra Catarinense',
+    description: 'Urubici fica no ponto mais alto do estado — clima de montanha o ano inteiro, com geada frequente no inverno.',
+  },
+  {
+    icon: '💧',
+    title: 'Capital das cachoeiras',
+    description: 'Mais de 40 quedas d\'água catalogadas num raio curto da cidade, de fácil acesso a trilhas técnicas.',
+  },
+  {
+    icon: '🥘',
+    title: 'Gastronomia de montanha',
+    description: 'Fondue, vinho quente e cucina colonial — a cidade virou destino gastronômico de inverno em Santa Catarina.',
+  },
+  {
+    icon: '🚗',
+    title: 'Fácil chegar de carro',
+    description: 'A cerca de 3h de Florianópolis, com estrada asfaltada até o centro — ideal pra fim de semana prolongado.',
+  },
+];
+
+const stays = [
+  {
+    type: 'Pousada',
+    name: 'Pousada Vista da Serra',
+    description: 'Quartos com vista pra montanha, café da manhã colonial e lareira na área comum.',
+    priceFrom: 'R$ 320/noite',
+    bookingUrl: 'https://booking.com',
+  },
+  {
+    type: 'Chalé',
+    name: 'Chalés do Vale Encantado',
+    description: 'Chalés independentes com hidromassagem e lareira a lenha, a 10 min do centro.',
+    priceFrom: 'R$ 480/noite',
+    bookingUrl: 'https://booking.com',
+  },
+  {
+    type: 'Hotel Fazenda',
+    name: 'Hotel Fazenda Serra Alta',
+    description: 'Pensão completa, trilhas próprias e cavalgada incluída na diária.',
+    priceFrom: 'R$ 650/noite',
+    bookingUrl: 'https://booking.com',
+  },
+];
+
+const gear = [
+  { icon: '🧥', name: 'Jaqueta impermeável', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
+  { icon: '🥾', name: 'Bota de trilha', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
+  { icon: '🔋', name: 'Power bank', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
+  { icon: '🧤', name: 'Luvas térmicas', amazonUrl: 'https://amazon.com.br', mercadoLivreUrl: 'https://mercadolivre.com.br' },
+];
+---
+
+<Layout
+  title="Guia Urubici — roteiros, cachoeiras e onde ficar na Serra Catarinense"
+  description="Guia de viagem completo sobre Urubici-SC: roteiros de 1 a 3 dias, cachoeiras, onde ficar, o que levar na mala e negócios locais da Serra Catarinense."
+>
+  <DisclosureStrip />
+  <Header />
+
+  <h1 class="visually-hidden">
+    Guia Urubici — guia de viagem sobre Urubici e a Serra Catarinense
+  </h1>
+
+  <main id="conteudo-principal">
+    <Hero
+      href={recentPosts[0].href}
+      title={recentPosts[0].title}
+      excerpt={recentPosts[0].excerpt}
+    />
+
+    <CategoryNav />
+
+    <section class="section" aria-labelledby="dicas-heading">
+      <div class="container">
+        <p class="eyebrow">Dicas para o viajante</p>
+        <h2 id="dicas-heading" class="section-title">O que todo mundo pergunta antes de vir pra Urubici</h2>
+
+        <div class="posts-grid">
+          {recentPosts.map((post) => (
+            <PostCard href={post.href} title={post.title} excerpt={post.excerpt} tag={post.tag} />
+          ))}
+        </div>
+
+        <div class="posts-grid-footer">
+          <!-- Estatico por enquanto: pagina sem paginacao real ainda (SSG, sem JS de fetch). -->
+          <a href="/roteiros" class="btn btn--outline-coral">Carregar mais dicas</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--soft" aria-labelledby="sobre-heading">
+      <div class="container sobre-grid">
+        <div class="sobre-text">
+          <p class="eyebrow">Sobre a cidade</p>
+          <h2 id="sobre-heading" class="section-title">Urubici, a capital catarinense do frio e da água</h2>
+          <p>
+            Encravada na Serra Catarinense, Urubici é conhecida como a cidade
+            mais fria do Brasil em registros históricos — e também como a
+            "capital das cachoeiras" de Santa Catarina. É destino certo pra
+            quem busca trilha, gastronomia de montanha e aquele silêncio que
+            não existe no litoral.
+          </p>
+          <p>
+            A cerca de 3h de Florianópolis, a cidade funciona bem tanto num
+            fim de semana corrido quanto numa semana inteira de trilhas —
+            sempre levando casaco, mesmo no verão.
+          </p>
+        </div>
+
+        <div class="sobre-highlights">
+          {highlights.map((item) => (
+            <HighlightCard icon={item.icon} title={item.title} description={item.description} />
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="ficar-heading">
+      <div class="container">
+        <p class="eyebrow">Onde ficar</p>
+        <h2 id="ficar-heading" class="section-title">Pousadas e chalés recomendados</h2>
+
+        <div class="stays-grid">
+          {stays.map((stay) => (
+            <StayCard
+              type={stay.type}
+              name={stay.name}
+              description={stay.description}
+              priceFrom={stay.priceFrom}
+              bookingUrl={stay.bookingUrl}
+            />
+          ))}
+        </div>
+
+        <div class="car-banner">
+          <div class="car-banner-text">
+            <h3>Vai dirigir até a serra? Alugue o carro com antecedência</h3>
+            <p>Comparamos preço com quem já fez a viagem — reserve com desconto.</p>
+          </div>
+          <AffiliateButton href="https://rentcars.com" variant="coral">
+            Ver carros no Rentcars
+          </AffiliateButton>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--soft" aria-labelledby="mala-heading">
+      <div class="container">
+        <p class="eyebrow">Pra levar na mala</p>
+        <h2 id="mala-heading" class="section-title">Equipamento que realmente faz diferença no frio</h2>
+
+        <div class="gear-grid">
+          {gear.map((item) => (
+            <GearCard
+              icon={item.icon}
+              name={item.name}
+              amazonUrl={item.amazonUrl}
+              mercadoLivreUrl={item.mercadoLivreUrl}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--soft" aria-labelledby="negocios-heading">
+      <div class="container negocios-banner">
+        <h2 id="negocios-heading" class="section-title">Tem um negócio em Urubici?</h2>
+        <p>
+          Pousada, restaurante, guia de trilha ou loja local — se você atende
+          viajante na Serra Catarinense, quer aparecer aqui. Fale com a gente.
+        </p>
+        <a href="/negocios-locais" class="btn btn--coral">Quero aparecer no guia</a>
+      </div>
+    </section>
+
+    <Newsletter />
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .section-title {
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
+    margin-top: 8px;
+    margin-bottom: 28px;
+    max-width: 640px;
+  }
+
+  .posts-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+
+  .posts-grid-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+  }
+
+  .sobre-grid {
+    display: grid;
+    gap: 32px;
+  }
+
+  .sobre-text p {
+    font-size: 1rem;
+  }
+
+  .sobre-highlights {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-content: start;
+  }
+
+  .stays-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+    margin-bottom: 32px;
+  }
+
+  .car-banner {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--radius-card);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .car-banner-text h3 {
+    color: #fff;
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+  }
+
+  .car-banner-text p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .gear-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .negocios-banner {
+    text-align: center;
+    max-width: 640px;
+  }
+
+  .negocios-banner p {
+    margin-bottom: 20px;
+  }
+
+  @media (min-width: 860px) {
+    .posts-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .sobre-grid {
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+    }
+
+    .stays-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .car-banner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gear-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>

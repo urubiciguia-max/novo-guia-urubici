@@ -1,0 +1,16 @@
+# Cloudflare Pages — regras de cache e headers de segurança.
+# Astro copia este arquivo de public/ pra dist/ automaticamente no build.
+# Docs: https://developers.cloudflare.com/pages/configuration/headers/
+
+# Assets com hash no nome (JS/CSS/fonts gerados pelo Astro) — imutáveis, cache agressivo.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Resto do site — headers de segurança básicos.
+# TODO: endurecer com Content-Security-Policy quando os scripts/fonts de terceiros
+# (analytics, afiliados, fonts externas) estiverem definidos e estáveis. Por enquanto
+# sem CSP pra não travar nada que ainda vamos integrar.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin

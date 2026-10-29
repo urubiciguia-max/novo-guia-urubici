@@ -1,0 +1,95 @@
+---
+interface Props {
+  href: string;
+  title: string;
+  excerpt: string;
+}
+
+const { href, title, excerpt } = Astro.props;
+---
+
+<section class="hero section container" aria-label="Post em destaque">
+  <a href={href} class="hero-card placeholder-gradient">
+    <span class="badge badge--green hero-badge">Último post</span>
+    <div class="hero-overlay">
+      <h2 class="hero-title">{title}</h2>
+      <p class="hero-excerpt">{excerpt}</p>
+      <span class="hero-link link-under">Ler o post completo</span>
+    </div>
+  </a>
+</section>
+
+<style>
+  .hero {
+    padding-top: 32px;
+  }
+
+  .hero-card {
+    position: relative;
+    display: block;
+    aspect-ratio: 21 / 9;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  /* placeholder: no mockup real seria uma foto da serra; aqui e gradiente */
+  .hero-card.placeholder-gradient {
+    background-image: linear-gradient(135deg, #0c3d24 0%, var(--green) 65%, #0c3d24 130%);
+  }
+
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.1) 55%, transparent 100%);
+  }
+
+  .hero-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 2;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 2;
+    padding: 20px;
+    color: #fff;
+    max-width: 720px;
+  }
+
+  .hero-title {
+    color: #fff;
+    font-size: clamp(1.25rem, 4vw, 2rem);
+    margin-bottom: 8px;
+  }
+
+  .hero-excerpt {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+    display: none;
+  }
+
+  .hero-link {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .hero-link::after {
+    background: #fff;
+  }
+
+  @media (min-width: 860px) {
+    .hero-overlay {
+      padding: 32px 40px;
+    }
+
+    .hero-excerpt {
+      display: block;
+    }
+  }
+</style>

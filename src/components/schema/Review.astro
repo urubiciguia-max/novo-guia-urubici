@@ -1,0 +1,47 @@
+---
+/**
+ * JSON-LD Review — complementa Product (ex: review de pousada/equipamento).
+ * So emita isso quando houver uma avaliacao real — nao inventar nota.
+ */
+interface Props {
+  itemReviewed: string;
+  authorName: string;
+  ratingValue: number;
+  bestRating?: number;
+  reviewBody?: string;
+  datePublished: Date | string;
+}
+
+const {
+  itemReviewed,
+  authorName,
+  ratingValue,
+  bestRating = 5,
+  reviewBody,
+  datePublished,
+} = Astro.props;
+
+const toIso = (d: Date | string) => (d instanceof Date ? d.toISOString() : d);
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Review',
+  itemReviewed: {
+    '@type': 'Thing',
+    name: itemReviewed,
+  },
+  author: {
+    '@type': 'Person',
+    name: authorName,
+  },
+  reviewRating: {
+    '@type': 'Rating',
+    ratingValue,
+    bestRating,
+  },
+  ...(reviewBody ? { reviewBody } : {}),
+  datePublished: toIso(datePublished),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />

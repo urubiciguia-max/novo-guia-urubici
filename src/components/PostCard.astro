@@ -1,0 +1,48 @@
+---
+interface Props {
+  href: string;
+  title: string;
+  excerpt: string;
+  tag: string;
+}
+
+const { href, title, excerpt, tag } = Astro.props;
+---
+
+<a href={href} class="post-card card">
+  <div class="post-card-thumb placeholder-gradient" aria-hidden="true"></div>
+  <div class="post-card-body">
+    <span class="badge badge--green">{tag}</span>
+    <h3 class="post-card-title">{title}</h3>
+    <p class="post-card-excerpt">{excerpt}</p>
+  </div>
+</a>
+
+<style>
+  .post-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .post-card-thumb {
+    aspect-ratio: 4 / 3;
+    background-image: linear-gradient(135deg, var(--navy) 0%, #2d6ea8 60%, var(--amber) 130%);
+  }
+
+  .post-card-body {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .post-card-title {
+    font-size: 1.05rem;
+  }
+
+  .post-card-excerpt {
+    font-size: 0.9rem;
+    margin: 0;
+  }
+</style>

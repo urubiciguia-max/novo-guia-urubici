@@ -1,0 +1,57 @@
+---
+import AffiliateButton from './AffiliateButton.astro';
+
+interface Props {
+  icon: string;
+  name: string;
+  amazonUrl: string;
+  mercadoLivreUrl: string;
+}
+
+const { icon, name, amazonUrl, mercadoLivreUrl } = Astro.props;
+---
+
+<article class="gear-card card">
+  <span class="gear-card-icon" aria-hidden="true">{icon}</span>
+  <h3 class="gear-card-title">{name}</h3>
+  <div class="gear-card-actions">
+    <AffiliateButton href={amazonUrl} variant="amazon" size="sm" class="gear-card-btn">
+      Amazon
+    </AffiliateButton>
+    <AffiliateButton href={mercadoLivreUrl} variant="ml" size="sm" class="gear-card-btn">
+      Mercado Livre
+    </AffiliateButton>
+  </div>
+</article>
+
+<style>
+  .gear-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 24px 18px;
+  }
+
+  .gear-card-icon {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .gear-card-title {
+    font-size: 1rem;
+  }
+
+  .gear-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .gear-card-btn {
+    width: 100%;
+  }
+</style>

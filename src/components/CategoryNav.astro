@@ -1,0 +1,63 @@
+---
+interface Category {
+  label: string;
+  href: string;
+}
+
+const categories: Category[] = [
+  { label: 'Roteiros e trilhas', href: '/roteiros' },
+  { label: 'Onde ficar', href: '/onde-ficar' },
+  { label: 'Preparo e mala', href: '/pra-levar' },
+  { label: 'Negócios locais', href: '/negocios-locais' },
+];
+---
+
+<nav class="category-nav" aria-label="Categorias do blog">
+  <ul class="container category-list">
+    {categories.map((cat) => (
+      <li>
+        <a href={cat.href} class="category-pill">{cat.label}</a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+  .category-nav {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .category-list {
+    display: flex;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding-block: 16px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-list li {
+    flex: 0 0 auto;
+  }
+
+  .category-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-soft);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    transition: background-color var(--ease), color var(--ease);
+  }
+
+  .category-pill:hover,
+  .category-pill:focus-visible {
+    background: var(--coral);
+    color: #fff;
+  }
+</style>

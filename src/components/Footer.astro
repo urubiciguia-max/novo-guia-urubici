@@ -1,0 +1,132 @@
+---
+const explorarLinks = [
+  { label: 'Sobre a cidade', href: '/sobre-a-cidade' },
+  { label: 'Roteiros e trilhas', href: '/roteiros' },
+  { label: 'Pra levar na mala', href: '/pra-levar' },
+  { label: 'Negócios locais', href: '/negocios-locais' },
+];
+
+const reservasLinks = [
+  { label: 'Onde ficar', href: '/onde-ficar' },
+  { label: 'Aluguel de carro', href: 'https://rentcars.com', external: true },
+  { label: 'Hospedagem no Booking', href: 'https://booking.com', external: true },
+];
+---
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="footer-brand">
+      <a href="/" class="wordmark">
+        Guia<span class="wordmark-accent">Urubici</span>
+      </a>
+      <p id="afiliados" class="footer-disclosure">
+        <strong>Divulgação de afiliados:</strong> Guia Urubici participa de
+        programas de afiliados do Booking.com, Rentcars, Amazon e Mercado
+        Livre. Isso significa que, ao clicar em alguns links e concluir uma
+        compra ou reserva, podemos receber uma comissão — sem nenhum custo
+        extra pra você. Recomendamos apenas o que realmente usaríamos na
+        nossa própria viagem pra Serra Catarinense.
+      </p>
+    </div>
+
+    <nav class="footer-col" aria-label="Explorar">
+      <h3 class="footer-col-title">Explorar</h3>
+      <ul>
+        {explorarLinks.map((link) => (
+          <li><a href={link.href} class="link-under">{link.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+
+    <nav class="footer-col" aria-label="Reservas">
+      <h3 class="footer-col-title">Reservas</h3>
+      <ul>
+        {reservasLinks.map((link) => (
+          <li>
+            {link.external ? (
+              <a href={link.href} class="link-under" rel="sponsored noopener noreferrer" target="_blank">
+                {link.label}
+              </a>
+            ) : (
+              <a href={link.href} class="link-under">{link.label}</a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+
+  <div class="container footer-bottom">
+    <p>&copy; {new Date().getFullYear()} Guia Urubici. Todos os direitos reservados.</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--navy);
+    color: rgba(255, 255, 255, 0.8);
+    padding-top: 56px;
+  }
+
+  .footer-grid {
+    display: grid;
+    gap: 40px;
+    padding-bottom: 32px;
+  }
+
+  .footer-brand .wordmark {
+    color: #fff;
+    font-size: 1.25rem;
+  }
+
+  .footer-brand .wordmark-accent {
+    color: var(--coral);
+  }
+
+  .footer-disclosure {
+    margin-top: 16px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    max-width: 480px;
+  }
+
+  .footer-disclosure strong {
+    color: #fff;
+  }
+
+  .footer-col-title {
+    color: #fff;
+    font-size: 0.9rem;
+    margin-bottom: 14px;
+  }
+
+  .footer-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.875rem;
+  }
+
+  .footer-col .link-under::after {
+    background: var(--coral);
+  }
+
+  .footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-block: 20px;
+    font-size: 0.75rem;
+  }
+
+  .footer-bottom p {
+    margin: 0;
+  }
+
+  @media (min-width: 860px) {
+    .footer-grid {
+      grid-template-columns: 2fr 1fr 1fr;
+    }
+  }
+</style>

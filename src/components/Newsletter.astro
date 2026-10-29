@@ -1,0 +1,93 @@
+---
+---
+
+<section class="newsletter section">
+  <div class="container newsletter-inner">
+    <h2 class="newsletter-title">Quer dica nova de Urubici antes de todo mundo?</h2>
+    <p class="newsletter-desc">
+      Mandamos roteiro, cachoeira escondida e alerta de friozinho direto no
+      seu e-mail. Sem spam, só Serra Catarinense.
+    </p>
+
+    <!--
+      PLACEHOLDER: ainda sem backend de newsletter integrado.
+      `action`/`method` abaixo sao so pra nao quebrar visualmente o form;
+      troque pelo endpoint real (ex: Resend/Mailchimp/ConvertKit) quando
+      o Jurandir ou a integracao escolhida estiver pronta.
+    -->
+    <form class="newsletter-form" action="#todo-integrar-newsletter" method="post">
+      <label for="newsletter-email" class="visually-hidden">Seu e-mail</label>
+      <input
+        id="newsletter-email"
+        name="email"
+        type="email"
+        required
+        placeholder="seuemail@exemplo.com"
+        class="newsletter-input"
+      />
+      <button type="submit" class="btn btn--navy newsletter-submit">Quero receber</button>
+    </form>
+  </div>
+</section>
+
+<style>
+  .newsletter {
+    background: linear-gradient(135deg, var(--coral) 0%, var(--coral-dark) 100%);
+    color: #fff;
+  }
+
+  .newsletter-inner {
+    text-align: center;
+    max-width: 640px;
+  }
+
+  .newsletter-title {
+    color: #fff;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    margin-bottom: 12px;
+  }
+
+  .newsletter-desc {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 28px;
+  }
+
+  .newsletter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .newsletter-input {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: var(--radius-pill);
+    border: none;
+    font-size: 0.95rem;
+    font-family: var(--font-body);
+  }
+
+  .newsletter-input:focus-visible {
+    outline: 3px solid var(--navy);
+    outline-offset: 2px;
+  }
+
+  .newsletter-submit {
+    width: 100%;
+  }
+
+  @media (min-width: 860px) {
+    .newsletter-form {
+      flex-direction: row;
+    }
+
+    .newsletter-input {
+      flex: 1;
+    }
+
+    .newsletter-submit {
+      width: auto;
+      flex: 0 0 auto;
+    }
+  }
+</style>

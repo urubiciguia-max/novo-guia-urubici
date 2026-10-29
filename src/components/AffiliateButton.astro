@@ -1,0 +1,57 @@
+---
+/**
+ * Botao padrao pra qualquer link de afiliado do site (Booking, Rentcars,
+ * Amazon, Mercado Livre...). Centraliza o rel/target corretos pra nunca
+ * esquecer num componente novo.
+ */
+type Variant = 'coral' | 'navy' | 'booking' | 'amazon' | 'ml';
+
+interface Props {
+  href: string;
+  variant?: Variant;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { href, variant = 'coral', size = 'md', class: className = '' } = Astro.props;
+---
+
+<a
+  href={href}
+  class={`btn affiliate-btn affiliate-btn--${variant} ${size === 'sm' ? 'btn--sm' : ''} ${className}`}
+  rel="sponsored noopener noreferrer"
+  target="_blank"
+>
+  <slot />
+</a>
+
+<style>
+  .affiliate-btn--coral {
+    background: var(--coral);
+    color: #fff;
+  }
+
+  .affiliate-btn--coral:hover {
+    background: var(--coral-dark);
+  }
+
+  .affiliate-btn--navy {
+    background: var(--navy);
+    color: #fff;
+  }
+
+  .affiliate-btn--booking {
+    background: var(--booking-blue);
+    color: #fff;
+  }
+
+  .affiliate-btn--amazon {
+    background: var(--amazon-orange);
+    color: var(--ink);
+  }
+
+  .affiliate-btn--ml {
+    background: var(--ml-yellow);
+    color: var(--ink);
+  }
+</style>

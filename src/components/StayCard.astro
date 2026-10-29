@@ -1,0 +1,88 @@
+---
+import AffiliateButton from './AffiliateButton.astro';
+
+interface Props {
+  type: string;
+  name: string;
+  description: string;
+  priceFrom: string;
+  bookingUrl: string;
+}
+
+const { type, name, description, priceFrom, bookingUrl } = Astro.props;
+---
+
+<article class="stay-card card">
+  <div class="stay-card-thumb placeholder-gradient" aria-hidden="true">
+    <span class="badge badge--amber stay-card-badge">{type}</span>
+  </div>
+  <div class="stay-card-body">
+    <h3 class="stay-card-title">{name}</h3>
+    <p class="stay-card-desc">{description}</p>
+    <div class="stay-card-footer">
+      <p class="stay-card-price">
+        A partir de <strong>{priceFrom}</strong>
+      </p>
+      <AffiliateButton href={bookingUrl} variant="booking" size="sm">
+        Ver no Booking
+      </AffiliateButton>
+    </div>
+  </div>
+</article>
+
+<style>
+  .stay-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .stay-card-thumb {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background-image: linear-gradient(135deg, #3a2a1a 0%, var(--amber) 70%, #3a2a1a 140%);
+  }
+
+  .stay-card-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+  }
+
+  .stay-card-body {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .stay-card-title {
+    font-size: 1.05rem;
+  }
+
+  .stay-card-desc {
+    font-size: 0.9rem;
+    margin: 0;
+    flex: 1;
+  }
+
+  .stay-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+  }
+
+  .stay-card-price {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .stay-card-price strong {
+    color: var(--ink);
+  }
+</style>

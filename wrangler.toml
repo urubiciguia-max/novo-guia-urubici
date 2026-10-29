@@ -1,0 +1,6 @@
+name = "guia-urubici"
+compatibility_date = "2026-10-29"
+
+# Projeto Cloudflare Pages — site estático gerado pelo Astro (output: 'static').
+# Sem Workers, sem bindings de KV/D1/R2. Build roda `astro build`, output fica em dist/.
+pages_build_output_dir = "dist"
