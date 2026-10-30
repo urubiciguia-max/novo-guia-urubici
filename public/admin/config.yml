@@ -9,10 +9,8 @@ backend:
   name: github
   repo: urubiciguia-max/novo-guia-urubici
   branch: main
-  # SUBSTITUIR depois que o Worker de OAuth (oauth-worker/) estiver deployado.
-  # Ver handoff do Jurandir pro Genilson — formato esperado:
-  # https://<nome-do-worker>.<subdominio-cloudflare>.workers.dev
-  base_url: https://SUBSTITUIR-worker-oauth.workers.dev
+  # Worker de OAuth deployado em 2026-10-30 (ver oauth-worker/README.md).
+  base_url: https://guia-urubici-cms-oauth.urubiciguia.workers.dev
 
 # Mostra um link "Ver no site" a partir do preview de cada entrada.
 site_url: https://novo-guia-urubici.pages.dev
