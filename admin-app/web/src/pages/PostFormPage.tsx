@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import type { PostFrontmatter } from '@admin-data/index.js';
 import {
   PostAlreadyExistsError,
@@ -14,12 +14,14 @@ import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
 import { emptyFormState, formStateToFrontmatter, recordToFormState, type PostFormState } from '../lib/postForm';
 import { renderMarkdownPreview } from '../lib/markdownPreview';
+import type { SelectionResult } from '../lib/markdownToolbarActions';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { EmptyState } from '../components/EmptyState';
 import { Badge } from '../components/Badge';
 import { CoverImageUpload } from '../components/CoverImageUpload';
+import { MarkdownToolbar } from '../components/MarkdownToolbar';
 import { PlusIcon, TrashIcon } from '../components/icons';
 
 export interface PostFormPageProps {
@@ -51,6 +53,29 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
   // Guarda o último frontmatter validado que tentou salvar -- usado pra
   // "Sobrescrever" depois de um 409 (ver `resolveShaConflict`).
   const lastAttemptRef = useRef<PostFrontmatter | null>(null);
+
+  // `bodyRef` dá pra `MarkdownToolbar` ler `selectionStart`/`selectionEnd`
+  // ao vivo (o React não expõe isso via estado). Depois de uma ação da
+  // toolbar, o textarea é recriado com o novo `value` -- `pendingSelectionRef`
+  // guarda onde o cursor/seleção deveriam ficar, e o `useLayoutEffect`
+  // abaixo aplica isso (+ foco) assim que o DOM atualiza, antes do navegador
+  // pintar o novo frame (evita qualquer flash do cursor no lugar errado).
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const pending = pendingSelectionRef.current;
+    const el = bodyRef.current;
+    if (!pending || !el) return;
+    el.focus();
+    el.setSelectionRange(pending.start, pending.end);
+    pendingSelectionRef.current = null;
+  }, [form.body]);
+
+  function applyToolbarResult(result: SelectionResult) {
+    pendingSelectionRef.current = { start: result.selectionStart, end: result.selectionEnd };
+    updateField('body', result.text);
+  }
 
   const loadFromServer = useCallback(async () => {
     if (!slug) return;
@@ -406,14 +431,18 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
                 dangerouslySetInnerHTML={{ __html: renderMarkdownPreview(form.body) || '<p><em>Vazio.</em></p>' }}
               />
             ) : (
-              <textarea
-                className="post-form__body"
-                id="post-body"
-                aria-labelledby="post-body-label"
-                value={form.body}
-                onChange={(e) => updateField('body', e.target.value)}
-                rows={16}
-              />
+              <>
+                <MarkdownToolbar textareaRef={bodyRef} value={form.body} onApply={applyToolbarResult} />
+                <textarea
+                  ref={bodyRef}
+                  className="post-form__body"
+                  id="post-body"
+                  aria-labelledby="post-body-label"
+                  value={form.body}
+                  onChange={(e) => updateField('body', e.target.value)}
+                  rows={16}
+                />
+              </>
             )}
           </div>
         </div>

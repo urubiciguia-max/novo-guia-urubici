@@ -1003,6 +1003,148 @@ a {
   box-shadow: var(--shadow-card);
 }
 
+/* Toolbar de formatação markdown (ver components/MarkdownToolbar.tsx) --
+   só aparece no modo Editar, some no Preview (PostFormPage não renderiza o
+   componente quando previewMode é true). */
+.md-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  background: var(--neutral-bg);
+}
+
+.md-toolbar__separator {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.md-toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--ease), border-color var(--ease), transform var(--ease), color var(--ease);
+}
+
+.md-toolbar__btn:hover {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+/* Feedback de "pressionado" ao clicar -- os botões de ação (negrito, itálico,
+   código, link) não têm estado persistente (não são toggle: aplicam a
+   sintaxe e pronto), então o retorno é só o instante do clique, não um
+   aria-pressed. */
+.md-toolbar__btn:active {
+  background: var(--purple-soft);
+  border-color: var(--purple);
+  color: var(--purple-dark);
+  transform: scale(0.96);
+}
+
+.md-toolbar__btn--dropdown {
+  padding-right: 6px;
+}
+
+/* Estado aberto do dropdown: diferencia visualmente de hover comum, reforça
+   a relação com `aria-expanded` que o componente já controla. */
+.md-toolbar__btn--dropdown[aria-expanded='true'] {
+  background: var(--purple-soft);
+  border-color: var(--purple);
+  color: var(--purple-dark);
+}
+
+.md-toolbar__btn--dropdown[aria-expanded='true']:active {
+  transform: none;
+}
+
+/* Em telas estreitas o texto do gatilho some, fica só ícone + chevron
+   (o nome acessível continua vindo do aria-label no botão, não do texto
+   visível, então não há perda pra leitor de tela). Mobile-first: some por
+   padrão, reaparece a partir do mesmo breakpoint usado no resto do admin. */
+.md-toolbar__btn-label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .md-toolbar__btn-label {
+    display: inline;
+  }
+}
+
+.md-toolbar__dropdown {
+  position: relative;
+}
+
+.md-toolbar__menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  box-shadow: var(--shadow-card-hover);
+  transform-origin: top left;
+  animation: md-toolbar-menu-in 140ms ease-out;
+}
+
+@keyframes md-toolbar-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.md-toolbar__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ease);
+}
+
+.md-toolbar__menu-item:hover {
+  background: var(--neutral-bg);
+}
+
+.md-toolbar__menu-item:active {
+  background: var(--purple-soft);
+  color: var(--purple-dark);
+}
+
 .post-form__body {
   font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
   font-size: 0.85rem;

@@ -156,3 +156,98 @@ export function UploadIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/* Ícones da MarkdownToolbar (ver components/MarkdownToolbar.tsx) -- mesmo
+   estilo stroke-only acima, exceto onde um glifo preenchido fica mais
+   legível em 20px (bolinhas da lista com marcadores). O número da lista
+   numerada usa só "1" + um floreio final em vez de desenhar 1/2/3 por
+   extenso -- mesma convenção da Lucide (list-ordered), evita depender de
+   fonte do sistema pra manter o ícone consistente entre OS/browsers. */
+
+export function BoldIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M7 4h5a3 3 0 1 1 0 6H7V4z" />
+      <path d="M7 10h6a3 3 0 1 1 0 6H7v-6z" />
+    </svg>
+  );
+}
+
+export function ItalicIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M12 4h5" />
+      <path d="M7 20h5" />
+      <path d="M14 4l-5 16" />
+    </svg>
+  );
+}
+
+export function InlineCodeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M9 7l-5 5 5 5" />
+      <path d="M15 7l5 5-5 5" />
+    </svg>
+  );
+}
+
+export function LinkIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M9.5 14.5l5-5" />
+      <path d="M8 14a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1" />
+      <path d="M16 10a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1" />
+    </svg>
+  );
+}
+
+export function BulletListIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none" />
+      <path d="M9 6h11M9 12h11M9 18h11" />
+    </svg>
+  );
+}
+
+export function NumberedListIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 5h1v5" />
+      <path d="M4 10h2" />
+      <path d="M6.5 19H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02" />
+    </svg>
+  );
+}
+
+export function QuoteIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M6 6h3v4a3 3 0 0 1-3 3" />
+      <path d="M14 6h3v4a3 3 0 0 1-3 3" />
+    </svg>
+  );
+}
+
+/** Gatilho do dropdown "Parágrafo" em telas estreitas (ver `.md-toolbar__btn-label`
+ *  em index.css) -- linhas de larguras diferentes pra não ser confundido com
+ *  ícone de menu hambúrguer (que usa 3 linhas IGUAIS). */
+export function ParagraphStyleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M4 6h16M4 12h10M4 18h13" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg {...base} width={14} height={14} className={className} aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
