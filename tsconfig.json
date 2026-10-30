@@ -1,7 +1,19 @@
 {
   "extends": "astro/tsconfigs/strict",
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"],
+  // "public" excluído porque agora carrega o bundle BUILDADO do admin
+  // custom (admin-app/web -- ver CLAUDE.md/handoff) em public/admin/assets/,
+  // um JS minificado que não é código-fonte e não deve ser typechecked (sem
+  // isso, `astro check` tentava processar o bundle inteiro como se fosse
+  // TS do projeto e explodia em erros/output gigante sem sentido).
+  // "admin-app/web" excluído pq é um projeto Vite+React separado, com seu
+  // próprio tsconfig/toolchain (path alias `@admin-data`, JSX automático do
+  // React) -- incompatível com o tsconfig raiz do Astro (`jsx: "preserve"`,
+  // sem o alias). Tem typecheck próprio (`npm run typecheck` dentro de
+  // `admin-app/web`, já roda limpo) e é validado nesse comando, não aqui.
+  // `admin-app/src` e `admin-app/test` (camada de dados do Jurandir, sem
+  // JSX/alias) continuam incluídos e passando normalmente.
+  "exclude": ["dist", "public", "admin-app/web"],
   "compilerOptions": {
     "jsx": "preserve"
   }
