@@ -196,10 +196,60 @@ markdown, rate limit/abuso, dependências novas, conteúdo do build
 
 **Veredito: Severino liberou. Sem P0 pendente** (o único P0 encontrado foi corrigido nesta mesma revisão, não ficou pra trás). Os dois "aceitos" (sessionStorage, sem rate limit) são decisões de trade-off já documentadas no código, revisadas e consideradas adequadas pro contexto do projeto (painel interno, editor único, zero backend por escopo) -- não é recomendação de mudança, é confirmação de que o raciocínio existente se sustenta.
 
+## Pipeline de build/deploy (decisão do Tião, 2026-10-30)
+
+**Mantido manual, não automatizado no Cloudflare Pages.** `public/admin/`
+continua sendo artefato **gerado e commitado** -- quem mexer em
+`admin-app/web/src` ou `admin-app/src` precisa rodar, na raiz do projeto:
+
+```bash
+npm run build:admin   # instala deps de admin-app e admin-app/web, builda a SPA, gera public/admin/ e atualiza .admin-build-hash
+git status            # revisa o diff gerado antes de comitar (código + public/admin/ + .admin-build-hash, tudo junto)
+```
+
+Avaliei automatizar isso no comando de build do Cloudflare Pages (buildar a
+SPA antes do `astro build`, tirando `public/admin/` do git como artefato
+igual `dist/`) e decidi **não** fazer isso, pelo seguinte trade-off: quem
+publica conteúdo usa o próprio admin (API do GitHub), o que já dispara um
+build de produção no Cloudflare Pages a cada post salvo -- muito mais
+frequente do que mudança no código do admin. Automatizar o build da SPA no
+pipeline do Cloudflare Pages pagaria o custo de `npm install` + typecheck +
+`vite build` (React 19, Vite 6) **em todo deploy de conteúdo**, não só
+quando o código do admin muda, empurrando o tempo de deploy (meta: <3min
+P50) pra cima no caso mais comum pra mitigar um risco que só existe no
+caso raro.
+
+Em vez disso, o risco de "drift" (código do admin mudou, mas
+`public/admin/` não foi rebuildado+commitado, e fica obsoleto em produção
+silenciosamente, sem erro nenhum) é coberto por um **GitHub Action
+dedicado**, que roda só quando o código do admin é tocado (path filter --
+zero custo nos deploys de conteúdo do dia a dia):
+`.github/workflows/admin-cms-drift-check.yml`. Ele instala, testa e
+typecheck as duas camadas, rebuilda a SPA como smoke test (garante que o
+build não está quebrado) e falha o PR/push se o **hash do código-fonte**
+não bater com `.admin-build-hash` (gerado por
+`scripts/admin-build-hash.mjs`, chamado automaticamente dentro do
+`npm run build:admin`).
+
+Note que o check **não** compara `public/admin/` byte a byte contra um
+rebuild do CI -- testei isso primeiro e descartei: o build da SPA
+(Vite/esbuild) não é reprodutível byte-a-byte entre ambientes diferentes
+(confirmado rodando o mesmo build duas vezes neste projeto -- o JS
+minificado saiu com nomes de variável e hash de arquivo diferentes, sem
+nenhuma mudança de código real). Um diff byte-a-byte no CI falharia
+sempre, até sem drift nenhum. Por isso o fingerprint é do *código-fonte*
+(`admin-app/src` + `admin-app/web/src` + manifestos de dependência), não
+do artefato gerado -- ver comentário detalhado em
+`scripts/admin-build-hash.mjs`.
+
+Se o volume de mudanças no código do admin crescer muito (ou o "esqueci
+de rebuildar" acontecer com frequência mesmo com o CI avisando), vale
+reconsiderar mover pro build automático do Cloudflare Pages -- nesse ponto
+o trade-off de tempo de build por deploy de conteúdo pode já valer a pena.
+Não é o caso agora (fase única, time pequeno).
+
 ## O que falta (fora de escopo desta fase, combinado com o Genilson)
 
 - Upload de imagem de capa (`cover`) binária.
 - Editor de `faq[]`/`affiliates[]`.
 - Qualquer mudança no `oauth-worker/`.
-- Pipeline de deploy/CI (quando rodar `npm run build` aqui antes do
-  `astro build` da raiz) -- decisão do Tião.

@@ -13,7 +13,9 @@
     "check": "astro check",
     "preview": "astro preview",
     "astro": "astro",
-    "deploy": "astro build && npx wrangler pages deploy dist"
+    "deploy": "astro build && npx wrangler pages deploy dist",
+    "build:admin": "npm install --prefix admin-app && npm install --prefix admin-app/web && npm run build --prefix admin-app/web && node scripts/admin-build-hash.mjs --write && echo '\\nSPA do admin buildada em public/admin/. Revise o diff (git status) e comite tudo junto (código + public/admin/ + .admin-build-hash).'",
+    "check:admin-drift": "node scripts/admin-build-hash.mjs --check"
   },
   "dependencies": {
     "astro": "^5.1.1",
