@@ -321,7 +321,11 @@ describe('GitHubPostsClient', () => {
   // -- uploadCoverImage ----------------------------------------------------
 
   describe('uploadCoverImage', () => {
-    const VALID_FILE = { name: 'foto.jpg', mimeType: 'image/jpeg', base64Content: 'ZmFrZS1pbWFnZS1ieXRlcw==' };
+    // Magic bytes reais de JPEG (`FF D8 FF ...`) -- desde a correção do
+    // Severino (2026-10-30), `uploadCoverImage` confere o conteúdo real do
+    // `base64Content`, não só o `mimeType` declarado. Ver teste dedicado
+    // abaixo ("mimeType declarado não bate com os bytes reais").
+    const VALID_FILE = { name: 'foto.jpg', mimeType: 'image/jpeg', base64Content: '/9j/4AAAAAAAAAAA' };
 
     it('upload novo: GET 404 (sem capa existente) seguido de PUT sem sha', async () => {
       fetchMock
@@ -401,14 +405,14 @@ describe('GitHubPostsClient', () => {
       }
     );
 
-    it('deriva extensão correta pros 3 mimeTypes aceitos', async () => {
-      const cases: Array<[string, string]> = [
-        ['image/jpeg', 'jpg'],
-        ['image/png', 'png'],
-        ['image/webp', 'webp'],
+    it('deriva extensão correta pros 3 mimeTypes aceitos (com magic bytes reais correspondentes)', async () => {
+      const cases: Array<[string, string, string]> = [
+        ['image/jpeg', 'jpg', '/9j/4AAAAAAAAAAA'],
+        ['image/png', 'png', 'iVBORw0KGgoAAAAA'],
+        ['image/webp', 'webp', 'UklGRgAAAABXRUJQ'],
       ];
 
-      for (const [mimeType, ext] of cases) {
+      for (const [mimeType, ext, base64Content] of cases) {
         fetchMock
           .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
           .mockResolvedValueOnce(jsonResponse({ content: { sha: 'sha' }, commit: { sha: 'commit-sha' } }));
@@ -416,11 +420,39 @@ describe('GitHubPostsClient', () => {
         const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', {
           name: `foto.${ext}`,
           mimeType,
-          base64Content: 'ZmFrZQ==',
+          base64Content,
         });
 
         expect(result.path).toBe(`./cachoeiras-secretas-urubici-capa.${ext}`);
       }
+    });
+
+    it('rejeita quando o mimeType declarado não bate com os bytes reais (chamada forjada via DevTools/console, pulando a validação da UI)', async () => {
+      // Cenário do achado de segurança do Severino (2026-10-30): um caller
+      // com acesso direto à instância de `GitHubPostsClient` (console do
+      // navegador) declara `mimeType: 'image/jpeg'` mas manda conteúdo que
+      // na real é texto/HTML/JS, não uma imagem de verdade.
+      const forgedFile = {
+        name: 'foto.jpg',
+        mimeType: 'image/jpeg',
+        base64Content: Buffer.from('<script>alert(1)</script>').toString('base64'),
+      };
+      await expect(
+        makeClient().uploadCoverImage('cachoeiras-secretas-urubici', forgedFile)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita quando os bytes são de um tipo real porém diferente do mimeType declarado (PNG disfarçado de JPEG)', async () => {
+      const mismatchedFile = {
+        name: 'foto.jpg',
+        mimeType: 'image/jpeg',
+        base64Content: 'iVBORw0KGgoAAAAA', // magic bytes reais de PNG
+      };
+      await expect(
+        makeClient().uploadCoverImage('cachoeiras-secretas-urubici', mismatchedFile)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('conflito de sha na substituição (409) lança ShaConflictError', async () => {

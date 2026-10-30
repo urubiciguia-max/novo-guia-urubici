@@ -81,6 +81,81 @@ const ALLOWED_COVER_MIME_TYPES: Record<string, string> = {
 };
 
 /**
+ * Mapa inverso: tipo detectado por magic bytes reais -> `mimeType` esperado.
+ * Usado por `detectCoverImageMimeType` pra confirmar que o `file.mimeType`
+ * DECLARADO pelo caller bate com o conteúdo REAL de `base64Content`.
+ *
+ * Achado da auditoria de segurança do Severino (2026-10-30, Track B): sem
+ * esta checagem, `uploadCoverImage` validava só a STRING `mimeType` contra a
+ * allowlist -- qualquer código com acesso a uma instância de
+ * `GitHubPostsClient` (DevTools/console, pulando a validação de magic bytes
+ * real do Francisgleydisson em `imageUpload.ts`) podia declarar
+ * `mimeType: 'image/jpeg'` e mandar `base64Content` com qualquer bytes
+ * (texto, HTML, JS) -- o teste pré-existente `VALID_FILE` nem usava bytes de
+ * imagem reais (`'ZmFrZS1pbWFnZS1ieXRlcw=='` decodifica pra
+ * `"fake-image-bytes"`, texto puro) e passava. O arquivo nunca é servido como
+ * executável (só consumido via `<Image />`/Sharp no build do Astro), então o
+ * risco prático é baixo (o ator já precisa ter o token com escopo de escrita
+ * pra chamar este método) -- mas a allowlist de MIME só tem sentido como
+ * defesa real se o conteúdo bater com o tipo declarado.
+ */
+const MIME_BY_DETECTED_TYPE: Record<'jpeg' | 'png' | 'webp', string> = {
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+/**
+ * Confere a assinatura binária real dos primeiros bytes de um `base64`
+ * (mesmas assinaturas que `admin-app/web/src/lib/imageUpload.ts` usa no
+ * browser) -- decodifica só um prefixo pequeno, suficiente pra cobrir a
+ * assinatura mais longa (WebP, 12 bytes == 16 chars base64; usamos 24 chars
+ * de folga). `null` quando nenhuma assinatura bate (inclui SVG, que não tem
+ * magic bytes binários fixos -- começa com texto/XML).
+ */
+function detectCoverImageMimeType(base64: string): string | null {
+  const prefix = base64.slice(0, 24).replace(/\s/g, '');
+  let binary: string;
+  try {
+    binary = atob(prefix);
+  } catch {
+    return null;
+  }
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return MIME_BY_DETECTED_TYPE.jpeg;
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return MIME_BY_DETECTED_TYPE.png;
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return MIME_BY_DETECTED_TYPE.webp;
+  }
+  return null;
+}
+
+/**
  * ~1MB de conteúdo bruto é o limite documentado da Contents API
  * (`PUT /repos/{owner}/{repo}/contents/{path}`) pra este tipo de commit.
  * Base64 infla o tamanho em ~33% (4 bytes codificados pra cada 3 brutos),
@@ -412,6 +487,23 @@ export class GitHubPostsClient {
         {
           path: 'mimeType',
           message: `Tipo de imagem não suportado: "${file.mimeType}". Use JPEG, PNG ou WebP.`,
+        },
+      ]);
+    }
+
+    // Confere que o CONTEÚDO real bate com o `mimeType` DECLARADO -- não
+    // basta o nome do tipo estar na allowlist (ver `detectCoverImageMimeType`
+    // pro raciocínio completo). Pega qualquer `base64Content` que não seja
+    // de fato uma imagem JPEG/PNG/WebP, mesmo que o caller tenha mentido o
+    // `mimeType` (ex.: chamada direta via DevTools/console, pulando a
+    // validação de magic bytes real que a UI faz em `imageUpload.ts`).
+    const detectedMimeType = detectCoverImageMimeType(file.base64Content);
+    if (detectedMimeType === null || detectedMimeType !== file.mimeType) {
+      throw new ValidationError([
+        {
+          path: 'base64Content',
+          message:
+            'O conteúdo do arquivo não corresponde a uma imagem JPEG, PNG ou WebP válida (os bytes reais não batem com o tipo declarado).',
         },
       ]);
     }
