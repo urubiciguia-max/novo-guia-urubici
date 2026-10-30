@@ -44,7 +44,11 @@ export function emptyFormState(): PostFormState {
     tagsText: '',
     draft: true,
     author: 'Equipe Guia de Urubici',
-    category: '',
+    // Post novo: UI de categoria saiu do form (V3), então o default fixo é
+    // decidido aqui -- "Geral" é valor válido do enum (ver `CATEGORIES`) e
+    // não afeta nenhuma listagem (`guia-pratico`/`o-que-fazer` filtram por
+    // categoria específica, nenhuma página lista especificamente "Geral").
+    category: 'Geral',
     cover: '',
     coverAlt: '',
     coverCredit: '',
@@ -103,7 +107,11 @@ export function recordToFormState(record: PostRecord, routeSlug: string): PostFo
     tagsText: Array.isArray(fm.tags) ? fm.tags.filter((t): t is string => typeof t === 'string').join(', ') : '',
     draft: typeof fm.draft === 'boolean' ? fm.draft : false,
     author: str(fm.author, 'Equipe Guia de Urubici'),
-    category: (typeof fm.category === 'string' ? fm.category : '') as PostFormState['category'],
+    // Post existente: preserva a categoria atual do frontmatter (sem UI de
+    // edição) -- só cai pro default "Geral" se o post legado estiver sem
+    // categoria válida (frontmatter quebrado), nunca sobrescreve uma
+    // categoria já publicada (ex: "Onde Comer").
+    category: (typeof fm.category === 'string' ? fm.category : 'Geral') as PostFormState['category'],
     cover: str(fm.cover),
     coverAlt: str(fm.coverAlt),
     coverCredit: str(fm.coverCredit),

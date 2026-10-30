@@ -1044,14 +1044,13 @@ a {
   gap: 12px;
 }
 
-@media (min-width: 640px) {
-  .repeatable-item__fields--affiliate {
-    flex-direction: row;
-  }
+.repeatable-item__header {
+  margin-bottom: 2px;
+}
 
-  .repeatable-item__fields--affiliate .form-field {
-    flex: 1;
-  }
+/* FAQ (V3): gap maior que o padrão pra separar visualmente pergunta de resposta. */
+.repeatable-item__fields--faq {
+  gap: 18px;
 }
 
 .repeatable-item .icon-btn {

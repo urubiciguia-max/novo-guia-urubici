@@ -46,8 +46,41 @@ describe('recordToFormState', () => {
     const form = recordToFormState(record, 'post-legado');
     expect(form.title).toBe('Só o título');
     expect(form.tagsText).toBe(''); // tags não é array -> cai pro default seguro
-    expect(form.category).toBe('');
+    // V3: sem UI de categoria, post legado sem categoria válida cai pro
+    // default "Geral" em vez de '' -- não existe mais widget pra corrigir isso na tela.
+    expect(form.category).toBe('Geral');
     expect(form.legacySlug).toBe('post-legado'); // sempre o slug da rota, nunca o do frontmatter quebrado
+  });
+});
+
+describe('V3 -- categoria sem UI de edição (preservação/default fixo)', () => {
+  it('post novo (emptyFormState) nasce com category "Geral" já fixado, sem intervenção do usuário', () => {
+    const form = emptyFormState();
+    expect(form.category).toBe('Geral');
+    expect(formStateToFrontmatter(form).category).toBe('Geral');
+  });
+
+  it('post existente com categoria diferente de "Geral" é preservado (recordToFormState -> formStateToFrontmatter), não é sobrescrito pelo default', () => {
+    const record: PostRecord = {
+      slug: 'onde-ficar-fondue',
+      frontmatter: {
+        title: 'Onde comer fondue',
+        description: 'desc',
+        pubDate: '2026-01-01',
+        tags: [],
+        draft: false,
+        author: 'Equipe',
+        category: 'Onde Comer',
+        legacySlug: 'onde-ficar-fondue',
+      },
+      body: 'corpo',
+      sha: 'sha-1',
+      valid: true,
+    };
+
+    const form = recordToFormState(record, 'onde-ficar-fondue');
+    expect(form.category).toBe('Onde Comer');
+    expect(formStateToFrontmatter(form).category).toBe('Onde Comer');
   });
 });
 
@@ -115,6 +148,11 @@ describe('round-trip com post real (regressão do bug de perda de dados)', () =>
 
     expect(reparsed.frontmatter.affiliates).toEqual(parsed.frontmatter.affiliates);
     expect(reparsed.frontmatter.title).toEqual(parsed.frontmatter.title);
+    // V3: affiliates/author/tags perderam a UI de edição nesta tela, mas
+    // continuam sendo preservados intactos no save (preservação silenciosa) --
+    // é exatamente o teste que a spec da Track A pede pra não repetir o bug.
+    expect(reparsed.frontmatter.author).toEqual(parsed.frontmatter.author);
+    expect(reparsed.frontmatter.tags).toEqual(parsed.frontmatter.tags);
   });
 
   it('editar cachoeiras-secretas-urubici.md (tem faq + affiliates + relatedSlugs) sem tocar nesses campos preserva todos', () => {
