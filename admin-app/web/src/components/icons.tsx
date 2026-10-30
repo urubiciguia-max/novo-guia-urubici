@@ -159,7 +159,10 @@ export function UploadIcon({ className }: IconProps) {
 
 /* Ícones da MarkdownToolbar (ver components/MarkdownToolbar.tsx) -- mesmo
    estilo stroke-only acima, exceto onde um glifo preenchido fica mais
-   legível em 20px (bullet/número da lista). */
+   legível em 20px (bolinhas da lista com marcadores). O número da lista
+   numerada usa só "1" + um floreio final em vez de desenhar 1/2/3 por
+   extenso -- mesma convenção da Lucide (list-ordered), evita depender de
+   fonte do sistema pra manter o ícone consistente entre OS/browsers. */
 
 export function BoldIcon({ className }: IconProps) {
   return (
@@ -213,16 +216,10 @@ export function BulletListIcon({ className }: IconProps) {
 export function NumberedListIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">
-      <text x="2" y="8.5" fontSize="7" fontWeight={700} fill="currentColor" stroke="none">
-        1
-      </text>
-      <text x="2" y="14.5" fontSize="7" fontWeight={700} fill="currentColor" stroke="none">
-        2
-      </text>
-      <text x="2" y="20.5" fontSize="7" fontWeight={700} fill="currentColor" stroke="none">
-        3
-      </text>
       <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 5h1v5" />
+      <path d="M4 10h2" />
+      <path d="M6.5 19H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02" />
     </svg>
   );
 }
@@ -232,6 +229,17 @@ export function QuoteIcon({ className }: IconProps) {
     <svg {...base} className={className} aria-hidden="true">
       <path d="M6 6h3v4a3 3 0 0 1-3 3" />
       <path d="M14 6h3v4a3 3 0 0 1-3 3" />
+    </svg>
+  );
+}
+
+/** Gatilho do dropdown "Parágrafo" em telas estreitas (ver `.md-toolbar__btn-label`
+ *  em index.css) -- linhas de larguras diferentes pra não ser confundido com
+ *  ícone de menu hambúrguer (que usa 3 linhas IGUAIS). */
+export function ParagraphStyleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M4 6h16M4 12h10M4 18h13" />
     </svg>
   );
 }

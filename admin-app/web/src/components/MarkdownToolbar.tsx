@@ -14,6 +14,8 @@ import {
   ItalicIcon,
   LinkIcon,
   NumberedListIcon,
+  ParagraphStyleIcon,
+  PlusIcon,
   QuoteIcon,
 } from './icons';
 
@@ -85,6 +87,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
 
       <ToolbarDropdown
         triggerLabel="Parágrafo"
+        triggerIcon={<ParagraphStyleIcon />}
         ariaLabel="Estilo de parágrafo"
         items={[
           { label: 'Parágrafo', onSelect: () => runTransform((t, s) => applyHeading(t, s, 0)) },
@@ -95,6 +98,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
 
       <ToolbarDropdown
         triggerLabel="Inserir"
+        triggerIcon={<PlusIcon />}
         ariaLabel="Inserir elemento"
         items={[
           {
@@ -120,6 +124,11 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
 
 interface ToolbarDropdownProps {
   triggerLabel: string;
+  /** Ícone mostrado sempre no gatilho -- em telas estreitas o texto do
+   *  label some (ver `.md-toolbar__btn-label` em index.css) e só ícone +
+   *  chevron ficam visíveis, então o gatilho precisa de um ícone próprio
+   *  (diferente dos ícones dos itens do menu, que só aparecem abertos). */
+  triggerIcon: ReactNode;
   ariaLabel: string;
   items: DropdownItem[];
 }
@@ -132,7 +141,7 @@ interface ToolbarDropdownProps {
  * `role="menu"`/`menuitem` de verdade exigiria roving tabindex + setas pra
  * não violar WAI-ARIA Authoring Practices, o que é mais do que foi pedido.
  */
-function ToolbarDropdown({ triggerLabel, ariaLabel, items }: ToolbarDropdownProps) {
+function ToolbarDropdown({ triggerLabel, triggerIcon, ariaLabel, items }: ToolbarDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -171,7 +180,8 @@ function ToolbarDropdown({ triggerLabel, ariaLabel, items }: ToolbarDropdownProp
         aria-label={ariaLabel}
         onClick={() => setOpen((o) => !o)}
       >
-        <span>{triggerLabel}</span>
+        {triggerIcon}
+        <span className="md-toolbar__btn-label">{triggerLabel}</span>
         <ChevronDownIcon />
       </button>
       {open && (
