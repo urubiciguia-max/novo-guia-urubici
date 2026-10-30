@@ -1,0 +1,21 @@
+{
+  "name": "guia-urubici-admin-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Camada de acesso a dados (GitHub Contents/GraphQL API) do admin custom do Guia Urubici. Sem UI, sem bundler fixo -- framework/bundler sao escolha de fases seguintes (Francisgleydisson/Tiao).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.5"
+  }
+}
