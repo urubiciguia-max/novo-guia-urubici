@@ -11,6 +11,9 @@ backend:
   branch: main
   # Worker de OAuth deployado em 2026-10-30 (ver oauth-worker/README.md).
   base_url: https://guia-urubici-cms-oauth.urubiciguia.workers.dev
+  # Repo confirmado publico (2026-10-30) -> escopo minimo necessario. O Worker
+  # so aceita escopos da allowlist em sanitizeScope() (ver oauth-worker/src/index.ts).
+  scope: public_repo,user
 
 # Mostra um link "Ver no site" a partir do preview de cada entrada.
 site_url: https://novo-guia-urubici.pages.dev
