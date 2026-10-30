@@ -9,12 +9,34 @@ import { createMockPostsClient } from './mockClient';
  * dependerem de uma interface, não da classe concreta -- deixa a troca
  * real/mock transparente pro resto do app.
  */
+export interface UploadCoverImageFile {
+  name: string;
+  mimeType: string;
+  base64Content: string;
+}
+
+export interface UploadCoverImageResult {
+  path: string;
+  sha: string;
+  commitSha: string;
+}
+
 export interface PostsClient {
   listPosts(): Promise<PostListItem[]>;
   getPost(slug: string): Promise<PostRecord>;
   createPost(slug: string, frontmatter: PostFrontmatter, body: string): Promise<WriteResult>;
   updatePost(slug: string, frontmatter: PostFrontmatter, body: string, sha: string): Promise<WriteResult>;
   deletePost(slug: string, sha: string): Promise<void>;
+  /**
+   * Commita o binário já validado/comprimido (ver `lib/imageUpload.ts` --
+   * validação de magic bytes e compressão client-side acontecem ANTES de
+   * chegar aqui, essa camada só chama o client). Contrato combinado com o
+   * Jurandir (TRACK B, `.agents/inbox/genilson.md`):
+   * `GitHubPostsClient.uploadCoverImage()` decide upsert (criar vs.
+   * substituir) sozinho e devolve o path relativo já pronto pro campo
+   * `cover` do form.
+   */
+  uploadCoverImage(legacySlug: string, file: UploadCoverImageFile): Promise<UploadCoverImageResult>;
 }
 
 /**

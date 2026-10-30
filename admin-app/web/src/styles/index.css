@@ -1058,6 +1058,49 @@ a {
   margin-top: 2px;
 }
 
+/* Upload de imagem de capa (TRACK B) -- ver `components/CoverImageUpload.tsx`. */
+.cover-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cover-upload__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cover-upload__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--body-text);
+}
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.cover-upload__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.cover-upload__preview img {
+  width: 100%;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--line);
+  display: block;
+}
+
 /* ==========================================================================
    Toast
    ========================================================================== */
