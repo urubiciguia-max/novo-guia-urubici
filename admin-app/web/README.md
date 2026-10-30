@@ -171,6 +171,31 @@ derivado do `legacySlug`, preview de markdown), excluir com `ConfirmDialog`
   empilha campos). Recomendo o Leonardo ou a Marivone confirmarem
   visualmente em 375px assim que tiverem um Chrome com resize funcionando.
 
+## Auditoria do Severino (2026-10-30) — "Severino achou. Bloqueia até ajustar." (achado corrigido antes de liberar)
+
+Revisão de segurança antes do QA (Marivone). Escopo: sessão/token, handshake
+`postMessage`, integridade do nome de arquivo (`slug`), XSS no preview de
+markdown, rate limit/abuso, dependências novas, conteúdo do build
+(`public/admin/`).
+
+| Severidade | Achado | Status |
+|---|---|---|
+| **Crítico (P0)** | `github-client.ts` (`getPost`/`createPost`/`updatePost`/`deletePost`) usava o parâmetro `slug` **sem nenhuma validação própria** pra montar o caminho na Contents API (`${postsPath}/${slug}.md`). A defesa (`legacySlug` kebab-case) só existia na UI (`PostFormPage.tsx` passa `frontmatter.legacySlug` no create, e trava o campo em edição) — a camada de dados confiava ciegamente em quem chamasse. Confirmado explorável por dois caminhos: (1) chamar o client direto via DevTools/console, pulando o form inteiro; (2) rota `#/posts/:slug/editar` com segmento percent-encoded (`..%2F..%2F.github%2Fworkflows%2Fevil`) — passa o regex de rota `[^/]+` porque não tem `/` *literal*, e só depois do match é que `decodeURIComponent` revela o `../`, sem qualquer revalidação antes de ir pro `updatePost`/`deletePost`. Resultado prático: ler/sobrescrever/apagar **qualquer arquivo do repo** (não só `src/content/posts/`) com o token do editor — inclusive `.github/workflows/`, `oauth-worker/`, config de deploy. | **Corrigido** — adicionada `SLUG_PATTERN` compartilhada (`admin-app/src/schema.ts`, mesma regex kebab-case que já validava `legacySlug`) e `assertValidSlug()` em `github-client.ts`, chamada no início dos 4 métodos, lançando `ValidationError` antes de qualquer `fetch`. Validação agora vive na camada de dados — vale pra chamada pela UI e pra chamada direta via console. 20 testes novos em `admin-app/test/github-client.test.ts` (`../../.github/workflows/evil`, `../secrets`, `a/b`, vazio, espaço, maiúscula — pros 4 métodos). |
+| Baixo / aceito | Token do GitHub em `sessionStorage` (`src/lib/session.ts`). Reduz superfície (escopado à aba, não sobrevive fechar aba) mas não neutraliza XSS enquanto a aba está aberta — documentado no próprio arquivo, trade-off já conhecido do Jurandir/Francisgleydisson. Avaliado: aceitável pro contexto (painel interno, um único editor, sem dado de terceiros em jogo, sem backend disponível pra oferecer cookie `HttpOnly`). Não é uma recomendação pra mudar sem adicionar um backend — o que está fora do escopo acordado do projeto ("zero servidor próprio"). | Aceito, documentado |
+| — | `postMessage` do popup (`src/auth/popupLogin.ts`): `event.origin !== workerOrigin` é checado **antes** de processar qualquer conteúdo da mensagem — nenhum `postMessage(..., '*')` recebendo confiança, nenhuma branch que pula a checagem. Sem brecha. | Sem achado |
+| — | Preview de markdown (`src/lib/markdownPreview.ts`): `escapeHtml()` roda **antes** de qualquer transformação, e as únicas tags geradas são um allowlist fixo (`h1-3`, `strong`, `em`, `p`, `a`) — `href` do link só aceita `https?://` (regex), nunca passa `javascript:`/`data:`. `dangerouslySetInnerHTML` é seguro porque o HTML é 100% construído por este parser, nunca repassa markup do usuário direto. Coberto por `markdownPreview.test.ts`. | Sem achado |
+| Baixo / aceito | Sem rate limit próprio (SPA 100% client-side, zero servidor pra throttle). Mitigantes: token é fine-grained + `public_repo`, pertence a um único editor; toda chamada cara (listPosts via GraphQL, create/update/delete via REST) ainda consome a cota do próprio GitHub pro token do usuário (já tratado como `RateLimitError` no client); não há rota pública/anônima exposta — quem abusar só esgota a própria cota. Aceitável pro contexto atual (1 editor interno). | Aceito, documentado |
+| — | `npm audit` em `admin-app/` e `admin-app/web/`: **0 vulnerabilidades** nos dois. Dependências novas do Leonardo (`@fontsource/inter`, `@fontsource/poppins`) são só arquivos de fonte estáticos, zero código executável. Dependências do Francisgleydisson/Jurandir (React 19, Vite 6, Zod 4, Testing Library) sem achado. | Sem achado |
+| — | Conteúdo buildado (`public/admin/`, o que de fato vai pro ar): sem grep de padrão de token (`ghp_`/`github_pat_`/`gho_`/`ghs_`/`ghr_`); sem a string `mock` sobrevivendo ao bundle de produção (confirma a nota do README sobre o tree-shaking); único "segredo" potencial seria o `client_id` do OAuth App, que nem chega a passar pela SPA (fica só no `oauth-worker`). Tudo em `src/lib/env.ts` é config pública (owner/repo/branch/URL do worker/scope/site URL). | Sem achado |
+| Informativo | Credencial em texto plano no `.git/config` desta worktree, sinalizada pelo Leonardo no handoff -- confirmado resolvido fora desta feature (PAT revogado, remote reconfigurado via `gh auth login`; `git config --get remote.origin.url` já não carrega token). Não é mais risco ativo, não reaberto aqui. | Resolvido (fora desta feature) |
+
+**Testes/typecheck/build depois das correções, tudo verde:**
+- `admin-app/`: `npm test` — 58/58 passando (34 antes da auditoria + 24 casos novos de path traversal, 6 slugs maliciosos × 4 métodos); `tsc --noEmit` limpo.
+- `admin-app/web/`: `npm run typecheck` limpo; `npm test` — 31/31 passando (nenhum alterado, lógica de UI não mudou); `npm run build` ok (gera `public/admin/`).
+- Raiz: `npx astro check` — 0 erros/0 avisos; `npx astro build` — 14 páginas, completo sem erro.
+
+**Veredito: Severino liberou. Sem P0 pendente** (o único P0 encontrado foi corrigido nesta mesma revisão, não ficou pra trás). Os dois "aceitos" (sessionStorage, sem rate limit) são decisões de trade-off já documentadas no código, revisadas e consideradas adequadas pro contexto do projeto (painel interno, editor único, zero backend por escopo) -- não é recomendação de mudança, é confirmação de que o raciocínio existente se sustenta.
+
 ## O que falta (fora de escopo desta fase, combinado com o Genilson)
 
 - Upload de imagem de capa (`cover`) binária.

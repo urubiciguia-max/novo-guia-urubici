@@ -7,7 +7,7 @@ import {
   ValidationError,
 } from './errors.js';
 import { parsePostFile, serializePostFile } from './markdown.js';
-import { postFrontmatterSchema, zodIssuesToErrors } from './schema.js';
+import { postFrontmatterSchema, SLUG_PATTERN, zodIssuesToErrors } from './schema.js';
 import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from './types.js';
 
 const GITHUB_API_BASE = 'https://api.github.com';
@@ -240,6 +240,7 @@ export class GitHubPostsClient {
    * pra UI deixar o editor abrir e corrigir (ver nota em `types.ts`).
    */
   async getPost(slug: string): Promise<PostRecord> {
+    this.assertValidSlug(slug);
     const path = `${this.postsPath}/${slug}.md`;
     const res = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${path}?ref=${this.branch}`, {
       method: 'GET',
@@ -273,6 +274,7 @@ export class GitHubPostsClient {
 
   /** Cria um post novo. Valida o frontmatter ANTES de montar o commit -- falha sem gastar requisição se inválido. */
   async createPost(slug: string, frontmatter: PostFrontmatter, body: string): Promise<WriteResult> {
+    this.assertValidSlug(slug);
     const validated = this.validateOrThrow(frontmatter);
     const path = `${this.postsPath}/${slug}.md`;
     const content = serializePostFile(validated, body);
@@ -305,6 +307,7 @@ export class GitHubPostsClient {
 
   /** Atualiza um post existente. Exige o `sha` atual (de `getPost`/`listPosts`) -- conflito (409) se alguém salvou por cima antes. */
   async updatePost(slug: string, frontmatter: PostFrontmatter, body: string, sha: string): Promise<WriteResult> {
+    this.assertValidSlug(slug);
     const validated = this.validateOrThrow(frontmatter);
     const path = `${this.postsPath}/${slug}.md`;
     const content = serializePostFile(validated, body);
@@ -330,6 +333,7 @@ export class GitHubPostsClient {
 
   /** Remove um post. Exige o `sha` atual, mesma lógica de conflito do `updatePost`. */
   async deletePost(slug: string, sha: string): Promise<void> {
+    this.assertValidSlug(slug);
     const path = `${this.postsPath}/${slug}.md`;
     const res = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${path}`, {
       method: 'DELETE',
@@ -349,6 +353,31 @@ export class GitHubPostsClient {
   }
 
   // -- helpers internos ------------------------------------------------------
+
+  /**
+   * Valida `slug` ANTES de usá-lo pra montar o caminho da Contents API
+   * (`${this.postsPath}/${slug}.md`). Isto é a defesa real contra path
+   * traversal (`../`, `/`) ou qualquer outro caractere que o `fetch`/`URL`
+   * resolveria de forma inesperada ao montar a URL -- precisa estar AQUI
+   * (camada de dados), não só na UI, porque qualquer código com acesso a
+   * uma instância de `GitHubPostsClient` (DevTools/console, por exemplo)
+   * pode chamar `createPost`/`updatePost`/`deletePost`/`getPost` direto,
+   * pulando o form e o `postFrontmatterSchema.safeParse` que o
+   * `PostFormPage` roda antes de montar `frontmatter.legacySlug`.
+   *
+   * Mesmo regex de `legacySlug` em `schema.ts` (`SLUG_PATTERN`) -- por
+   * convenção do projeto, `slug` (nome do arquivo) e `legacySlug` (campo do
+   * frontmatter) devem ser sempre o mesmo valor, então a mesma regra de
+   * forma vale pros dois. Achado da auditoria de segurança do Severino
+   * (2026-10-30) -- ver handoff em `.agents/inbox/marivone.md`.
+   */
+  private assertValidSlug(slug: string): void {
+    if (typeof slug !== 'string' || !SLUG_PATTERN.test(slug)) {
+      throw new ValidationError([
+        { path: 'slug', message: 'Slug inválido -- só minúsculas, números e hífen (kebab-case), sem "/" ou "..".' },
+      ]);
+    }
+  }
 
   private validateOrThrow(frontmatter: PostFrontmatter): Record<string, unknown> {
     const parsed = postFrontmatterSchema.safeParse(frontmatter);

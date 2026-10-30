@@ -164,6 +164,40 @@ describe('GitHubPostsClient', () => {
     });
   });
 
+  // -- integridade do slug (path traversal) -----------------------------
+  // Achado da auditoria de segurança do Severino (2026-10-30): `slug` É o
+  // caminho do arquivo na Contents API (`${postsPath}/${slug}.md`). Sem
+  // validação NA CAMADA DE DADOS, um `slug` como `../../.github/workflows/x`
+  // escaparia da pasta de posts quando o `fetch`/`URL` resolve `../` na
+  // montagem da URL -- alcançável tanto chamando o client direto via
+  // DevTools/console (pulando o form) quanto via rota `#/posts/:slug/editar`
+  // com `%2F` (decodificado depois do regex de rota `[^/]+`, que não bloqueia
+  // o encoded). Estes testes garantem que a validação é a MESMA pra todos os
+  // métodos que tocam o filesystem do repo, independente de quem chama.
+  describe('integridade do slug (path traversal)', () => {
+    const MALICIOUS_SLUGS = ['../../.github/workflows/evil', '../secrets', 'a/b', '', '  ', 'Capitais-Invalidas'];
+
+    it.each(MALICIOUS_SLUGS)('getPost(%j) lança ValidationError sem chamar fetch', async (slug) => {
+      await expect(makeClient().getPost(slug)).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(MALICIOUS_SLUGS)('createPost(%j) lança ValidationError sem chamar fetch', async (slug) => {
+      await expect(makeClient().createPost(slug, VALID_FRONTMATTER, 'corpo')).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(MALICIOUS_SLUGS)('updatePost(%j) lança ValidationError sem chamar fetch', async (slug) => {
+      await expect(makeClient().updatePost(slug, VALID_FRONTMATTER, 'corpo', 'sha')).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(MALICIOUS_SLUGS)('deletePost(%j) lança ValidationError sem chamar fetch', async (slug) => {
+      await expect(makeClient().deletePost(slug, 'sha')).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
   // -- getPost ---------------------------------------------------------------
 
   describe('getPost', () => {

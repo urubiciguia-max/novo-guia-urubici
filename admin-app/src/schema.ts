@@ -4,6 +4,19 @@ import { AFFILIATE_PROVIDERS, CATEGORIES } from './types.js';
 /** "YYYY-MM-DD" -- mesmo formato que `date_format` grava em public/admin/config.yml. */
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Kebab-case estrito -- só minúsculas, números e hífen. Usado em dois
+ * lugares que PRECISAM ficar em sync (daí virar constante compartilhada em
+ * vez de duas regex literais que podem divergir):
+ *  - aqui, pra validar o campo `legacySlug` do frontmatter;
+ *  - `github-client.ts`, pra validar o parâmetro `slug` que vira nome de
+ *    arquivo/caminho na Contents API (`getPost`/`createPost`/`updatePost`/
+ *    `deletePost`) -- essa segunda validação é a que de fato bloqueia path
+ *    traversal (`../`, `/`), porque é a camada de dados, não a UI (ver
+ *    auditoria do Severino em `.agents/inbox/marivone.md`).
+ */
+export const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
 const dateString = z
   .string()
   .regex(DATE_RE, 'Data precisa estar no formato YYYY-MM-DD')
@@ -52,7 +65,7 @@ export const postFrontmatterSchema = z.object({
   legacySlug: z
     .string()
     .min(1)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Só minúsculas, números e hífen (kebab-case), sem espaço ou acento'),
+    .regex(SLUG_PATTERN, 'Só minúsculas, números e hífen (kebab-case), sem espaço ou acento'),
 });
 
 export type ValidatedPostFrontmatter = z.infer<typeof postFrontmatterSchema>;
