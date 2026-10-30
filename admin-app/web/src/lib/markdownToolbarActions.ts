@@ -53,12 +53,18 @@ export function wrapInline(text: string, start: number, end: number, marker: str
 }
 
 const LINK_PLACEHOLDER_TEXT = 'texto do link';
-const LINK_PLACEHOLDER_URL = 'url';
+// Com protocolo explícito desde o nascimento: `renderMarkdownPreview` passou
+// a aceitar URL sem protocolo também (ver markdownPreview.ts), mas o
+// placeholder nasce já reconhecível ANTES do usuário trocar por uma URL de
+// verdade -- e o "https://" também sinaliza visualmente "troque isso" (bug
+// encontrado pela Marivone no QA: placeholder "url" cru não virava <a> no
+// Preview).
+const LINK_PLACEHOLDER_URL = 'https://url';
 
-/** Botão Link. Sem seleção: insere `[texto do link](url)` com "texto do
- *  link" pré-selecionado pra sobrescrever. Com seleção: usa a seleção como
- *  texto do link e deixa "url" pré-selecionado dentro dos parênteses,
- *  pronto pra colar a URL por cima. */
+/** Botão Link. Sem seleção: insere `[texto do link](https://url)` com
+ *  "texto do link" pré-selecionado pra sobrescrever. Com seleção: usa a
+ *  seleção como texto do link e deixa "https://url" pré-selecionado dentro
+ *  dos parênteses, pronto pra colar a URL por cima. */
 export function applyLink(text: string, start: number, end: number): SelectionResult {
   const before = text.slice(0, start);
   const after = text.slice(end);

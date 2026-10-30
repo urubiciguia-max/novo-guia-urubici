@@ -18,15 +18,61 @@ describe('renderMarkdownPreview', () => {
     expect(html).toContain('<em>itálico</em>');
   });
 
+  it('bug Marivone: negrito vazio (****, botão Negrito sem seleção antes de digitar) não produz HTML quebrado', () => {
+    // Antes da correção, "****" não casava o regex de bold (exigia 1+ char
+    // de conteúdo) e sobrava pro regex de itálico casar só 3 dos 4
+    // asteriscos, produzindo `<em>*</em>*` -- renderização ERRADA, não só
+    // crua. Com o fix, bold casa o marcador vazio inteiro primeiro.
+    const html = renderMarkdownPreview('****');
+    expect(html).not.toBe('<p><em>*</em>*</p>');
+    expect(html).toBe('<p><strong></strong></p>');
+  });
+
+  it('itálico vazio (**, botão Itálico sem seleção) não produz HTML quebrado', () => {
+    const html = renderMarkdownPreview('**');
+    expect(html).toBe('<p><em></em></p>');
+  });
+
   it('converte link http(s) com rel seguro', () => {
     const html = renderMarkdownPreview('[clique aqui](https://exemplo.com)');
     expect(html).toContain('href="https://exemplo.com"');
     expect(html).toContain('rel="noopener noreferrer"');
   });
 
+  it('bug Marivone: placeholder do botão Link ([texto do link](https://url)) renderiza como <a>', () => {
+    // Antes da correção o placeholder nascia como `(url)` (sem protocolo) e
+    // o regex de link só reconhecia `https?://` explícito -- o Preview
+    // mostrava a sintaxe crua em vez de um link, mesmo logo depois de clicar
+    // no botão Link sem trocar nada.
+    const html = renderMarkdownPreview('[texto do link](https://url)');
+    expect(html).toBe('<p><a href="https://url" target="_blank" rel="noopener noreferrer">texto do link</a></p>');
+  });
+
+  it('bug Marivone: URL colada sem protocolo (cenário realista de usuário não-técnico) também vira <a>', () => {
+    const semProtocolo = renderMarkdownPreview('[cachoeira](guiaurubici.com.br/pagina)');
+    expect(semProtocolo).toBe(
+      '<p><a href="https://guiaurubici.com.br/pagina" target="_blank" rel="noopener noreferrer">cachoeira</a></p>',
+    );
+
+    const comWww = renderMarkdownPreview('[site](www.site.com.br)');
+    expect(comWww).toBe('<p><a href="https://www.site.com.br" target="_blank" rel="noopener noreferrer">site</a></p>');
+  });
+
+  it('bloqueia esquemas perigosos (javascript:) -- nunca vira href, fica cru como texto', () => {
+    const html = renderMarkdownPreview('[clique](javascript:evil)');
+    expect(html).not.toContain('<a ');
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toBe('<p>[clique](javascript:evil)</p>');
+  });
+
   it('agrupa linhas em parágrafos separados por linha vazia', () => {
     const html = renderMarkdownPreview('linha um\nlinha dois\n\nsegundo parágrafo');
     expect(html).toBe('<p>linha um linha dois</p>\n<p>segundo parágrafo</p>');
+  });
+
+  it('código inline vazio (``, botão Código sem seleção) fica cru, sem renderizar errado', () => {
+    const html = renderMarkdownPreview('``');
+    expect(html).toBe('<p>``</p>');
   });
 
   it('converte código inline', () => {

@@ -91,12 +91,12 @@ describe('MarkdownToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Link' }));
 
-    expect(textarea.value).toBe('[texto do link](url)');
+    expect(textarea.value).toBe('[texto do link](https://url)');
     await waitFor(() => expect(textarea).toHaveFocus());
     expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('texto do link');
   });
 
-  it('Link com seleção usa a seleção como texto e pré-seleciona "url"', async () => {
+  it('Link com seleção usa a seleção como texto e pré-seleciona "https://url"', async () => {
     const user = userEvent.setup();
     render(<Harness initialValue="veja a cachoeira" />);
     const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
@@ -104,8 +104,8 @@ describe('MarkdownToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Link' }));
 
-    expect(textarea.value).toBe('veja a [cachoeira](url)');
-    expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('url');
+    expect(textarea.value).toBe('veja a [cachoeira](https://url)');
+    expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('https://url');
   });
 
   it('dropdown Parágrafo abre, aplica H2 na linha do cursor e fecha o menu', async () => {

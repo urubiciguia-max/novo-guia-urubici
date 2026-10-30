@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyHeading, applyLink, applyLinePrefix, wrapInline } from '../src/lib/markdownToolbarActions';
+import { renderMarkdownPreview } from '../src/lib/markdownPreview';
 
 describe('wrapInline', () => {
   it('sem seleção: insere marcadores vazios com cursor no meio', () => {
@@ -33,14 +34,16 @@ describe('wrapInline', () => {
 describe('applyLink', () => {
   it('sem seleção: insere placeholder com "texto do link" pré-selecionado', () => {
     const result = applyLink('abc', 1, 1);
-    expect(result.text).toBe('a[texto do link](url)bc');
+    // placeholder da URL nasce com "https://" (bug da Marivone: placeholder
+    // "url" cru não virava <a> no Preview) -- ver markdownToolbarActions.ts.
+    expect(result.text).toBe('a[texto do link](https://url)bc');
     expect(result.text.slice(result.selectionStart, result.selectionEnd)).toBe('texto do link');
   });
 
-  it('com seleção: usa seleção como texto do link e pré-seleciona "url"', () => {
+  it('com seleção: usa seleção como texto do link e pré-seleciona o placeholder "https://url"', () => {
     const result = applyLink('veja a cachoeira', 7, 16); // seleciona "cachoeira"
-    expect(result.text).toBe('veja a [cachoeira](url)');
-    expect(result.text.slice(result.selectionStart, result.selectionEnd)).toBe('url');
+    expect(result.text).toBe('veja a [cachoeira](https://url)');
+    expect(result.text.slice(result.selectionStart, result.selectionEnd)).toBe('https://url');
   });
 });
 
@@ -103,5 +106,48 @@ describe('applyLinePrefix', () => {
     // seleção resultante, só o conteúdo que já existia antes (deslocado).
     expect(result.text.slice(result.selectionStart, result.selectionEnd)).toBe('um\n- dois');
     expect(result.selectionEnd).toBe(result.text.length);
+  });
+});
+
+describe('bug Marivone (QA feat-admin-body-toolbar): integração toolbar -> preview', () => {
+  // Reprodução exata do bug report: clicar num botão da toolbar sem
+  // seleção e ir direto pro Preview não pode mostrar sintaxe crua (critério
+  // de pronto do handoff original) nem renderizar HTML errado.
+
+  it('Link sem seleção: placeholder já nasce reconhecível pelo Preview como <a>', () => {
+    const result = applyLink('', 0, 0);
+    expect(result.text).toBe('[texto do link](https://url)');
+    expect(renderMarkdownPreview(result.text)).toBe(
+      '<p><a href="https://url" target="_blank" rel="noopener noreferrer">texto do link</a></p>',
+    );
+  });
+
+  it('Link: URL real colada sem protocolo (cenário de usuário não-técnico) também renderiza como <a>', () => {
+    expect(renderMarkdownPreview('[cachoeira](guiaurubici.com.br/pagina)')).toBe(
+      '<p><a href="https://guiaurubici.com.br/pagina" target="_blank" rel="noopener noreferrer">cachoeira</a></p>',
+    );
+    expect(renderMarkdownPreview('[site](www.site.com.br)')).toBe(
+      '<p><a href="https://www.site.com.br" target="_blank" rel="noopener noreferrer">site</a></p>',
+    );
+  });
+
+  it('Negrito sem seleção (****): Preview não produz <em>*</em>* (renderização errada)', () => {
+    const result = wrapInline('', 0, 0, '**');
+    expect(result.text).toBe('****');
+    const html = renderMarkdownPreview(result.text);
+    expect(html).not.toContain('<em>*</em>*');
+    expect(html).toBe('<p><strong></strong></p>');
+  });
+
+  it('Itálico sem seleção (**): Preview não quebra (fica vazio, não crua errada)', () => {
+    const result = wrapInline('', 0, 0, '*');
+    expect(result.text).toBe('**');
+    expect(renderMarkdownPreview(result.text)).toBe('<p><em></em></p>');
+  });
+
+  it('Código inline sem seleção (``): Preview fica cru, aceitável pra esse caso extremo', () => {
+    const result = wrapInline('', 0, 0, '`');
+    expect(result.text).toBe('``');
+    expect(renderMarkdownPreview(result.text)).toBe('<p>``</p>');
   });
 });
