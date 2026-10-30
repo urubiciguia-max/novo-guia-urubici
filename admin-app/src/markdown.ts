@@ -70,6 +70,7 @@ const FIELD_ORDER = [
   'tags',
   'cover',
   'coverAlt',
+  'coverCredit',
   'draft',
   'author',
   'category',

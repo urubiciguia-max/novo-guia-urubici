@@ -1,5 +1,6 @@
 ---
 import { getCollection, type CollectionEntry } from 'astro:content';
+import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import DisclosureStrip from '../components/DisclosureStrip.astro';
 import Header from '../components/Header.astro';
@@ -113,6 +114,13 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
         <p class="post-description">{post.data.description}</p>
       </header>
 
+      {post.data.cover && (
+        <figure class="post-cover">
+          <Image src={post.data.cover} alt={post.data.coverAlt ?? ''} />
+          {post.data.coverCredit && <figcaption class="post-cover__credit">{post.data.coverCredit}</figcaption>}
+        </figure>
+      )}
+
       <AuthorBox author={post.data.author} pubDate={post.data.pubDate} updatedDate={post.data.updatedDate} />
 
       <div class="post-body">
@@ -160,6 +168,23 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
   .post-description {
     font-size: 1.05rem;
     margin: 0 0 20px;
+  }
+
+  .post-cover {
+    margin: 0 0 20px;
+  }
+
+  .post-cover img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-card);
+    display: block;
+  }
+
+  .post-cover__credit {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--body-text);
   }
 
   .post-body {
