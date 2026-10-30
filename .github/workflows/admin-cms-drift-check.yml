@@ -1,0 +1,97 @@
+name: Admin CMS - drift check
+
+# Decisão do Tião (2026-10-30): o build da SPA do admin
+# (admin-app/web -> public/admin/) continua sendo buildado e commitado
+# manualmente (ver `npm run build:admin` na raiz e admin-app/web/README.md),
+# em vez do Cloudflare Pages buildar a SPA a cada deploy.
+#
+# Motivo: o uso real do admin CMS é o editor salvando posts via API do
+# GitHub, o que por si só já dispara um build de produção no Cloudflare
+# Pages a cada post publicado/editado. Se o comando de build do Cloudflare
+# Pages passasse a rodar `npm install` + `npm run build` em admin-app E
+# admin-app/web (React 19, Vite 6, tsc) ANTES do `astro build`, todo esse
+# custo extra (varios npm install, typecheck, bundle da SPA) seria pago em
+# TODO deploy de conteúdo -- não só quando o código do admin muda --,
+# empurrando o tempo de deploy pra cima do alvo de <3min P50 pra o caso
+# mais comum, pra resolver um risco (drift) que só existe no caso raro
+# (dev mexeu em admin-app/web/src ou admin-app/src e esqueceu de
+# rebuildar+commitar public/admin/).
+#
+# Em vez de automatizar o pipeline de deploy, este workflow fecha o risco
+# de drift de outro jeito: roda SÓ quando o código-fonte do admin muda
+# (path filter abaixo) e falha o PR/push se o fingerprint do código-fonte
+# não bater com `.admin-build-hash` -- ou seja, se alguém esquecer de
+# rodar `npm run build:admin` e commitar o resultado, o CI pega antes de
+# chegar em produção, sem custar nada nos deploys de conteúdo do dia a dia.
+#
+# IMPORTANTE -- por que o check é por HASH do source (`scripts/
+# admin-build-hash.mjs --check`) e não por "rebuilda e dá diff em
+# public/admin/": testado empiricamente (Tião, 2026-10-30) e o build da
+# SPA (Vite/esbuild) NÃO é reprodutível byte-a-byte entre ambientes --
+# dois builds do mesmo código, mesmas versões travadas no
+# package-lock.json, geraram JS minificado com nomes de variável
+# diferentes (e hash de arquivo diferente) só por rodar em processo/
+# ambiente distinto. Um check de diff byte-a-byte falharia sempre, mesmo
+# sem mudança real -- ver comentário detalhado no próprio script.
+
+on:
+  pull_request:
+    paths:
+      - "admin-app/web/**"
+      - "admin-app/src/**"
+      - "public/admin/**"
+      - ".admin-build-hash"
+      - ".github/workflows/admin-cms-drift-check.yml"
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - "admin-app/web/**"
+      - "admin-app/src/**"
+      - "public/admin/**"
+      - ".admin-build-hash"
+      - ".github/workflows/admin-cms-drift-check.yml"
+
+jobs:
+  drift-check:
+    name: Typecheck + test + rebuild + hash do source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: |
+            admin-app/package-lock.json
+            admin-app/web/package-lock.json
+
+      - name: Instala deps - admin-app (camada de dados)
+        working-directory: admin-app
+        run: npm ci
+
+      - name: Typecheck - admin-app
+        working-directory: admin-app
+        run: npm run typecheck
+
+      - name: Testes - admin-app
+        working-directory: admin-app
+        run: npm test
+
+      - name: Instala deps - admin-app/web (SPA)
+        working-directory: admin-app/web
+        run: npm ci
+
+      - name: Testes - admin-app/web
+        working-directory: admin-app/web
+        run: npm test
+
+      - name: Rebuilda a SPA (smoke test -- typecheck + vite build não podem quebrar)
+        working-directory: admin-app/web
+        run: npm run build
+
+      - name: Drift check -- hash do código-fonte bate com .admin-build-hash?
+        run: node scripts/admin-build-hash.mjs --check

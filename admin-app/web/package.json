@@ -1,0 +1,33 @@
+{
+  "name": "guia-urubici-admin-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SPA client-side do admin CMS custom do Guia Urubici -- substitui public/admin/ (Decap). Fala direto com a API do GitHub via admin-app/src (camada de dados do Jurandir) e com o oauth-worker/ (login). Zero servidor proprio, zero banco de dados -- so arquivos estaticos.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.1.0",
+    "@fontsource/poppins": "^5.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^5.0.5"
+  }
+}
