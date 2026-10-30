@@ -39,6 +39,7 @@ export const postFrontmatterSchema = z.object({
   tags: z.array(z.string()).default([]),
   cover: z.string().optional(),
   coverAlt: z.string().optional(),
+  coverCredit: z.string().optional(),
   draft: z.boolean().default(false),
   author: z.string().default('Equipe Guia de Urubici'),
   category: z.enum(CATEGORIES),

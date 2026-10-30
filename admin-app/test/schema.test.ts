@@ -43,6 +43,21 @@ describe('postFrontmatterSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('aceita coverCredit como string opcional', () => {
+    const result = postFrontmatterSchema.safeParse({
+      ...VALID,
+      cover: './foto.jpg',
+      coverAlt: 'Vista da cachoeira',
+      coverCredit: 'Foto: João Silva/Unsplash',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('aceita frontmatter sem coverCredit (campo opcional, igual coverAlt)', () => {
+    const result = postFrontmatterSchema.safeParse(VALID);
+    expect(result.success).toBe(true);
+  });
+
   it('valida affiliates.url como URL http(s)', () => {
     const result = postFrontmatterSchema.safeParse({
       ...VALID,

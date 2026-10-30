@@ -30,6 +30,7 @@ const posts = defineCollection({
       tags: z.array(z.string()).default([]),
       cover: image().optional(),
       coverAlt: z.string().optional(),
+      coverCredit: z.string().optional(),
       draft: z.boolean().default(false),
       author: z.string().default('Equipe Guia de Urubici'),
       category: z.enum(['Geral', 'Guia Prático', 'O Que Fazer', 'Onde Comer']),

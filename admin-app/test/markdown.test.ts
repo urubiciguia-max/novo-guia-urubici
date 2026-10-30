@@ -46,6 +46,9 @@ describe('serializePostFile', () => {
       description: 'Descrição',
       pubDate: '2026-03-01',
       tags: ['a', 'b'],
+      cover: './foto.jpg',
+      coverAlt: 'Vista da cachoeira',
+      coverCredit: 'Foto: João Silva/Unsplash',
       draft: false,
       author: 'Equipe',
       category: 'Geral',
@@ -59,6 +62,27 @@ describe('serializePostFile', () => {
     expect(body.trim()).toBe('Corpo aqui.');
   });
 
+  it('grava coverCredit logo após coverAlt, respeitando o FIELD_ORDER', () => {
+    const frontmatter = {
+      title: 'Teste',
+      description: 'Descrição',
+      pubDate: '2026-03-01',
+      tags: [],
+      cover: './foto.jpg',
+      coverAlt: 'Vista da cachoeira',
+      coverCredit: 'Foto: João Silva/Unsplash',
+      draft: false,
+      author: 'Equipe',
+      category: 'Geral',
+      legacySlug: 'teste',
+    };
+    const out = serializePostFile(frontmatter, 'Corpo.');
+    const coverAltIdx = out.indexOf('coverAlt:');
+    const coverCreditIdx = out.indexOf('coverCredit:');
+    expect(coverAltIdx).toBeGreaterThan(-1);
+    expect(coverCreditIdx).toBeGreaterThan(coverAltIdx);
+  });
+
   it('não grava campos opcionais vazios/undefined', () => {
     const frontmatter = {
       title: 'Teste',
@@ -67,6 +91,8 @@ describe('serializePostFile', () => {
       updatedDate: undefined,
       tags: [],
       cover: undefined,
+      coverAlt: undefined,
+      coverCredit: undefined,
       faq: [],
       draft: false,
       author: 'Equipe',
@@ -76,6 +102,7 @@ describe('serializePostFile', () => {
     const out = serializePostFile(frontmatter, 'Corpo.');
     expect(out).not.toContain('updatedDate');
     expect(out).not.toContain('cover');
+    expect(out).not.toContain('coverCredit');
     expect(out).not.toContain('faq');
     // Campo obrigatório com array vazio (tags) continua presente.
     expect(out).toContain('tags: []');

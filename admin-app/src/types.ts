@@ -47,6 +47,8 @@ export interface PostFrontmatter {
   /** Caminho relativo gravado no frontmatter, ex: "./foto.jpg". */
   cover?: string;
   coverAlt?: string;
+  /** Crédito/legenda da foto, ex: "Foto: João Silva/Unsplash". */
+  coverCredit?: string;
   draft: boolean;
   author: string;
   category: Category;
