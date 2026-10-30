@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { PostRecord } from '@admin-data/index.js';
+import { parsePostFile, serializePostFile } from '@admin-data/index.js';
 import { emptyFormState, formStateToFrontmatter, recordToFormState } from '../src/lib/postForm';
 
 describe('recordToFormState', () => {
@@ -60,5 +63,80 @@ describe('formStateToFrontmatter', () => {
     const form = emptyFormState();
     form.updatedDate = '   ';
     expect(formStateToFrontmatter(form).updatedDate).toBeUndefined();
+  });
+
+  it('cover/coverAlt/coverCredit vazios viram undefined, não string vazia', () => {
+    const form = emptyFormState();
+    const fm = formStateToFrontmatter(form);
+    expect(fm.cover).toBeUndefined();
+    expect(fm.coverAlt).toBeUndefined();
+    expect(fm.coverCredit).toBeUndefined();
+  });
+
+  it('faq/affiliates vazios viram undefined (array vazio não é gravado)', () => {
+    const form = emptyFormState();
+    const fm = formStateToFrontmatter(form);
+    expect(fm.faq).toBeUndefined();
+    expect(fm.affiliates).toBeUndefined();
+    expect(fm.relatedSlugs).toBeUndefined();
+  });
+
+  it('preserva faq e affiliates preenchidos (bug original: formStateToFrontmatter não conhecia esses campos)', () => {
+    const form = emptyFormState();
+    form.faq = [{ question: 'Pergunta?', answer: 'Resposta.' }];
+    form.affiliates = [{ label: 'Reserve', url: 'https://booking.com', provider: 'booking' }];
+    form.relatedSlugsText = 'post-a, post-b';
+    const fm = formStateToFrontmatter(form);
+    expect(fm.faq).toEqual([{ question: 'Pergunta?', answer: 'Resposta.' }]);
+    expect(fm.affiliates).toEqual([{ label: 'Reserve', url: 'https://booking.com', provider: 'booking' }]);
+    expect(fm.relatedSlugs).toEqual(['post-a', 'post-b']);
+  });
+});
+
+describe('round-trip com post real (regressão do bug de perda de dados)', () => {
+  it('editar onde-comer-fondue-urubici.md sem tocar em affiliates preserva affiliates no arquivo salvo', () => {
+    const path = resolve(__dirname, '../../../src/content/posts/onde-comer-fondue-urubici.md');
+    const raw = readFileSync(path, 'utf-8');
+    const parsed = parsePostFile(raw);
+
+    const record: PostRecord = {
+      slug: 'onde-comer-fondue-urubici',
+      frontmatter: parsed.frontmatter as never,
+      body: parsed.body,
+      sha: 'fake-sha',
+      valid: true,
+    };
+
+    // Simula abrir o post no admin e salvar sem mexer em nada.
+    const form = recordToFormState(record, 'onde-comer-fondue-urubici');
+    const frontmatterOut = formStateToFrontmatter(form);
+    const savedFile = serializePostFile(frontmatterOut as never, form.body);
+    const reparsed = parsePostFile(savedFile);
+
+    expect(reparsed.frontmatter.affiliates).toEqual(parsed.frontmatter.affiliates);
+    expect(reparsed.frontmatter.title).toEqual(parsed.frontmatter.title);
+  });
+
+  it('editar cachoeiras-secretas-urubici.md (tem faq + affiliates + relatedSlugs) sem tocar nesses campos preserva todos', () => {
+    const path = resolve(__dirname, '../../../src/content/posts/cachoeiras-secretas-urubici.md');
+    const raw = readFileSync(path, 'utf-8');
+    const parsed = parsePostFile(raw);
+
+    const record: PostRecord = {
+      slug: 'cachoeiras-secretas-urubici',
+      frontmatter: parsed.frontmatter as never,
+      body: parsed.body,
+      sha: 'fake-sha',
+      valid: true,
+    };
+
+    const form = recordToFormState(record, 'cachoeiras-secretas-urubici');
+    const frontmatterOut = formStateToFrontmatter(form);
+    const savedFile = serializePostFile(frontmatterOut as never, form.body);
+    const reparsed = parsePostFile(savedFile);
+
+    expect(reparsed.frontmatter.faq).toEqual(parsed.frontmatter.faq);
+    expect(reparsed.frontmatter.affiliates).toEqual(parsed.frontmatter.affiliates);
+    expect(reparsed.frontmatter.relatedSlugs).toEqual(parsed.frontmatter.relatedSlugs);
   });
 });

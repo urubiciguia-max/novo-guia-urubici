@@ -1,19 +1,32 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { PostFrontmatter } from '@admin-data/index.js';
-import { CATEGORIES, PostAlreadyExistsError, PostNotFoundError, ShaConflictError, ValidationError } from '@admin-data/index.js';
+import {
+  AFFILIATE_PROVIDERS,
+  CATEGORIES,
+  PostAlreadyExistsError,
+  PostNotFoundError,
+  ShaConflictError,
+  ValidationError,
+} from '@admin-data/index.js';
 import { postFrontmatterSchema } from '@admin-data/index.js';
 // `zodIssuesToErrors` não é exportado pelo barrel (`index.ts`) -- só por `schema.ts` direto.
 import { zodIssuesToErrors } from '@admin-data/schema.js';
 import { usePosts } from '../data/PostsContext';
 import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
-import { emptyFormState, formStateToFrontmatter, recordToFormState, type PostFormState } from '../lib/postForm';
+import {
+  emptyFormState,
+  formStateToFrontmatter,
+  recordToFormState,
+  type AffiliateFormItem,
+  type PostFormState,
+} from '../lib/postForm';
 import { renderMarkdownPreview } from '../lib/markdownPreview';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { EmptyState } from '../components/EmptyState';
-import { TrashIcon } from '../components/icons';
+import { PlusIcon, TrashIcon } from '../components/icons';
 
 export interface PostFormPageProps {
   /** `null` = criar. String = editar (nome do arquivo, vem da rota -- ver `useHashRoute`). */
@@ -73,6 +86,36 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
 
   function updateField<K extends keyof PostFormState>(key: K, value: PostFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function addFaqItem() {
+    setForm((f) => ({ ...f, faq: [...f.faq, { question: '', answer: '' }] }));
+  }
+
+  function updateFaqItem(index: number, field: 'question' | 'answer', value: string) {
+    setForm((f) => ({
+      ...f,
+      faq: f.faq.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }));
+  }
+
+  function removeFaqItem(index: number) {
+    setForm((f) => ({ ...f, faq: f.faq.filter((_, i) => i !== index) }));
+  }
+
+  function addAffiliateItem() {
+    setForm((f) => ({ ...f, affiliates: [...f.affiliates, { label: '', url: '', provider: '' }] }));
+  }
+
+  function updateAffiliateItem<K extends keyof AffiliateFormItem>(index: number, field: K, value: AffiliateFormItem[K]) {
+    setForm((f) => ({
+      ...f,
+      affiliates: f.affiliates.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }));
+  }
+
+  function removeAffiliateItem(index: number) {
+    setForm((f) => ({ ...f, affiliates: f.affiliates.filter((_, i) => i !== index) }));
   }
 
   async function submit(frontmatter: PostFrontmatter, opts?: { forceSha?: string }) {
@@ -210,32 +253,63 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
       )}
 
       <form className="post-form card" onSubmit={handleSubmit}>
-        <div className="form-row">
-          <label className="form-field">
-            <span>Título</span>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => updateField('title', e.target.value)}
-              maxLength={90}
-              required
-            />
-            {fieldErrors.title && <span className="field-error">{fieldErrors.title}</span>}
-          </label>
-        </div>
+        <div className="form-section">
+          <h2 className="section-label">SEO</h2>
 
-        <div className="form-row">
-          <label className="form-field">
-            <span>Descrição (meta/SEO)</span>
-            <textarea
-              value={form.description}
-              onChange={(e) => updateField('description', e.target.value)}
-              maxLength={160}
-              rows={2}
-              required
-            />
-            {fieldErrors.description && <span className="field-error">{fieldErrors.description}</span>}
-          </label>
+          <div className="form-row">
+            <label className="form-field">
+              <span>Título</span>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => updateField('title', e.target.value)}
+                maxLength={90}
+                required
+              />
+              {fieldErrors.title && <span className="field-error">{fieldErrors.title}</span>}
+            </label>
+          </div>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Descrição (meta/SEO)</span>
+              <textarea
+                value={form.description}
+                onChange={(e) => updateField('description', e.target.value)}
+                maxLength={160}
+                rows={2}
+                required
+              />
+              {fieldErrors.description && <span className="field-error">{fieldErrors.description}</span>}
+            </label>
+          </div>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Slug legado (WordPress) -- define o nome do arquivo e a URL final</span>
+              <input
+                type="text"
+                value={form.legacySlug}
+                onChange={(e) => updateField('legacySlug', e.target.value)}
+                placeholder="cachoeiras-secretas-urubici"
+                disabled={isEdit}
+                required
+                pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+              />
+              {isEdit ? (
+                <span className="field-hint">
+                  Travado em edição -- mudar isso sem renomear o arquivo quebraria a URL/SEO. O nome do arquivo é{' '}
+                  <code>{slug}.md</code>.
+                </span>
+              ) : (
+                <span className="field-hint">
+                  Vira o nome do arquivo: <code>src/content/posts/{form.legacySlug || '<slug>'}.md</code>. Só minúsculas,
+                  números e hífen.
+                </span>
+              )}
+              {fieldErrors.legacySlug && <span className="field-error">{fieldErrors.legacySlug}</span>}
+            </label>
+          </div>
         </div>
 
         <div className="form-row form-row--split">
@@ -295,31 +369,168 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
           </label>
         </div>
 
-        <div className="form-row">
-          <label className="form-field">
-            <span>Slug legado (WordPress) -- define o nome do arquivo e a URL final</span>
-            <input
-              type="text"
-              value={form.legacySlug}
-              onChange={(e) => updateField('legacySlug', e.target.value)}
-              placeholder="cachoeiras-secretas-urubici"
-              disabled={isEdit}
-              required
-              pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
-            />
-            {isEdit ? (
+        <div className="form-section">
+          <h2 className="section-label">Imagem de destaque</h2>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Imagem (caminho do arquivo)</span>
+              <input
+                type="text"
+                value={form.cover}
+                onChange={(e) => updateField('cover', e.target.value)}
+                placeholder="./foto-capa.jpg"
+              />
               <span className="field-hint">
-                Travado em edição -- mudar isso sem renomear o arquivo quebraria a URL/SEO. O nome do arquivo é{' '}
-                <code>{slug}.md</code>.
+                Caminho relativo ao arquivo do post (o arquivo de imagem já precisa existir no repositório -- esse
+                campo não faz upload).
               </span>
-            ) : (
-              <span className="field-hint">
-                Vira o nome do arquivo: <code>src/content/posts/{form.legacySlug || '<slug>'}.md</code>. Só minúsculas,
-                números e hífen.
-              </span>
-            )}
-            {fieldErrors.legacySlug && <span className="field-error">{fieldErrors.legacySlug}</span>}
-          </label>
+              {fieldErrors.cover && <span className="field-error">{fieldErrors.cover}</span>}
+            </label>
+          </div>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Texto alternativo (alt)</span>
+              <input
+                type="text"
+                value={form.coverAlt}
+                onChange={(e) => updateField('coverAlt', e.target.value)}
+                placeholder="Cachoeira cercada de mata nativa em Urubici"
+              />
+              {fieldErrors.coverAlt && <span className="field-error">{fieldErrors.coverAlt}</span>}
+            </label>
+          </div>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Crédito da foto (opcional)</span>
+              <input
+                type="text"
+                value={form.coverCredit}
+                onChange={(e) => updateField('coverCredit', e.target.value)}
+                placeholder='Ex: "Foto: João Silva/Unsplash"'
+              />
+              <span className="field-hint">Quando preenchido, aparece como legenda pequena embaixo da imagem de destaque.</span>
+              {fieldErrors.coverCredit && <span className="field-error">{fieldErrors.coverCredit}</span>}
+            </label>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2 className="section-label">FAQ</h2>
+
+          {form.faq.length === 0 && <p className="field-hint">Nenhuma pergunta ainda.</p>}
+
+          {form.faq.map((item, index) => (
+            <div className="repeatable-item" key={index}>
+              <div className="repeatable-item__fields">
+                <label className="form-field">
+                  <span>Pergunta {index + 1}</span>
+                  <input
+                    type="text"
+                    value={item.question}
+                    onChange={(e) => updateFaqItem(index, 'question', e.target.value)}
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Resposta</span>
+                  <textarea
+                    value={item.answer}
+                    onChange={(e) => updateFaqItem(index, 'answer', e.target.value)}
+                    rows={2}
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                className="icon-btn icon-btn--danger"
+                aria-label={`Remover pergunta ${index + 1}`}
+                onClick={() => removeFaqItem(index)}
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+
+          <button type="button" className="btn btn--ghost btn--sm" onClick={addFaqItem}>
+            <PlusIcon /> Adicionar pergunta
+          </button>
+        </div>
+
+        <div className="form-section">
+          <h2 className="section-label">Links de afiliado</h2>
+
+          {form.affiliates.length === 0 && <p className="field-hint">Nenhum link ainda.</p>}
+
+          {form.affiliates.map((item, index) => (
+            <div className="repeatable-item" key={index}>
+              <div className="repeatable-item__fields repeatable-item__fields--affiliate">
+                <label className="form-field">
+                  <span>Rótulo</span>
+                  <input
+                    type="text"
+                    value={item.label}
+                    onChange={(e) => updateAffiliateItem(index, 'label', e.target.value)}
+                    placeholder="Reservar pousada"
+                  />
+                </label>
+                <label className="form-field">
+                  <span>URL</span>
+                  <input
+                    type="text"
+                    value={item.url}
+                    onChange={(e) => updateAffiliateItem(index, 'url', e.target.value)}
+                    placeholder="https://..."
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Provedor</span>
+                  <select
+                    value={item.provider}
+                    onChange={(e) => updateAffiliateItem(index, 'provider', e.target.value as AffiliateFormItem['provider'])}
+                  >
+                    <option value="" disabled>
+                      Selecione
+                    </option>
+                    {AFFILIATE_PROVIDERS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button
+                type="button"
+                className="icon-btn icon-btn--danger"
+                aria-label={`Remover link de afiliado ${index + 1}`}
+                onClick={() => removeAffiliateItem(index)}
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+
+          <button type="button" className="btn btn--ghost btn--sm" onClick={addAffiliateItem}>
+            <PlusIcon /> Adicionar link
+          </button>
+        </div>
+
+        <div className="form-section">
+          <h2 className="section-label">Posts relacionados</h2>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Slugs separados por vírgula</span>
+              <input
+                type="text"
+                value={form.relatedSlugsText}
+                onChange={(e) => updateField('relatedSlugsText', e.target.value)}
+                placeholder="cachoeiras-secretas-urubici, trilha-morro-da-igreja"
+              />
+            </label>
+          </div>
         </div>
 
         <div className="form-row">

@@ -1,4 +1,16 @@
-import type { Category, PostFrontmatter, PostRecord } from '@admin-data/index.js';
+import type { AffiliateLink, AffiliateProvider, Category, FaqItem, PostFrontmatter, PostRecord } from '@admin-data/index.js';
+
+/**
+ * Shape de afiliado no form -- igual a `AffiliateLink`, exceto `provider`
+ * que aceita `''` enquanto a linha está sem seleção (select vazio). A
+ * validação de verdade (`provider` precisa ser um dos `AFFILIATE_PROVIDERS`)
+ * acontece no `postFrontmatterSchema.safeParse` no submit, não aqui.
+ */
+export interface AffiliateFormItem {
+  label: string;
+  url: string;
+  provider: AffiliateProvider | '';
+}
 
 export interface PostFormState {
   title: string;
@@ -9,6 +21,12 @@ export interface PostFormState {
   draft: boolean;
   author: string;
   category: Category | '';
+  cover: string;
+  coverAlt: string;
+  coverCredit: string;
+  faq: FaqItem[];
+  affiliates: AffiliateFormItem[];
+  relatedSlugsText: string;
   legacySlug: string;
   body: string;
 }
@@ -27,6 +45,12 @@ export function emptyFormState(): PostFormState {
     draft: true,
     author: 'Equipe Guia de Urubici',
     category: '',
+    cover: '',
+    coverAlt: '',
+    coverCredit: '',
+    faq: [],
+    affiliates: [],
+    relatedSlugsText: '',
     legacySlug: '',
     body: '',
   };
@@ -34,6 +58,27 @@ export function emptyFormState(): PostFormState {
 
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+/** Leitura defensiva de um item de `faq` vindo de YAML cru -- mesma lógica de "filtra, não assume shape" já usada pra `tags`. */
+function isFaqItem(value: unknown): value is FaqItem {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as Record<string, unknown>).question === 'string' &&
+    typeof (value as Record<string, unknown>).answer === 'string'
+  );
+}
+
+/** Idem, pra item de `affiliates`. `provider` só precisa ser string aqui -- validação do enum é no zod do submit. */
+function isAffiliateItem(value: unknown): value is { label: string; url: string; provider: string } {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as Record<string, unknown>).label === 'string' &&
+    typeof (value as Record<string, unknown>).url === 'string' &&
+    typeof (value as Record<string, unknown>).provider === 'string'
+  );
 }
 
 /**
@@ -59,6 +104,22 @@ export function recordToFormState(record: PostRecord, routeSlug: string): PostFo
     draft: typeof fm.draft === 'boolean' ? fm.draft : false,
     author: str(fm.author, 'Equipe Guia de Urubici'),
     category: (typeof fm.category === 'string' ? fm.category : '') as PostFormState['category'],
+    cover: str(fm.cover),
+    coverAlt: str(fm.coverAlt),
+    coverCredit: str(fm.coverCredit),
+    faq: Array.isArray(fm.faq)
+      ? fm.faq.filter(isFaqItem).map((item) => ({ question: item.question, answer: item.answer }))
+      : [],
+    affiliates: Array.isArray(fm.affiliates)
+      ? fm.affiliates.filter(isAffiliateItem).map((item) => ({
+          label: item.label,
+          url: item.url,
+          provider: item.provider as AffiliateFormItem['provider'],
+        }))
+      : [],
+    relatedSlugsText: Array.isArray(fm.relatedSlugs)
+      ? fm.relatedSlugs.filter((s): s is string => typeof s === 'string').join(', ')
+      : '',
     legacySlug: routeSlug,
     body: record.body,
   };
@@ -66,6 +127,11 @@ export function recordToFormState(record: PostRecord, routeSlug: string): PostFo
 
 /** Shape pro client -- a validação de verdade é `postFrontmatterSchema.safeParse` antes do submit, isto é só a conversão de forma. */
 export function formStateToFrontmatter(form: PostFormState): PostFrontmatter {
+  const relatedSlugs = form.relatedSlugsText
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   return {
     title: form.title,
     description: form.description,
@@ -78,6 +144,12 @@ export function formStateToFrontmatter(form: PostFormState): PostFrontmatter {
     draft: form.draft,
     author: form.author,
     category: form.category as PostFrontmatter['category'],
+    cover: form.cover.trim() === '' ? undefined : form.cover.trim(),
+    coverAlt: form.coverAlt.trim() === '' ? undefined : form.coverAlt.trim(),
+    coverCredit: form.coverCredit.trim() === '' ? undefined : form.coverCredit.trim(),
+    faq: form.faq.length === 0 ? undefined : form.faq,
+    affiliates: form.affiliates.length === 0 ? undefined : (form.affiliates as AffiliateLink[]),
+    relatedSlugs: relatedSlugs.length === 0 ? undefined : relatedSlugs,
     legacySlug: form.legacySlug,
   };
 }
