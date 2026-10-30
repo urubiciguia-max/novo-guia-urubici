@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from '@admin-data/index.js';
 import { useAuth } from '../auth/AuthContext';
 import { isUnauthorized } from '../lib/errorMessage';
+import type { UploadCoverImageFile, UploadCoverImageResult } from '../lib/postsClient';
 
 interface PostsState {
   items: PostListItem[];
@@ -12,6 +13,7 @@ interface PostsState {
   createPost: (slug: string, frontmatter: PostFrontmatter, body: string) => Promise<WriteResult>;
   updatePost: (slug: string, frontmatter: PostFrontmatter, body: string, sha: string) => Promise<WriteResult>;
   deletePost: (slug: string, sha: string) => Promise<void>;
+  uploadCoverImage: (legacySlug: string, file: UploadCoverImageFile) => Promise<UploadCoverImageResult>;
 }
 
 const PostsContext = createContext<PostsState | null>(null);
@@ -97,9 +99,17 @@ export function PostsProvider({ children }: { children: ReactNode }) {
     [client, wrap]
   );
 
+  const uploadCoverImage = useCallback(
+    (legacySlug: string, file: UploadCoverImageFile) => {
+      if (!client) throw new Error('Sem sessão ativa.');
+      return wrap(client.uploadCoverImage.bind(client))(legacySlug, file);
+    },
+    [client, wrap]
+  );
+
   const value = useMemo<PostsState>(
-    () => ({ items, loading, error, refresh, getPost, createPost, updatePost, deletePost }),
-    [items, loading, error, refresh, getPost, createPost, updatePost, deletePost]
+    () => ({ items, loading, error, refresh, getPost, createPost, updatePost, deletePost, uploadCoverImage }),
+    [items, loading, error, refresh, getPost, createPost, updatePost, deletePost, uploadCoverImage]
   );
 
   return <PostsContext.Provider value={value}>{children}</PostsContext.Provider>;

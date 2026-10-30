@@ -64,6 +64,107 @@ interface ContentsPutResponse {
   commit: { sha: string };
 }
 
+/**
+ * Allowlist fixa de MIME type pra capa de post -- defesa em profundidade.
+ * O Francisgleydisson já valida no browser (e confere magic bytes reais,
+ * não só a extensão/MIME que o navegador reporta) antes de chamar
+ * `uploadCoverImage`, mas a camada de dados não confia cegamente em input
+ * que atravessou a UI -- qualquer código com acesso a uma instância de
+ * `GitHubPostsClient` (DevTools/console) pode chamar o método direto.
+ * `image/svg+xml` fica de fora de propósito: é vetor de XSS se algum dia
+ * for inlinado (achado da spec do Genilson, 2026-10-30).
+ */
+const ALLOWED_COVER_MIME_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+/**
+ * Mapa inverso: tipo detectado por magic bytes reais -> `mimeType` esperado.
+ * Usado por `detectCoverImageMimeType` pra confirmar que o `file.mimeType`
+ * DECLARADO pelo caller bate com o conteúdo REAL de `base64Content`.
+ *
+ * Achado da auditoria de segurança do Severino (2026-10-30, Track B): sem
+ * esta checagem, `uploadCoverImage` validava só a STRING `mimeType` contra a
+ * allowlist -- qualquer código com acesso a uma instância de
+ * `GitHubPostsClient` (DevTools/console, pulando a validação de magic bytes
+ * real do Francisgleydisson em `imageUpload.ts`) podia declarar
+ * `mimeType: 'image/jpeg'` e mandar `base64Content` com qualquer bytes
+ * (texto, HTML, JS) -- o teste pré-existente `VALID_FILE` nem usava bytes de
+ * imagem reais (`'ZmFrZS1pbWFnZS1ieXRlcw=='` decodifica pra
+ * `"fake-image-bytes"`, texto puro) e passava. O arquivo nunca é servido como
+ * executável (só consumido via `<Image />`/Sharp no build do Astro), então o
+ * risco prático é baixo (o ator já precisa ter o token com escopo de escrita
+ * pra chamar este método) -- mas a allowlist de MIME só tem sentido como
+ * defesa real se o conteúdo bater com o tipo declarado.
+ */
+const MIME_BY_DETECTED_TYPE: Record<'jpeg' | 'png' | 'webp', string> = {
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+/**
+ * Confere a assinatura binária real dos primeiros bytes de um `base64`
+ * (mesmas assinaturas que `admin-app/web/src/lib/imageUpload.ts` usa no
+ * browser) -- decodifica só um prefixo pequeno, suficiente pra cobrir a
+ * assinatura mais longa (WebP, 12 bytes == 16 chars base64; usamos 24 chars
+ * de folga). `null` quando nenhuma assinatura bate (inclui SVG, que não tem
+ * magic bytes binários fixos -- começa com texto/XML).
+ */
+function detectCoverImageMimeType(base64: string): string | null {
+  const prefix = base64.slice(0, 24).replace(/\s/g, '');
+  let binary: string;
+  try {
+    binary = atob(prefix);
+  } catch {
+    return null;
+  }
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return MIME_BY_DETECTED_TYPE.jpeg;
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return MIME_BY_DETECTED_TYPE.png;
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return MIME_BY_DETECTED_TYPE.webp;
+  }
+  return null;
+}
+
+/**
+ * ~1MB de conteúdo bruto é o limite documentado da Contents API
+ * (`PUT /repos/{owner}/{repo}/contents/{path}`) pra este tipo de commit.
+ * Base64 infla o tamanho em ~33% (4 bytes codificados pra cada 3 brutos),
+ * então o limite em caracteres de base64 é maior que 1_000_000 -- 1.4M
+ * cobre esse fator com uma margem pequena. Documentado na spec do Genilson
+ * (2026-10-30, Track B).
+ */
+const MAX_COVER_BASE64_LENGTH = 1_400_000;
+
 interface GraphQlTreeResponse {
   data?: {
     repository?: {
@@ -350,6 +451,106 @@ export class GitHubPostsClient {
       const errBody = await this.safeJson<GitHubErrorBody>(res);
       throw new GitHubApiError(res.status, errBody?.message ?? `Erro ao remover o post "${slug}".`);
     }
+  }
+
+  // -- uploadCoverImage ------------------------------------------------------
+
+  /**
+   * Commita a imagem de capa de um post via Contents API (REST) -- mesmo
+   * endpoint que `createPost`/`updatePost` já usam, só que com conteúdo
+   * binário (base64 de bytes de imagem, não UTF-8 de markdown).
+   *
+   * Upsert automático: faz um GET no path de destino primeiro pra descobrir
+   * se já existe uma capa anterior desse slug. Existindo (200), captura o
+   * `sha` atual e inclui no PUT (substituição); não existindo (404), PUT
+   * sem `sha` (criação) -- mesma regra da Contents API que `createPost`
+   * evita (sem `sha` em arquivo que já existe, a API rejeita com 422).
+   * Caller não precisa gerenciar sha de imagem, diferente de
+   * `updatePost`/`deletePost` que exigem o sha do post (markdown) como
+   * parâmetro.
+   *
+   * Fora de escopo nesta v1: Git Data API (blob+tree+commit), que subiria
+   * arquivos maiores que o limite de ~1MB da Contents API. O arquivo já
+   * chega comprimido abaixo desse limite pelo Francisgleydisson (canvas no
+   * browser) antes de chegar aqui -- ver spec do Genilson (2026-10-30,
+   * Track B) pro raciocínio completo.
+   */
+  async uploadCoverImage(
+    legacySlug: string,
+    file: { name: string; mimeType: string; base64Content: string }
+  ): Promise<{ path: string; sha: string; commitSha: string }> {
+    this.assertValidSlug(legacySlug);
+
+    const ext = ALLOWED_COVER_MIME_TYPES[file.mimeType];
+    if (!ext) {
+      throw new ValidationError([
+        {
+          path: 'mimeType',
+          message: `Tipo de imagem não suportado: "${file.mimeType}". Use JPEG, PNG ou WebP.`,
+        },
+      ]);
+    }
+
+    // Confere que o CONTEÚDO real bate com o `mimeType` DECLARADO -- não
+    // basta o nome do tipo estar na allowlist (ver `detectCoverImageMimeType`
+    // pro raciocínio completo). Pega qualquer `base64Content` que não seja
+    // de fato uma imagem JPEG/PNG/WebP, mesmo que o caller tenha mentido o
+    // `mimeType` (ex.: chamada direta via DevTools/console, pulando a
+    // validação de magic bytes real que a UI faz em `imageUpload.ts`).
+    const detectedMimeType = detectCoverImageMimeType(file.base64Content);
+    if (detectedMimeType === null || detectedMimeType !== file.mimeType) {
+      throw new ValidationError([
+        {
+          path: 'base64Content',
+          message:
+            'O conteúdo do arquivo não corresponde a uma imagem JPEG, PNG ou WebP válida (os bytes reais não batem com o tipo declarado).',
+        },
+      ]);
+    }
+
+    if (file.base64Content.length > MAX_COVER_BASE64_LENGTH) {
+      throw new ValidationError([
+        {
+          path: 'base64Content',
+          message: 'Imagem muito grande mesmo após compressão (limite da Contents API é ~1MB).',
+        },
+      ]);
+    }
+
+    const filename = `${legacySlug}-capa.${ext}`;
+    const path = `${this.postsPath}/${filename}`;
+
+    const existingRes = await this.restRequest(
+      `/repos/${this.owner}/${this.repo}/contents/${path}?ref=${this.branch}`,
+      { method: 'GET' }
+    );
+
+    let existingSha: string | undefined;
+    if (existingRes.status === 200) {
+      const existingData = await this.parseJsonOrThrow<ContentsGetResponse>(existingRes);
+      existingSha = existingData.sha;
+    } else if (existingRes.status !== 404) {
+      const errBody = await this.safeJson<GitHubErrorBody>(existingRes);
+      throw new GitHubApiError(
+        existingRes.status,
+        errBody?.message ?? `Erro ao verificar capa existente do post "${legacySlug}".`
+      );
+    }
+
+    const res = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${path}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: `content: atualiza capa do post "${legacySlug}"`,
+        content: file.base64Content,
+        branch: this.branch,
+        ...(existingSha ? { sha: existingSha } : {}),
+      }),
+    });
+
+    if (res.status === 409) throw new ShaConflictError(legacySlug);
+
+    const data = await this.parseJsonOrThrow<ContentsPutResponse>(res);
+    return { path: `./${filename}`, sha: data.content.sha, commitSha: data.commit.sha };
   }
 
   // -- helpers internos ------------------------------------------------------

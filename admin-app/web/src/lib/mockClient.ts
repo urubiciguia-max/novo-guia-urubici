@@ -8,7 +8,7 @@ import {
 import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from '@admin-data/index.js';
 // `zodIssuesToErrors` não é exportado pelo barrel (`index.ts`) -- só por `schema.ts` direto.
 import { zodIssuesToErrors } from '@admin-data/schema.js';
-import type { PostsClient } from './postsClient';
+import type { PostsClient, UploadCoverImageFile, UploadCoverImageResult } from './postsClient';
 
 /**
  * Client mock, SÓ pra dev local (ver `postsClient.ts` -- `USE_MOCK` é
@@ -176,6 +176,20 @@ export function createMockPostsClient(): PostsClient {
       if (posts[idx].sha !== sha) throw new ShaConflictError(slug);
       posts.splice(idx, 1);
       await delay(undefined);
+    },
+
+    // Mock de `GitHubPostsClient.uploadCoverImage()` (TRACK B) -- não
+    // commita nada de verdade, só devolve um path/sha plausíveis pra eu
+    // conseguir exercitar o fluxo de upload no form sem token real do
+    // GitHub. Mesmo formato de path que o client real promete:
+    // `./<legacySlug>-capa.<ext>`.
+    async uploadCoverImage(legacySlug: string, file: UploadCoverImageFile): Promise<UploadCoverImageResult> {
+      const ext = file.mimeType === 'image/png' ? 'png' : file.mimeType === 'image/webp' ? 'webp' : 'jpg';
+      return delay({
+        path: `./${legacySlug}-capa.${ext}`,
+        sha: `sha-cover-${Date.now()}`,
+        commitSha: `commit-${Date.now()}`,
+      });
     },
   };
 }

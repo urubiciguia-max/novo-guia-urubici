@@ -318,6 +318,154 @@ describe('GitHubPostsClient', () => {
     });
   });
 
+  // -- uploadCoverImage ----------------------------------------------------
+
+  describe('uploadCoverImage', () => {
+    // Magic bytes reais de JPEG (`FF D8 FF ...`) -- desde a correção do
+    // Severino (2026-10-30), `uploadCoverImage` confere o conteúdo real do
+    // `base64Content`, não só o `mimeType` declarado. Ver teste dedicado
+    // abaixo ("mimeType declarado não bate com os bytes reais").
+    const VALID_FILE = { name: 'foto.jpg', mimeType: 'image/jpeg', base64Content: '/9j/4AAAAAAAAAAA' };
+
+    it('upload novo: GET 404 (sem capa existente) seguido de PUT sem sha', async () => {
+      fetchMock
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'img-sha-1' }, commit: { sha: 'commit-sha-img-1' } }));
+
+      const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', VALID_FILE);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      const [getUrl, getInit] = fetchMock.mock.calls[0];
+      expect(getUrl).toContain(
+        '/repos/urubiciguia-max/novo-guia-urubici/contents/src/content/posts/cachoeiras-secretas-urubici-capa.jpg'
+      );
+      expect(getInit.method).toBe('GET');
+
+      const [putUrl, putInit] = fetchMock.mock.calls[1];
+      expect(putUrl).toContain('cachoeiras-secretas-urubici-capa.jpg');
+      expect(putInit.method).toBe('PUT');
+      const sentBody = JSON.parse(putInit.body as string);
+      expect(sentBody.sha).toBeUndefined();
+      expect(sentBody.content).toBe(VALID_FILE.base64Content);
+      expect(sentBody.message).toBe('content: atualiza capa do post "cachoeiras-secretas-urubici"');
+
+      expect(result).toEqual({
+        path: './cachoeiras-secretas-urubici-capa.jpg',
+        sha: 'img-sha-1',
+        commitSha: 'commit-sha-img-1',
+      });
+    });
+
+    it('substituição: GET 200 (capa existente) seguido de PUT incluindo o sha atual', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ content: 'base64-antigo', encoding: 'base64', sha: 'img-sha-velho' }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'img-sha-novo' }, commit: { sha: 'commit-sha-img-2' } }));
+
+      const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', VALID_FILE);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, putInit] = fetchMock.mock.calls[1];
+      const sentBody = JSON.parse(putInit.body as string);
+      expect(sentBody.sha).toBe('img-sha-velho');
+
+      expect(result.sha).toBe('img-sha-novo');
+      expect(result.commitSha).toBe('commit-sha-img-2');
+    });
+
+    it('rejeita mimeType fora da allowlist (SVG) ANTES de qualquer chamada de rede', async () => {
+      const svgFile = { ...VALID_FILE, name: 'icone.svg', mimeType: 'image/svg+xml' };
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', svgFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita mimeType fora da allowlist (PDF disfarçado de imagem) ANTES de qualquer chamada de rede', async () => {
+      const fakeFile = { ...VALID_FILE, name: 'documento.pdf', mimeType: 'application/pdf' };
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', fakeFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita base64Content acima do limite de tamanho ANTES de qualquer chamada de rede', async () => {
+      const bigFile = { ...VALID_FILE, base64Content: 'A'.repeat(1_400_001) };
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', bigFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(['../../.github/workflows/evil', '../secrets', 'a/b', '', '  ', 'Capitais-Invalidas'])(
+      'uploadCoverImage(%j) lança ValidationError sem chamar fetch',
+      async (slug) => {
+        await expect(makeClient().uploadCoverImage(slug, VALID_FILE)).rejects.toBeInstanceOf(ValidationError);
+        expect(fetchMock).not.toHaveBeenCalled();
+      }
+    );
+
+    it('deriva extensão correta pros 3 mimeTypes aceitos (com magic bytes reais correspondentes)', async () => {
+      const cases: Array<[string, string, string]> = [
+        ['image/jpeg', 'jpg', '/9j/4AAAAAAAAAAA'],
+        ['image/png', 'png', 'iVBORw0KGgoAAAAA'],
+        ['image/webp', 'webp', 'UklGRgAAAABXRUJQ'],
+      ];
+
+      for (const [mimeType, ext, base64Content] of cases) {
+        fetchMock
+          .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+          .mockResolvedValueOnce(jsonResponse({ content: { sha: 'sha' }, commit: { sha: 'commit-sha' } }));
+
+        const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', {
+          name: `foto.${ext}`,
+          mimeType,
+          base64Content,
+        });
+
+        expect(result.path).toBe(`./cachoeiras-secretas-urubici-capa.${ext}`);
+      }
+    });
+
+    it('rejeita quando o mimeType declarado não bate com os bytes reais (chamada forjada via DevTools/console, pulando a validação da UI)', async () => {
+      // Cenário do achado de segurança do Severino (2026-10-30): um caller
+      // com acesso direto à instância de `GitHubPostsClient` (console do
+      // navegador) declara `mimeType: 'image/jpeg'` mas manda conteúdo que
+      // na real é texto/HTML/JS, não uma imagem de verdade.
+      const forgedFile = {
+        name: 'foto.jpg',
+        mimeType: 'image/jpeg',
+        base64Content: Buffer.from('<script>alert(1)</script>').toString('base64'),
+      };
+      await expect(
+        makeClient().uploadCoverImage('cachoeiras-secretas-urubici', forgedFile)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita quando os bytes são de um tipo real porém diferente do mimeType declarado (PNG disfarçado de JPEG)', async () => {
+      const mismatchedFile = {
+        name: 'foto.jpg',
+        mimeType: 'image/jpeg',
+        base64Content: 'iVBORw0KGgoAAAAA', // magic bytes reais de PNG
+      };
+      await expect(
+        makeClient().uploadCoverImage('cachoeiras-secretas-urubici', mismatchedFile)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('conflito de sha na substituição (409) lança ShaConflictError', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ content: 'base64-antigo', encoding: 'base64', sha: 'img-sha-velho' }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'does not match' }), { status: 409 }));
+
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', VALID_FILE)).rejects.toBeInstanceOf(
+        ShaConflictError
+      );
+    });
+  });
+
   // -- token nunca aparece em lugar nenhum da requisição exceto o header --
 
   it('nunca inclui o token no body ou na URL das requisições, só no header Authorization', async () => {

@@ -19,6 +19,7 @@ import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { EmptyState } from '../components/EmptyState';
 import { Badge } from '../components/Badge';
+import { CoverImageUpload } from '../components/CoverImageUpload';
 import { PlusIcon, TrashIcon } from '../components/icons';
 
 export interface PostFormPageProps {
@@ -325,20 +326,15 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
           <h2 className="section-label">Imagem de destaque</h2>
 
           <div className="form-row">
-            <label className="form-field">
-              <span>Imagem (caminho do arquivo)</span>
-              <input
-                type="text"
-                value={form.cover}
-                onChange={(e) => updateField('cover', e.target.value)}
-                placeholder="./foto-capa.jpg"
+            <div className="form-field">
+              <span>Imagem</span>
+              <CoverImageUpload
+                legacySlug={form.legacySlug}
+                currentPath={form.cover}
+                onUploaded={(path) => updateField('cover', path)}
               />
-              <span className="field-hint">
-                Caminho relativo ao arquivo do post (o arquivo de imagem já precisa existir no repositório -- esse
-                campo não faz upload).
-              </span>
               {fieldErrors.cover && <span className="field-error">{fieldErrors.cover}</span>}
-            </label>
+            </div>
           </div>
 
           <div className="form-row">
@@ -367,50 +363,6 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
               {fieldErrors.coverCredit && <span className="field-error">{fieldErrors.coverCredit}</span>}
             </label>
           </div>
-        </div>
-
-        <div className="form-section">
-          <h2 className="section-label">FAQ</h2>
-
-          {form.faq.length === 0 && <p className="field-hint">Nenhuma pergunta ainda.</p>}
-
-          {form.faq.map((item, index) => (
-            <div className="repeatable-item" key={index}>
-              <div className="repeatable-item__fields repeatable-item__fields--faq">
-                <div className="repeatable-item__header">
-                  <Badge variant="neutral">Pergunta {index + 1}</Badge>
-                </div>
-                <label className="form-field">
-                  <span>Pergunta</span>
-                  <input
-                    type="text"
-                    value={item.question}
-                    onChange={(e) => updateFaqItem(index, 'question', e.target.value)}
-                  />
-                </label>
-                <label className="form-field">
-                  <span>Resposta</span>
-                  <textarea
-                    value={item.answer}
-                    onChange={(e) => updateFaqItem(index, 'answer', e.target.value)}
-                    rows={2}
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="icon-btn icon-btn--danger"
-                aria-label={`Remover pergunta ${index + 1}`}
-                onClick={() => removeFaqItem(index)}
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-
-          <button type="button" className="btn btn--primary btn--sm" onClick={addFaqItem}>
-            <PlusIcon /> Adicionar pergunta
-          </button>
         </div>
 
         <div className="form-row">
@@ -457,6 +409,50 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
               />
             )}
           </div>
+        </div>
+
+        <div className="form-section">
+          <h2 className="section-label">FAQ</h2>
+
+          {form.faq.length === 0 && <p className="field-hint">Nenhuma pergunta ainda.</p>}
+
+          {form.faq.map((item, index) => (
+            <div className="repeatable-item" key={index}>
+              <div className="repeatable-item__fields repeatable-item__fields--faq">
+                <div className="repeatable-item__header">
+                  <Badge variant="neutral">Pergunta {index + 1}</Badge>
+                </div>
+                <label className="form-field">
+                  <span>Pergunta</span>
+                  <input
+                    type="text"
+                    value={item.question}
+                    onChange={(e) => updateFaqItem(index, 'question', e.target.value)}
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Resposta</span>
+                  <textarea
+                    value={item.answer}
+                    onChange={(e) => updateFaqItem(index, 'answer', e.target.value)}
+                    rows={2}
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                className="icon-btn icon-btn--danger"
+                aria-label={`Remover pergunta ${index + 1}`}
+                onClick={() => removeFaqItem(index)}
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+
+          <button type="button" className="btn btn--primary btn--sm" onClick={addFaqItem}>
+            <PlusIcon /> Adicionar pergunta
+          </button>
         </div>
 
         <div className="post-form__actions">
