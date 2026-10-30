@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { PostFrontmatter } from '@admin-data/index.js';
 import {
-  AFFILIATE_PROVIDERS,
-  CATEGORIES,
   PostAlreadyExistsError,
   PostNotFoundError,
   ShaConflictError,
@@ -14,18 +12,13 @@ import { zodIssuesToErrors } from '@admin-data/schema.js';
 import { usePosts } from '../data/PostsContext';
 import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
-import {
-  emptyFormState,
-  formStateToFrontmatter,
-  recordToFormState,
-  type AffiliateFormItem,
-  type PostFormState,
-} from '../lib/postForm';
+import { emptyFormState, formStateToFrontmatter, recordToFormState, type PostFormState } from '../lib/postForm';
 import { renderMarkdownPreview } from '../lib/markdownPreview';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { EmptyState } from '../components/EmptyState';
+import { Badge } from '../components/Badge';
 import { PlusIcon, TrashIcon } from '../components/icons';
 
 export interface PostFormPageProps {
@@ -103,20 +96,12 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
     setForm((f) => ({ ...f, faq: f.faq.filter((_, i) => i !== index) }));
   }
 
-  function addAffiliateItem() {
-    setForm((f) => ({ ...f, affiliates: [...f.affiliates, { label: '', url: '', provider: '' }] }));
-  }
-
-  function updateAffiliateItem<K extends keyof AffiliateFormItem>(index: number, field: K, value: AffiliateFormItem[K]) {
-    setForm((f) => ({
-      ...f,
-      affiliates: f.affiliates.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    }));
-  }
-
-  function removeAffiliateItem(index: number) {
-    setForm((f) => ({ ...f, affiliates: f.affiliates.filter((_, i) => i !== index) }));
-  }
+  // `affiliates`/`relatedSlugsText`/`author`/`tagsText` não têm mais widget de
+  // edição nesta tela (V3 -- ver spec) mas continuam em `PostFormState`,
+  // carregados por `recordToFormState` e devolvidos intactos por
+  // `formStateToFrontmatter` no save. Preservação silenciosa, não remoção de
+  // dados -- NÃO tirar esses campos do objeto de save (reintroduziria o bug
+  // de perda de dados corrigido em `c2dfdd1`).
 
   async function submit(frontmatter: PostFrontmatter, opts?: { forceSha?: string }) {
     setSubmitting(true);
@@ -329,39 +314,6 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
           </label>
         </div>
 
-        <div className="form-row form-row--split">
-          <label className="form-field">
-            <span>Autor</span>
-            <input type="text" value={form.author} onChange={(e) => updateField('author', e.target.value)} />
-          </label>
-          <label className="form-field">
-            <span>Categoria</span>
-            <select value={form.category} onChange={(e) => updateField('category', e.target.value as PostFormState['category'])} required>
-              <option value="" disabled>
-                Selecione uma categoria
-              </option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.category && <span className="field-error">{fieldErrors.category}</span>}
-          </label>
-        </div>
-
-        <div className="form-row">
-          <label className="form-field">
-            <span>Tags (separadas por vírgula)</span>
-            <input
-              type="text"
-              value={form.tagsText}
-              onChange={(e) => updateField('tagsText', e.target.value)}
-              placeholder="cachoeiras, trilhas, roteiro"
-            />
-          </label>
-        </div>
-
         <div className="form-row">
           <label className="form-field form-field--checkbox">
             <input type="checkbox" checked={form.draft} onChange={(e) => updateField('draft', e.target.checked)} />
@@ -424,9 +376,12 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
 
           {form.faq.map((item, index) => (
             <div className="repeatable-item" key={index}>
-              <div className="repeatable-item__fields">
+              <div className="repeatable-item__fields repeatable-item__fields--faq">
+                <div className="repeatable-item__header">
+                  <Badge variant="neutral">Pergunta {index + 1}</Badge>
+                </div>
                 <label className="form-field">
-                  <span>Pergunta {index + 1}</span>
+                  <span>Pergunta</span>
                   <input
                     type="text"
                     value={item.question}
@@ -453,84 +408,9 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
             </div>
           ))}
 
-          <button type="button" className="btn btn--ghost btn--sm" onClick={addFaqItem}>
+          <button type="button" className="btn btn--primary btn--sm" onClick={addFaqItem}>
             <PlusIcon /> Adicionar pergunta
           </button>
-        </div>
-
-        <div className="form-section">
-          <h2 className="section-label">Links de afiliado</h2>
-
-          {form.affiliates.length === 0 && <p className="field-hint">Nenhum link ainda.</p>}
-
-          {form.affiliates.map((item, index) => (
-            <div className="repeatable-item" key={index}>
-              <div className="repeatable-item__fields repeatable-item__fields--affiliate">
-                <label className="form-field">
-                  <span>Rótulo</span>
-                  <input
-                    type="text"
-                    value={item.label}
-                    onChange={(e) => updateAffiliateItem(index, 'label', e.target.value)}
-                    placeholder="Reservar pousada"
-                  />
-                </label>
-                <label className="form-field">
-                  <span>URL</span>
-                  <input
-                    type="text"
-                    value={item.url}
-                    onChange={(e) => updateAffiliateItem(index, 'url', e.target.value)}
-                    placeholder="https://..."
-                  />
-                </label>
-                <label className="form-field">
-                  <span>Provedor</span>
-                  <select
-                    value={item.provider}
-                    onChange={(e) => updateAffiliateItem(index, 'provider', e.target.value as AffiliateFormItem['provider'])}
-                  >
-                    <option value="" disabled>
-                      Selecione
-                    </option>
-                    {AFFILIATE_PROVIDERS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <button
-                type="button"
-                className="icon-btn icon-btn--danger"
-                aria-label={`Remover link de afiliado ${index + 1}`}
-                onClick={() => removeAffiliateItem(index)}
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-
-          <button type="button" className="btn btn--ghost btn--sm" onClick={addAffiliateItem}>
-            <PlusIcon /> Adicionar link
-          </button>
-        </div>
-
-        <div className="form-section">
-          <h2 className="section-label">Posts relacionados</h2>
-
-          <div className="form-row">
-            <label className="form-field">
-              <span>Slugs separados por vírgula</span>
-              <input
-                type="text"
-                value={form.relatedSlugsText}
-                onChange={(e) => updateField('relatedSlugsText', e.target.value)}
-                placeholder="cachoeiras-secretas-urubici, trilha-morro-da-igreja"
-              />
-            </label>
-          </div>
         </div>
 
         <div className="form-row">
