@@ -28,4 +28,41 @@ describe('renderMarkdownPreview', () => {
     const html = renderMarkdownPreview('linha um\nlinha dois\n\nsegundo parágrafo');
     expect(html).toBe('<p>linha um linha dois</p>\n<p>segundo parágrafo</p>');
   });
+
+  it('converte código inline', () => {
+    const html = renderMarkdownPreview('roda `npm run build` antes de subir');
+    expect(html).toContain('<code>npm run build</code>');
+  });
+
+  it('código inline não é afetado por bold/itálico dentro dele', () => {
+    // best-effort: código processado antes de bold/itálico (ver comentário
+    // no próprio arquivo) -- asteriscos dentro de crases não viram <em>/<strong>.
+    const html = renderMarkdownPreview('`*não é itálico*`');
+    expect(html).toContain('<code>*não é itálico*</code>');
+  });
+
+  it('converte lista com marcadores', () => {
+    const html = renderMarkdownPreview('- primeiro\n- segundo');
+    expect(html).toBe('<ul><li>primeiro</li><li>segundo</li></ul>');
+  });
+
+  it('converte lista numerada', () => {
+    const html = renderMarkdownPreview('1. primeiro\n2. segundo');
+    expect(html).toBe('<ol><li>primeiro</li><li>segundo</li></ol>');
+  });
+
+  it('converte citação', () => {
+    const html = renderMarkdownPreview('> uma citação');
+    expect(html).toBe('<blockquote><p>uma citação</p></blockquote>');
+  });
+
+  it('não mistura lista e parágrafo adjacentes', () => {
+    const html = renderMarkdownPreview('texto antes\n- item\ntexto depois');
+    expect(html).toBe('<p>texto antes</p>\n<ul><li>item</li></ul>\n<p>texto depois</p>');
+  });
+
+  it('escapa HTML dentro de citação (marcador > vira &gt; antes do parse, não quebra a detecção)', () => {
+    const html = renderMarkdownPreview('> <script>alert(1)</script>');
+    expect(html).toContain('<blockquote><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></blockquote>');
+  });
 });

@@ -156,3 +156,90 @@ export function UploadIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/* Ícones da MarkdownToolbar (ver components/MarkdownToolbar.tsx) -- mesmo
+   estilo stroke-only acima, exceto onde um glifo preenchido fica mais
+   legível em 20px (bullet/número da lista). */
+
+export function BoldIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M7 4h5a3 3 0 1 1 0 6H7V4z" />
+      <path d="M7 10h6a3 3 0 1 1 0 6H7v-6z" />
+    </svg>
+  );
+}
+
+export function ItalicIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M12 4h5" />
+      <path d="M7 20h5" />
+      <path d="M14 4l-5 16" />
+    </svg>
+  );
+}
+
+export function InlineCodeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M9 7l-5 5 5 5" />
+      <path d="M15 7l5 5-5 5" />
+    </svg>
+  );
+}
+
+export function LinkIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M9.5 14.5l5-5" />
+      <path d="M8 14a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1" />
+      <path d="M16 10a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1" />
+    </svg>
+  );
+}
+
+export function BulletListIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none" />
+      <path d="M9 6h11M9 12h11M9 18h11" />
+    </svg>
+  );
+}
+
+export function NumberedListIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <text x="2" y="8.5" fontSize="7" fontWeight={700} fill="currentColor" stroke="none">
+        1
+      </text>
+      <text x="2" y="14.5" fontSize="7" fontWeight={700} fill="currentColor" stroke="none">
+        2
+      </text>
+      <text x="2" y="20.5" fontSize="7" fontWeight={700} fill="currentColor" stroke="none">
+        3
+      </text>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+    </svg>
+  );
+}
+
+export function QuoteIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M6 6h3v4a3 3 0 0 1-3 3" />
+      <path d="M14 6h3v4a3 3 0 0 1-3 3" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg {...base} width={14} height={14} className={className} aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
