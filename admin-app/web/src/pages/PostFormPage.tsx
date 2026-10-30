@@ -277,7 +277,7 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
                 type="text"
                 value={form.legacySlug}
                 onChange={(e) => updateField('legacySlug', e.target.value)}
-                placeholder="cachoeiras-secretas-urubici"
+                placeholder="ex.: nome-do-artigo-aqui"
                 disabled={isEdit}
                 required
                 pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
@@ -291,6 +291,13 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
                 <span className="field-hint">
                   Vira o nome do arquivo: <code>src/content/posts/{form.legacySlug || '<slug>'}.md</code>. Só minúsculas,
                   números e hífen.
+                  {!form.legacySlug && (
+                    <>
+                      {' '}
+                      <strong>Campo ainda vazio</strong> -- é por isso que o botão de enviar imagem (mais abaixo)
+                      está desabilitado.
+                    </>
+                  )}
                 </span>
               )}
               {fieldErrors.legacySlug && <span className="field-error">{fieldErrors.legacySlug}</span>}

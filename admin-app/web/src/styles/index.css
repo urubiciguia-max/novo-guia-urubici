@@ -40,6 +40,14 @@
   --warning-bg: #fff4e0;
   --neutral-bg: #eceef2;
 
+  /* placeholder de input -- precisa ser visivelmente MAIS claro que --ink
+     (texto real digitado) e --body-text (hints), senão um exemplo plausível
+     no placeholder (ex: um slug real) é lido como valor já preenchido.
+     rgba(26,26,43,.65) sobre --surface branco = 5.34:1 (WCAG AA ok pra texto
+     normal, com folga), claramente mais claro que --body-text (7.7:1) e
+     --ink (~15:1) -- a diferença de peso é o sinal visual, não só a cor. */
+  --placeholder-text: rgba(26, 26, 43, 0.65);
+
   /* forma */
   --radius-card: 14px;
   --radius-pill: 999px;
@@ -932,6 +940,16 @@ a {
 .form-field textarea:focus-visible,
 .form-field select:focus-visible {
   border-color: var(--purple);
+}
+
+/* itálico + cor mais clara -- diferencia exemplo de valor real digitado.
+   Sem isso, navegador usa cor default (pouco distinta do texto real em
+   alguns monitores/brilho), e um placeholder com exemplo plausível (ex: um
+   slug de verdade) é lido como campo já preenchido. */
+.form-field input[type='text']::placeholder,
+.form-field textarea::placeholder {
+  color: var(--placeholder-text);
+  font-style: italic;
 }
 
 .form-field select {
