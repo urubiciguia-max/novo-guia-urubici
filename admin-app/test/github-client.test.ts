@@ -318,6 +318,122 @@ describe('GitHubPostsClient', () => {
     });
   });
 
+  // -- uploadCoverImage ----------------------------------------------------
+
+  describe('uploadCoverImage', () => {
+    const VALID_FILE = { name: 'foto.jpg', mimeType: 'image/jpeg', base64Content: 'ZmFrZS1pbWFnZS1ieXRlcw==' };
+
+    it('upload novo: GET 404 (sem capa existente) seguido de PUT sem sha', async () => {
+      fetchMock
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'img-sha-1' }, commit: { sha: 'commit-sha-img-1' } }));
+
+      const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', VALID_FILE);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      const [getUrl, getInit] = fetchMock.mock.calls[0];
+      expect(getUrl).toContain(
+        '/repos/urubiciguia-max/novo-guia-urubici/contents/src/content/posts/cachoeiras-secretas-urubici-capa.jpg'
+      );
+      expect(getInit.method).toBe('GET');
+
+      const [putUrl, putInit] = fetchMock.mock.calls[1];
+      expect(putUrl).toContain('cachoeiras-secretas-urubici-capa.jpg');
+      expect(putInit.method).toBe('PUT');
+      const sentBody = JSON.parse(putInit.body as string);
+      expect(sentBody.sha).toBeUndefined();
+      expect(sentBody.content).toBe(VALID_FILE.base64Content);
+      expect(sentBody.message).toBe('content: atualiza capa do post "cachoeiras-secretas-urubici"');
+
+      expect(result).toEqual({
+        path: './cachoeiras-secretas-urubici-capa.jpg',
+        sha: 'img-sha-1',
+        commitSha: 'commit-sha-img-1',
+      });
+    });
+
+    it('substituição: GET 200 (capa existente) seguido de PUT incluindo o sha atual', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ content: 'base64-antigo', encoding: 'base64', sha: 'img-sha-velho' }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'img-sha-novo' }, commit: { sha: 'commit-sha-img-2' } }));
+
+      const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', VALID_FILE);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, putInit] = fetchMock.mock.calls[1];
+      const sentBody = JSON.parse(putInit.body as string);
+      expect(sentBody.sha).toBe('img-sha-velho');
+
+      expect(result.sha).toBe('img-sha-novo');
+      expect(result.commitSha).toBe('commit-sha-img-2');
+    });
+
+    it('rejeita mimeType fora da allowlist (SVG) ANTES de qualquer chamada de rede', async () => {
+      const svgFile = { ...VALID_FILE, name: 'icone.svg', mimeType: 'image/svg+xml' };
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', svgFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita mimeType fora da allowlist (PDF disfarçado de imagem) ANTES de qualquer chamada de rede', async () => {
+      const fakeFile = { ...VALID_FILE, name: 'documento.pdf', mimeType: 'application/pdf' };
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', fakeFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita base64Content acima do limite de tamanho ANTES de qualquer chamada de rede', async () => {
+      const bigFile = { ...VALID_FILE, base64Content: 'A'.repeat(1_400_001) };
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', bigFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(['../../.github/workflows/evil', '../secrets', 'a/b', '', '  ', 'Capitais-Invalidas'])(
+      'uploadCoverImage(%j) lança ValidationError sem chamar fetch',
+      async (slug) => {
+        await expect(makeClient().uploadCoverImage(slug, VALID_FILE)).rejects.toBeInstanceOf(ValidationError);
+        expect(fetchMock).not.toHaveBeenCalled();
+      }
+    );
+
+    it('deriva extensão correta pros 3 mimeTypes aceitos', async () => {
+      const cases: Array<[string, string]> = [
+        ['image/jpeg', 'jpg'],
+        ['image/png', 'png'],
+        ['image/webp', 'webp'],
+      ];
+
+      for (const [mimeType, ext] of cases) {
+        fetchMock
+          .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+          .mockResolvedValueOnce(jsonResponse({ content: { sha: 'sha' }, commit: { sha: 'commit-sha' } }));
+
+        const result = await makeClient().uploadCoverImage('cachoeiras-secretas-urubici', {
+          name: `foto.${ext}`,
+          mimeType,
+          base64Content: 'ZmFrZQ==',
+        });
+
+        expect(result.path).toBe(`./cachoeiras-secretas-urubici-capa.${ext}`);
+      }
+    });
+
+    it('conflito de sha na substituição (409) lança ShaConflictError', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ content: 'base64-antigo', encoding: 'base64', sha: 'img-sha-velho' }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'does not match' }), { status: 409 }));
+
+      await expect(makeClient().uploadCoverImage('cachoeiras-secretas-urubici', VALID_FILE)).rejects.toBeInstanceOf(
+        ShaConflictError
+      );
+    });
+  });
+
   // -- token nunca aparece em lugar nenhum da requisição exceto o header --
 
   it('nunca inclui o token no body ou na URL das requisições, só no header Authorization', async () => {
