@@ -14,8 +14,9 @@ backend:
   # Repo confirmado publico (2026-10-30) -> escopo minimo necessario. O Worker
   # so aceita escopos da allowlist em sanitizeScope() (ver oauth-worker/src/index.ts).
   # Chave correta do Decap e "auth_scope" (nao "scope") -> repassada como
-  # query param ?scope= pro endpoint /auth do Worker.
-  auth_scope: public_repo,user
+  # query param ?scope= pro endpoint /auth do Worker. Decap so aceita um
+  # valor unico aqui (enum "repo" | "public_repo"), nao lista.
+  auth_scope: public_repo
 
 # Mostra um link "Ver no site" a partir do preview de cada entrada.
 site_url: https://novo-guia-urubici.pages.dev
