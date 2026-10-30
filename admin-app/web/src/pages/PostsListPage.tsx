@@ -89,9 +89,9 @@ export function PostsListPage({ onNavigate }: { onNavigate: (path: string) => vo
         </label>
       </div>
 
-      {error && <ErrorBanner message={error} />}
-
-      {loading ? (
+      {error ? (
+        <ErrorBanner message={error} />
+      ) : loading ? (
         <Spinner label="Carregando posts…" />
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -150,19 +150,26 @@ export function PostsListPage({ onNavigate }: { onNavigate: (path: string) => vo
                       >
                         <EditIcon />
                       </button>
-                      <a
-                        className={`icon-btn${!post.legacySlug ? ' icon-btn--disabled' : ''}`}
-                        aria-label={`Pré-visualizar "${post.title}"`}
-                        href={post.legacySlug ? `${SITE_URL}/${post.legacySlug}` : undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-disabled={!post.legacySlug}
-                        onClick={(e) => {
-                          if (!post.legacySlug) e.preventDefault();
-                        }}
-                      >
-                        <PreviewIcon />
-                      </a>
+                      {post.legacySlug ? (
+                        <a
+                          className="icon-btn"
+                          aria-label={`Pré-visualizar "${post.title}"`}
+                          href={`${SITE_URL}/${post.legacySlug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <PreviewIcon />
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--disabled"
+                          aria-label={`Pré-visualizar "${post.title}" (indisponível -- post sem slug legado)`}
+                          disabled
+                        >
+                          <PreviewIcon />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="icon-btn icon-btn--danger"

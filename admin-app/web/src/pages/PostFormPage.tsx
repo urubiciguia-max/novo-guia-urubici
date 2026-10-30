@@ -325,7 +325,7 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
         <div className="form-row">
           <div className="form-field">
             <div className="post-form__body-header">
-              <span>Corpo (markdown)</span>
+              <span id="post-body-label">Corpo (markdown)</span>
               <div className="tabs" role="tablist" aria-label="Alternar editor/preview">
                 <button
                   type="button"
@@ -350,12 +350,16 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
             {previewMode ? (
               <div
                 className="post-form__preview"
+                id="post-body"
+                aria-labelledby="post-body-label"
                 // eslint-disable-next-line react/no-danger -- conteúdo escapado em `renderMarkdownPreview` antes de qualquer transformação.
                 dangerouslySetInnerHTML={{ __html: renderMarkdownPreview(form.body) || '<p><em>Vazio.</em></p>' }}
               />
             ) : (
               <textarea
                 className="post-form__body"
+                id="post-body"
+                aria-labelledby="post-body-label"
                 value={form.body}
                 onChange={(e) => updateField('body', e.target.value)}
                 rows={16}

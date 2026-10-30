@@ -24,8 +24,9 @@ export function DashboardPage({ onNavigate }: { onNavigate: (path: string) => vo
     <div className="page">
       <h1>Dashboard</h1>
 
-      {error && <ErrorBanner message={error} />}
-      {loading ? (
+      {error ? (
+        <ErrorBanner message={error} />
+      ) : loading ? (
         <Spinner label="Carregando estatísticas…" />
       ) : (
         <>
