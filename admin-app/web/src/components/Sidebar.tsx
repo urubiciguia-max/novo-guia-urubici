@@ -19,7 +19,7 @@ export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
         <span className="sidebar__logo-mark" aria-hidden="true">
           GU
         </span>
-        <span>Admin CMS</span>
+        <span className="sidebar__logo-text">Admin CMS</span>
       </div>
 
       <nav className="sidebar__nav" aria-label="Navegação principal">
@@ -31,7 +31,7 @@ export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
           onClick={() => onNavigate('/dashboard')}
         >
           <DashboardIcon />
-          Dashboard
+          <span className="sidebar__link-label">Dashboard</span>
         </button>
         <button
           type="button"
@@ -40,18 +40,18 @@ export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
           onClick={() => onNavigate('/posts')}
         >
           <PostsIcon />
-          Artigos
+          <span className="sidebar__link-label">Artigos</span>
         </button>
       </nav>
 
       <div className="sidebar__footer">
         <a className="sidebar__link" href={SITE_URL} target="_blank" rel="noopener noreferrer">
           <SiteIcon />
-          Ver site
+          <span className="sidebar__link-label">Ver site</span>
         </a>
         <button type="button" className="sidebar__link" onClick={onLogout}>
           <LogoutIcon />
-          Sair
+          <span className="sidebar__link-label">Sair</span>
         </button>
       </div>
     </aside>

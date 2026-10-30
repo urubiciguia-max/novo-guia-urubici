@@ -9,10 +9,20 @@
    ========================================================================== */
 
 :root {
-  /* cor de marca do admin (placeholder funcional -- Leonardo ajusta tom/contraste) */
-  --purple: #5b3df0;
-  --purple-dark: #4529c9;
-  --purple-soft: #efeafe;
+  /* cor de marca do admin -- escala OKLCH (perceptualmente uniforme), mesmo
+     hue (280, violeta-azulado) do placeholder do Francisgleydisson, chroma
+     levemente contido pra fugir do "roxo de SaaS genérico" e parecer mais
+     craftado. Contraste calculado (não estimado): branco sobre --purple
+     6.57:1, branco sobre --purple-dark 10:1, --purple sobre --purple-soft
+     5.76:1 -- todos acima do mínimo AA pro uso que recebem.
+     Equivalentes sRGB pra referência rápida no devtools:
+     --purple ~#5444D8  --purple-dark ~#3C2AA9  --purple-soft ~#EDEFFF
+     --purple-bright ~#7775F8 */
+  --purple: oklch(50% 0.215 280);
+  --purple-dark: oklch(40% 0.19 280);
+  --purple-soft: oklch(96% 0.022 280);
+  /* acento sutil pra hover/destaque sobre fundo escuro (sidebar, bg roxo) */
+  --purple-bright: oklch(63% 0.19 280);
 
   /* neutros */
   --ink: #1a1a2b;
@@ -61,6 +71,12 @@ body {
   color: var(--body-text);
   background: var(--bg);
   line-height: 1.5;
+  /* rede de segurança mobile -- nenhum elemento deve criar scroll horizontal
+     na PÁGINA; containers que precisam de scroll próprio (tabela de
+     Artigos, nav da sidebar) já declaram overflow-x:auto neles mesmos, que
+     continua funcionando normalmente dentro de um body com overflow-x
+     contido. */
+  overflow-x: hidden;
 }
 
 h1,
@@ -106,8 +122,23 @@ a {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Foco visível precisa de >=3:1 contra o fundo onde ele aparece (WCAG
+   2.4.11/1.4.11). O anel padrão (--purple-dark) funciona bem sobre
+   superfícies claras (bg branco/cinza -- maioria dos controles), mas fica
+   quase invisível sobre elementos com fundo roxo/saturado -- sidebar, botão
+   primário, card de ação primário, toast. Nesses, o anel vira branco
+   (contraste calculado >=6.5:1 em todos os casos). */
+.sidebar :focus-visible,
+.btn--primary:focus-visible,
+.btn--danger:focus-visible,
+.action-card--primary:focus-visible,
+.toast :focus-visible {
+  outline-color: #fff;
 }
 
 .visually-hidden {
@@ -255,6 +286,46 @@ a {
   min-width: 0;
 }
 
+/* Em TODO o modo "barra horizontal" (abaixo de 860px, onde a sidebar ainda
+   não virou coluna fixa -- ver breakpoint espelhado abaixo) logo + 2 links
+   de nav + 2 links de rodapé com texto não cabem com folga garantida em
+   qualquer largura dessa faixa (320px a 859px) sem apertar ou vazar da
+   tela -- nunca validado visualmente até agora (ver handoff do
+   Francisgleydisson), revisão manual do CSS encontrou isso. Em vez de
+   reduzir o alvo de toque ou deixar a barra vazar, os links viram só ícone
+   (o rótulo continua no DOM/acessível a leitor de tela via o mesmo truque
+   do `.visually-hidden`, só escondido visualmente aqui -- reaparece junto
+   com a coluna vertical a partir de 860px, onde sobra espaço de verdade). */
+@media (max-width: 859px) {
+  .sidebar__logo-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .sidebar__link-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .sidebar__link {
+    padding: 10px;
+  }
+}
+
 @media (min-width: 860px) {
   .app-shell {
     flex-direction: row;
@@ -287,6 +358,27 @@ a {
   .sidebar__footer {
     flex-direction: column;
     margin-top: auto;
+  }
+
+  /* Assinatura visual do item ativo na coluna (desktop) -- barra de
+     destaque na borda, não só a mudança de opacidade do fundo. Via
+     ::before posicionado (não `border-left`) pra não deslocar o padding
+     do texto/ícone. Só faz sentido na coluna vertical -- no modo barra
+     horizontal os links já são ícone-only (ver breakpoint acima), uma
+     barra lateral não leria bem ali. */
+  .sidebar__link {
+    position: relative;
+  }
+
+  .sidebar__link--active::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    border-radius: var(--radius-pill);
+    background: var(--purple-bright);
   }
 
   .app-shell__main {
@@ -488,6 +580,7 @@ a {
 
 .btn--primary:hover:not(:disabled) {
   background: var(--purple-dark);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .btn--ghost {
@@ -507,6 +600,7 @@ a {
 
 .btn--danger:hover:not(:disabled) {
   background: #8f1d17;
+  box-shadow: var(--shadow-card-hover);
 }
 
 .btn--block {
@@ -558,6 +652,8 @@ a {
   border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .badge--success {
@@ -638,12 +734,16 @@ a {
 
 .filters-bar__select select {
   width: 100%;
-  padding: 9px 14px;
+  padding: 9px 32px 9px 14px;
   border-radius: var(--radius-input);
   border: 1px solid var(--line);
   background: var(--surface);
   font: inherit;
   color: var(--ink);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2352525f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
 }
 
 .table-wrap {
@@ -824,6 +924,22 @@ a {
   color: var(--ink);
   width: 100%;
   resize: vertical;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+
+.form-field input[type='text']:focus-visible,
+.form-field input[type='date']:focus-visible,
+.form-field textarea:focus-visible,
+.form-field select:focus-visible {
+  border-color: var(--purple);
+}
+
+.form-field select {
+  padding-right: 32px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2352525f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 .form-field--checkbox {
@@ -935,6 +1051,14 @@ a {
   color: #fff;
   font-size: 0.85rem;
   box-shadow: var(--shadow-card-hover);
+  animation: toast-in 220ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
 }
 
 .toast--success {
@@ -972,6 +1096,7 @@ a {
   justify-content: center;
   padding: 20px;
   z-index: 200;
+  animation: dialog-backdrop-in 150ms ease-out;
 }
 
 .dialog {
@@ -984,6 +1109,20 @@ a {
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--shadow-card-hover);
+  animation: dialog-in 200ms ease-out;
+}
+
+@keyframes dialog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
 }
 
 .dialog__title {
