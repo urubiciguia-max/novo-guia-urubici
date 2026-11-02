@@ -233,6 +233,19 @@ export function QuoteIcon({ className }: IconProps) {
   );
 }
 
+/** Item "Destaque (caixa colorida)" do dropdown Inserir -- caixa com borda
+ *  esquerda grossa (eco da borda colorida que a caixa Destaque de verdade
+ *  tem, ver `.destaque` em index.css) + linhas de texto dentro. */
+export function CalloutIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M5 4v16" strokeWidth={3} />
+      <rect x="5" y="4" width="15" height="16" rx="2" />
+      <path d="M10 9h7M10 13h5" />
+    </svg>
+  );
+}
+
 /** Gatilho do dropdown "Parágrafo" em telas estreitas (ver `.md-toolbar__btn-label`
  *  em index.css) -- linhas de larguras diferentes pra não ser confundido com
  *  ícone de menu hambúrguer (que usa 3 linhas IGUAIS). */

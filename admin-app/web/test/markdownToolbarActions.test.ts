@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   applyHeading,
   applyLinePrefix,
+  buildDestaqueMarkdown,
   buildLinkMarkdown,
+  insertDestaqueMarkdown,
   insertLinkMarkdown,
   wrapInline,
 } from '../src/lib/markdownToolbarActions';
@@ -79,6 +81,49 @@ describe('insertLinkMarkdown (confirmação do modal "Inserir link")', () => {
   it('normaliza URL sem protocolo igual buildLinkMarkdown', () => {
     const result = insertLinkMarkdown('', 0, 0, 'site', 'guiaurubici.com.br/pagina');
     expect(result.text).toBe('[site](https://guiaurubici.com.br/pagina)');
+  });
+});
+
+describe('buildDestaqueMarkdown', () => {
+  it('monta o marcador + corpo numa linha só, cada linha prefixada com "> "', () => {
+    expect(buildDestaqueMarkdown('dica', 'Leve calçado com boa aderência.')).toBe(
+      '> [!DICA]\n> Leve calçado com boa aderência.',
+    );
+  });
+
+  it('usa a keyword certa pra cada tipo (sem acento, maiúsculo, igual remark-destaque.mjs)', () => {
+    expect(buildDestaqueMarkdown('atencao', 'x')).toBe('> [!ATENCAO]\n> x');
+    expect(buildDestaqueMarkdown('importante', 'x')).toBe('> [!IMPORTANTE]\n> x');
+  });
+
+  it('corpo multi-linha: cada linha ganha seu próprio prefixo "> "', () => {
+    expect(buildDestaqueMarkdown('dica', 'linha um\nlinha dois')).toBe('> [!DICA]\n> linha um\n> linha dois');
+  });
+
+  it('corpo com múltiplos parágrafos (linha vazia entre eles): linha vazia também ganha "> "', () => {
+    expect(buildDestaqueMarkdown('dica', 'parágrafo um\n\nparágrafo dois')).toBe(
+      '> [!DICA]\n> parágrafo um\n> \n> parágrafo dois',
+    );
+  });
+});
+
+describe('insertDestaqueMarkdown (confirmação do modal "Inserir destaque")', () => {
+  it('sem seleção original: insere o bloco na posição do cursor, cursor colapsado no fim', () => {
+    const result = insertDestaqueMarkdown('ab', 1, 1, 'dica', 'cuidado com a trilha');
+    const markdown = '> [!DICA]\n> cuidado com a trilha';
+    expect(result.text).toBe(`a${markdown}b`);
+    expect(result.selectionStart).toBe(result.selectionEnd);
+    expect(result.selectionStart).toBe(1 + markdown.length);
+  });
+
+  it('com seleção original: substitui o intervalo [start, end] guardado no clique do item "Destaque"', () => {
+    const text = 'antes da trilha, atenção: acesso com barro depois';
+    const start = text.indexOf('atenção: acesso com barro');
+    const end = start + 'atenção: acesso com barro'.length;
+    const result = insertDestaqueMarkdown(text, start, end, 'atencao', 'acesso com barro em dias de chuva');
+    expect(result.text).toBe(
+      'antes da trilha, > [!ATENCAO]\n> acesso com barro em dias de chuva depois',
+    );
   });
 });
 

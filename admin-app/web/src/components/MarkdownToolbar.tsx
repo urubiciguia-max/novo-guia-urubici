@@ -2,14 +2,18 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import {
   applyHeading,
   applyLinePrefix,
+  insertDestaqueMarkdown,
   insertLinkMarkdown,
   wrapInline,
+  type DestaqueType,
   type SelectionResult,
 } from '../lib/markdownToolbarActions';
+import { DestaqueDialog } from './DestaqueDialog';
 import { LinkDialog } from './LinkDialog';
 import {
   BoldIcon,
   BulletListIcon,
+  CalloutIcon,
   ChevronDownIcon,
   InlineCodeIcon,
   ItalicIcon,
@@ -79,6 +83,31 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
     setLinkDialogOpen(false);
   }
 
+  // Item "Destaque (caixa colorida)" do dropdown Inserir -- mesmo padrão do
+  // botão Link: não insere direto, abre o `DestaqueDialog` e só insere no
+  // confirm. `insertTriggerRef` é o botão-gatilho do dropdown "Inserir" (não
+  // o item "Destaque" em si, que desmonta junto com o menu no clique que
+  // abre o modal) -- é pra ele que o foco volta quando o modal fecha.
+  const [destaqueDialogOpen, setDestaqueDialogOpen] = useState(false);
+  const [destaqueInitialText, setDestaqueInitialText] = useState('');
+  const destaqueSelectionRef = useRef({ start: 0, end: 0 });
+  const insertTriggerRef = useRef<HTMLButtonElement>(null);
+
+  function openDestaqueDialog() {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    destaqueSelectionRef.current = { start, end };
+    setDestaqueInitialText(value.slice(start, end));
+    setDestaqueDialogOpen(true);
+  }
+
+  function handleDestaqueConfirm(type: DestaqueType, text: string) {
+    const { start, end } = destaqueSelectionRef.current;
+    onApply(insertDestaqueMarkdown(value, start, end, type, text));
+    setDestaqueDialogOpen(false);
+  }
+
   return (
     <>
       <div className="md-toolbar" role="toolbar" aria-label="Formatação do texto">
@@ -125,6 +154,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
         />
 
         <ToolbarDropdown
+          triggerRef={insertTriggerRef}
           triggerLabel="Inserir"
           triggerIcon={<PlusIcon />}
           ariaLabel="Inserir elemento"
@@ -144,6 +174,11 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
               icon: <QuoteIcon />,
               onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'quote')),
             },
+            {
+              label: 'Destaque (caixa colorida)',
+              icon: <CalloutIcon />,
+              onSelect: openDestaqueDialog,
+            },
           ]}
         />
       </div>
@@ -153,6 +188,14 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
         initialText={linkInitialText}
         onConfirm={handleLinkConfirm}
         onCancel={() => setLinkDialogOpen(false)}
+      />
+
+      <DestaqueDialog
+        open={destaqueDialogOpen}
+        initialText={destaqueInitialText}
+        returnFocusRef={insertTriggerRef}
+        onConfirm={handleDestaqueConfirm}
+        onCancel={() => setDestaqueDialogOpen(false)}
       />
     </>
   );
@@ -167,6 +210,13 @@ interface ToolbarDropdownProps {
   triggerIcon: ReactNode;
   ariaLabel: string;
   items: DropdownItem[];
+  /** Ref opcional do botão-gatilho, exposto pro componente pai conseguir
+   *  devolver o foco a ele depois que um modal aberto por um ITEM deste
+   *  dropdown (ex: `DestaqueDialog`, aberto pelo item "Destaque") fechar --
+   *  o próprio item que abriu o modal desmonta junto com o menu no mesmo
+   *  clique, então não dá pra confiar em `document.activeElement` capturado
+   *  nesse momento (ver `DestaqueDialog`). Sem isso, usa um ref interno. */
+  triggerRef?: RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -177,10 +227,17 @@ interface ToolbarDropdownProps {
  * `role="menu"`/`menuitem` de verdade exigiria roving tabindex + setas pra
  * não violar WAI-ARIA Authoring Practices, o que é mais do que foi pedido.
  */
-function ToolbarDropdown({ triggerLabel, triggerIcon, ariaLabel, items }: ToolbarDropdownProps) {
+function ToolbarDropdown({
+  triggerLabel,
+  triggerIcon,
+  ariaLabel,
+  items,
+  triggerRef: externalTriggerRef,
+}: ToolbarDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const internalTriggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = externalTriggerRef ?? internalTriggerRef;
 
   useEffect(() => {
     if (!open) return;

@@ -225,6 +225,46 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
     font-size: 0.95rem;
   }
 
+  /*
+   * Caixa "Destaque" (Dica / Atenção / Importante) -- gerada a partir de um
+   * blockquote com marcador `[!DICA]`/`[!ATENCAO]`/`[!IMPORTANTE]` por
+   * `src/lib/remark-destaque.mjs` (remark plugin, build time). O plugin já
+   * troca a tag pra <div class="destaque destaque--<tipo>">, então isso não
+   * conflita com `.post-body :global(blockquote)` acima -- citação normal
+   * continua sendo <blockquote> de verdade, sem o marcador.
+   */
+  .post-body :global(.destaque) {
+    margin: 0 0 1.5em;
+    padding: 14px 18px;
+    border-left: 3px solid var(--green);
+    background: var(--bg-soft);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+    font-size: 0.95rem;
+  }
+
+  .post-body :global(.destaque__label) {
+    margin: 0 0 6px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .post-body :global(.destaque p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .post-body :global(.destaque--dica) {
+    border-left-color: var(--green);
+  }
+
+  .post-body :global(.destaque--atencao) {
+    border-left-color: var(--amber);
+  }
+
+  .post-body :global(.destaque--importante) {
+    border-left-color: var(--red);
+  }
+
   .post-body :global(a) {
     color: var(--green);
     text-decoration: underline;

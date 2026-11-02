@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import remarkDestaque from './src/lib/remark-destaque.mjs';
 
 // https://docs.astro.build/en/reference/configuration-reference/
 export default defineConfig({
@@ -11,4 +12,12 @@ export default defineConfig({
   trailingSlash: 'never',
   compressHTML: true,
   integrations: [sitemap()],
+  markdown: {
+    // Plugin próprio (zero dependência nova) que transforma blockquote com
+    // marcador `[!DICA]`/`[!ATENCAO]`/`[!IMPORTANTE]` na caixa de callout
+    // "Destaque" -- ver src/lib/remark-destaque.mjs pra sintaxe e decisão.
+    // Não substitui os plugins padrão do Astro (gfm/smartypants) -- eles
+    // continuam ativos, este só é anexado à lista.
+    remarkPlugins: [remarkDestaque],
+  },
 });

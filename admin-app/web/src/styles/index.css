@@ -986,6 +986,81 @@ a {
   height: 18px;
 }
 
+/* Grupo de rádios (ex: "Tipo de destaque" no `DestaqueDialog`) -- `fieldset`
+   nativo em vez de `.form-field` (que é um `<label>` único, não serve pra
+   agrupar 3 inputs independentes). Sem borda própria de fieldset (reset
+   abaixo) pra não duplicar a moldura visual que o `.dialog` já dá. */
+.radio-group-field {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-group-field legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0;
+  margin-bottom: 2px;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.radio-option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+  flex-shrink: 0;
+}
+
+/* Cada tipo de destaque já comunica a própria cor no seletor, antes mesmo
+   de inserir -- mesmos tokens semânticos (`--success`/`--warning`/
+   `--danger`) que `.post-form__preview .destaque--*` usa pra caixa
+   inserida, só que aqui no texto do label + no próprio círculo do rádio
+   (`accent-color`), pra reconhecimento rápido entre os 3 (brief do
+   Genilson, item 2). Os 3 hex já têm contraste alto o bastante pra texto
+   sobre `--surface` (mesmos tons usados como `color` em `.badge--*`). */
+.radio-option--dica {
+  color: var(--success);
+}
+
+.radio-option--dica input[type='radio'] {
+  accent-color: var(--success);
+}
+
+.radio-option--atencao {
+  color: var(--warning);
+}
+
+.radio-option--atencao input[type='radio'] {
+  accent-color: var(--warning);
+}
+
+.radio-option--importante {
+  color: var(--danger);
+}
+
+.radio-option--importante input[type='radio'] {
+  accent-color: var(--danger);
+}
+
 .post-form__body-header {
   display: flex;
   align-items: center;
@@ -1185,6 +1260,45 @@ a {
   color: var(--body-text);
 }
 
+/*
+ * Caixa "Destaque" (Dica/Atenção/Importante) no Preview -- espelha visual
+ * do que `src/pages/[...slug].astro` (site publicado) já faz pro mesmo
+ * HTML (`<div class="destaque destaque--<tipo>">`), reaproveitando as
+ * semânticas que o admin já tem (`--success`/`--warning`/`--danger`) em vez
+ * dos tokens `--green`/`--amber`/`--red` do site -- o admin tem identidade
+ * visual própria (roxo, ver topo deste arquivo), essas 3 cores semânticas
+ * já cobrem o mesmo papel (positivo/atenção/perigo) sem inventar token novo.
+ */
+.post-form__preview .destaque {
+  margin: 0 0 0.8em;
+  padding: 12px 16px;
+  border-left: 3px solid var(--success);
+  background: var(--bg);
+  border-radius: 0 var(--radius-input) var(--radius-input) 0;
+}
+
+.post-form__preview .destaque__label {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.post-form__preview .destaque p:last-child {
+  margin-bottom: 0;
+}
+
+.post-form__preview .destaque--dica {
+  border-left-color: var(--success);
+}
+
+.post-form__preview .destaque--atencao {
+  border-left-color: var(--warning);
+}
+
+.post-form__preview .destaque--importante {
+  border-left-color: var(--danger);
+}
+
 .post-form__actions {
   display: flex;
   justify-content: flex-end;
@@ -1372,6 +1486,14 @@ a {
      no ConfirmDialog (título + descrição + ações continuam com respiro
      igual ou melhor). */
   gap: 16px;
+  /* Rede de segurança pra viewport baixo (ex: celular em landscape):
+     sem isso, um dialog mais alto que a tela (DestaqueDialog com os 3
+     campos, ou qualquer formulário futuro) cortava o rodapé/ações pra
+     fora da viewport sem nenhuma forma de rolar até lá. `calc` espelha os
+     20px de padding (topo + base) que o `.dialog-backdrop` já reserva,
+     então o modal nunca encosta nas bordas da tela. */
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   box-shadow: var(--shadow-card-hover);
   animation: dialog-in 200ms ease-out;
 }
@@ -1389,7 +1511,7 @@ a {
   }
 }
 
-/* Dialog de FORMULÁRIO (hoje só o LinkDialog): depois que o `.dialog`
+/* Dialog de FORMULÁRIO (LinkDialog, DestaqueDialog): depois que o `.dialog`
    termina de entrar (`dialog-in`, 200ms), os campos entram em seguida com
    fade + leve deslocamento vertical, em stagger -- reforça a leitura de
    "preencha de cima pra baixo" sem competir com a animação do modal.
@@ -1402,7 +1524,14 @@ a {
   animation: dialog-form-field-in 180ms ease-out backwards;
 }
 
-.dialog--form .form-field:nth-of-type(2) {
+/* Irmão adjacente em vez de `:nth-of-type(2)`: `:nth-of-type` conta posição
+   só entre irmãos da MESMA tag, então funcionava por acaso no LinkDialog
+   (2 `<label>`) mas nunca disparava no DestaqueDialog (1º campo é
+   `<fieldset>`, 2º é `<label>` -- cada um é o único do próprio tipo, nunca
+   "o 2º do seu tipo"). `+` pega qualquer `.form-field` logo depois de outro
+   `.form-field`, independente da tag -- cobre os dois dialogs e qualquer
+   combinação futura de fieldset/label. */
+.dialog--form .form-field + .form-field {
   animation-delay: 40ms;
 }
 

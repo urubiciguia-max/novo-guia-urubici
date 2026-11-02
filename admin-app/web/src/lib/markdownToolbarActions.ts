@@ -187,3 +187,47 @@ export function applyLinePrefix(text: string, start: number, end: number, kind: 
     return { newLine: marker + line, oldPrefixLen: 0, newPrefixLen: marker.length };
   });
 }
+
+export type DestaqueType = 'dica' | 'atencao' | 'importante';
+
+// Keyword em maiúsculo/sem acento que vai dentro de `[!...]` -- mesma
+// convenção travada pelo Jurandir (`remark-destaque.mjs`, lado do site) e
+// espelhada em `markdownPreview.ts` (admin). Ver documentação completa da
+// sintaxe no topo de `remark-destaque.mjs`.
+const DESTAQUE_MARKER_KEYWORDS: Record<DestaqueType, string> = {
+  dica: 'DICA',
+  atencao: 'ATENCAO',
+  importante: 'IMPORTANTE',
+};
+
+/** Monta a sintaxe `> [!TIPO]\n> linha1\n> linha2...` que `markdownPreview.ts`
+ *  (admin) e `remark-destaque.mjs` (site publicado) reconhecem como caixa
+ *  "Destaque". Cada linha do corpo (inclusive uma linha vazia entre dois
+ *  parágrafos, se o usuário digitou múltiplos) ganha o prefixo `> `, MESMO
+ *  padrão que `applyLinePrefix`/`transformLines` já usa pra citação/lista
+ *  -- não reinventa uma regra de prefixo diferente só pra este caso. */
+export function buildDestaqueMarkdown(type: DestaqueType, body: string): string {
+  const markerLine = `[!${DESTAQUE_MARKER_KEYWORDS[type]}]`;
+  const lines = [markerLine, ...body.split('\n')];
+  return lines.map((line) => `> ${line}`).join('\n');
+}
+
+/** Confirmação do modal "Inserir destaque" (`DestaqueDialog`): monta o
+ *  blockquote marcado (via `buildDestaqueMarkdown`) e substitui o intervalo
+ *  [start, end] -- a posição do cursor/seleção capturada no momento em que
+ *  o item "Destaque" do dropdown Inserir foi escolhido, ANTES do modal abrir
+ *  (mesmo padrão de `insertLinkMarkdown`/`LinkDialog`). Cursor fica
+ *  colapsado no fim do bloco inserido. */
+export function insertDestaqueMarkdown(
+  text: string,
+  start: number,
+  end: number,
+  type: DestaqueType,
+  body: string,
+): SelectionResult {
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+  const markdown = buildDestaqueMarkdown(type, body);
+  const pos = start + markdown.length;
+  return { text: before + markdown + after, selectionStart: pos, selectionEnd: pos };
+}

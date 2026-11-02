@@ -115,4 +115,85 @@ describe('renderMarkdownPreview', () => {
     const html = renderMarkdownPreview('> <script>alert(1)</script>');
     expect(html).toContain('<blockquote><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></blockquote>');
   });
+
+  describe('Destaque (blockquote com marcador [!TIPO] -- mesma convenção do remark-destaque.mjs)', () => {
+    it('[!DICA] vira caixa "destaque--dica" com ícone/label gerados, sem a linha do marcador', () => {
+      const html = renderMarkdownPreview('> [!DICA]\n> Leve calçado com boa aderência.');
+      expect(html).toBe(
+        '<div class="destaque destaque--dica">' +
+          '<p class="destaque__label"><span aria-hidden="true">💡</span> Dica</p>' +
+          '<p>Leve calçado com boa aderência.</p>' +
+          '</div>',
+      );
+    });
+
+    it('[!ATENCAO] vira "destaque--atencao" com ícone/label de Atenção', () => {
+      const html = renderMarkdownPreview('> [!ATENCAO]\n> Em dias de chuva o acesso fica escorregadio.');
+      expect(html).toBe(
+        '<div class="destaque destaque--atencao">' +
+          '<p class="destaque__label"><span aria-hidden="true">⚠️</span> Atenção</p>' +
+          '<p>Em dias de chuva o acesso fica escorregadio.</p>' +
+          '</div>',
+      );
+    });
+
+    it('[!IMPORTANTE] vira "destaque--importante" com ícone/label de Importante', () => {
+      const html = renderMarkdownPreview('> [!IMPORTANTE]\n> Guia local é recomendado.');
+      expect(html).toBe(
+        '<div class="destaque destaque--importante">' +
+          '<p class="destaque__label"><span aria-hidden="true">❗</span> Importante</p>' +
+          '<p>Guia local é recomendado.</p>' +
+          '</div>',
+      );
+    });
+
+    it('marcador é case-insensitive e aceita sem acento ([!atencao] == [!ATENÇÃO])', () => {
+      const semAcentoMinusculo = renderMarkdownPreview('> [!atencao]\n> cuidado');
+      const comAcentoMaiusculo = renderMarkdownPreview('> [!ATENÇÃO]\n> cuidado');
+      expect(semAcentoMinusculo).toContain('destaque--atencao');
+      expect(comAcentoMaiusculo).toContain('destaque--atencao');
+      expect(semAcentoMinusculo).toBe(comAcentoMaiusculo);
+    });
+
+    it('corpo do Destaque aceita markdown normal (bold/itálico/link), igual citação', () => {
+      const html = renderMarkdownPreview('> [!DICA]\n> **Leve** um *guia* e veja [o mapa](https://example.com)');
+      expect(html).toContain('<strong>Leve</strong>');
+      expect(html).toContain('<em>guia</em>');
+      expect(html).toContain('<a href="https://example.com" target="_blank" rel="noopener noreferrer">o mapa</a>');
+      expect(html).toContain('destaque--dica');
+    });
+
+    it('[Reuters] (citação real com colchete, sem "!") continua citação normal, não vira Destaque', () => {
+      const html = renderMarkdownPreview('> [Reuters] algo foi dito');
+      expect(html).toBe('<blockquote><p>[Reuters] algo foi dito</p></blockquote>');
+    });
+
+    it('[!algumacoisa] que bate o padrão [!...] mas não é uma das 3 keywords continua citação normal', () => {
+      const html = renderMarkdownPreview('> [!ALGUMACOISA]\n> texto qualquer');
+      expect(html).toBe('<blockquote><p>[!ALGUMACOISA] texto qualquer</p></blockquote>');
+    });
+
+    it('blockquote sem marcador nenhum continua citação normal (comportamento 100% inalterado)', () => {
+      const html = renderMarkdownPreview('> uma citação qualquer');
+      expect(html).toBe('<blockquote><p>uma citação qualquer</p></blockquote>');
+    });
+
+    it('marcador sozinho, sem corpo depois, não gera <p> vazio', () => {
+      const html = renderMarkdownPreview('> [!DICA]');
+      expect(html).toBe(
+        '<div class="destaque destaque--dica"><p class="destaque__label"><span aria-hidden="true">💡</span> Dica</p></div>',
+      );
+    });
+
+    it('integração toolbar -> preview: markdown montado por insertDestaqueMarkdown (DestaqueDialog) renderiza a caixa certa', () => {
+      // Mesma sintaxe que `insertDestaqueMarkdown` (markdownToolbarActions.ts)
+      // produz ao confirmar o modal "Inserir destaque" -- garante que as duas
+      // pontas (toolbar insere / preview reconhece) continuam alinhadas.
+      const html = renderMarkdownPreview('> [!IMPORTANTE]\n> Esta trilha não tem sinalização oficial.');
+      expect(html).toContain('destaque--importante');
+      expect(html).toContain('❗');
+      expect(html).toContain('Importante');
+      expect(html).toContain('Esta trilha não tem sinalização oficial.');
+    });
+  });
 });

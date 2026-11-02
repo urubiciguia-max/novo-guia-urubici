@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MarkdownToolbar } from '../src/components/MarkdownToolbar';
+import { renderMarkdownPreview } from '../src/lib/markdownPreview';
 import type { SelectionResult } from '../src/lib/markdownToolbarActions';
 
 /**
@@ -284,5 +285,127 @@ describe('MarkdownToolbar', () => {
     await user.click(screen.getByRole('button', { name: 'fora' }));
 
     expect(screen.queryByRole('group', { name: 'Inserir elemento' })).not.toBeInTheDocument();
+  });
+
+  describe('Destaque (caixa colorida)', () => {
+    async function openDestaqueDialog(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+      const menu = screen.getByRole('group', { name: 'Inserir elemento' });
+      await user.click(within(menu).getByRole('button', { name: /Destaque \(caixa colorida\)/ }));
+      return screen.getByRole('dialog', { name: 'Inserir destaque' });
+    }
+
+    it('item "Destaque (caixa colorida)" existe no dropdown Inserir', async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+      await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+      const menu = screen.getByRole('group', { name: 'Inserir elemento' });
+      expect(within(menu).getByRole('button', { name: /Destaque \(caixa colorida\)/ })).toBeInTheDocument();
+    });
+
+    it('sem seleção: abre com "Dica" marcada por padrão, texto vazio, foco no primeiro rádio, Inserir desabilitado', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRange(textarea, 0, 0);
+
+      const dialog = await openDestaqueDialog(user);
+
+      const dicaRadio = within(dialog).getByRole('radio', { name: /Dica/ }) as HTMLInputElement;
+      expect(dicaRadio.checked).toBe(true);
+      await waitFor(() => expect(dicaRadio).toHaveFocus());
+      expect((within(dialog).getByLabelText('Texto do destaque') as HTMLTextAreaElement).value).toBe('');
+      expect(within(dialog).getByRole('button', { name: 'Inserir' })).toBeDisabled();
+    });
+
+    it('com seleção: pré-preenche "Texto do destaque" com a seleção', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="acesso com barro em dias de chuva" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRange(textarea, 0, textarea.value.length);
+
+      const dialog = await openDestaqueDialog(user);
+
+      expect((within(dialog).getByLabelText('Texto do destaque') as HTMLTextAreaElement).value).toBe(
+        'acesso com barro em dias de chuva',
+      );
+    });
+
+    it('Inserir fica desabilitado até o texto estar preenchido (tipo já nasce com "Dica" marcada)', async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+      const dialog = await openDestaqueDialog(user);
+      const insertBtn = within(dialog).getByRole('button', { name: 'Inserir' });
+
+      expect(insertBtn).toBeDisabled();
+      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'cuidado com a trilha');
+      expect(insertBtn).not.toBeDisabled();
+    });
+
+    it('escolher "Atenção" + preencher texto + Inserir monta "> [!ATENCAO]\\n> texto", fecha o modal e devolve o foco pro botão Inserir', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRange(textarea, 0, 0);
+      const insertTrigger = screen.getByRole('button', { name: 'Inserir elemento' });
+
+      const dialog = await openDestaqueDialog(user);
+      await user.click(within(dialog).getByRole('radio', { name: /Atenção/ }));
+      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'acesso escorregadio na chuva');
+      await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+
+      expect(screen.queryByRole('dialog', { name: 'Inserir destaque' })).not.toBeInTheDocument();
+      expect(textarea.value).toBe('> [!ATENCAO]\n> acesso escorregadio na chuva');
+      // Foco volta pro botão "Inserir" da toolbar (gatilho do dropdown), não
+      // pro textarea nem pro item de menu (que já desmontou) -- ver comentário
+      // do `returnFocusRef` em DestaqueDialog.tsx.
+      await waitFor(() => expect(insertTrigger).toHaveFocus());
+    });
+
+    it('Cancelar fecha o modal sem alterar o textarea e devolve o foco pro botão Inserir', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="texto original" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      const insertTrigger = screen.getByRole('button', { name: 'Inserir elemento' });
+
+      const dialog = await openDestaqueDialog(user);
+      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'algo');
+      await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+      expect(screen.queryByRole('dialog', { name: 'Inserir destaque' })).not.toBeInTheDocument();
+      expect(textarea.value).toBe('texto original');
+      await waitFor(() => expect(insertTrigger).toHaveFocus());
+    });
+
+    it('Esc fecha o modal de destaque sem alterar o textarea e devolve o foco pro botão Inserir', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="texto original" />);
+      const insertTrigger = screen.getByRole('button', { name: 'Inserir elemento' });
+
+      await openDestaqueDialog(user);
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog', { name: 'Inserir destaque' })).not.toBeInTheDocument();
+      await waitFor(() => expect(insertTrigger).toHaveFocus());
+    });
+
+    it('markdown inserido pelo fluxo completo da UI já nasce reconhecível pelo Preview como caixa colorida', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRange(textarea, 0, 0);
+
+      const dialog = await openDestaqueDialog(user);
+      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'leve água e protetor solar');
+      await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+
+      expect(textarea.value).toBe('> [!DICA]\n> leve água e protetor solar');
+      expect(renderMarkdownPreview(textarea.value)).toBe(
+        '<div class="destaque destaque--dica">' +
+          '<p class="destaque__label"><span aria-hidden="true">💡</span> Dica</p>' +
+          '<p>leve água e protetor solar</p>' +
+          '</div>',
+      );
+    });
   });
 });
