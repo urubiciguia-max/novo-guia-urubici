@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { applyHeading, applyLink, applyLinePrefix, wrapInline } from '../src/lib/markdownToolbarActions';
+import {
+  applyHeading,
+  applyLinePrefix,
+  buildLinkMarkdown,
+  insertLinkMarkdown,
+  wrapInline,
+} from '../src/lib/markdownToolbarActions';
 import { renderMarkdownPreview } from '../src/lib/markdownPreview';
 
 describe('wrapInline', () => {
@@ -31,19 +37,48 @@ describe('wrapInline', () => {
   });
 });
 
-describe('applyLink', () => {
-  it('sem seleção: insere placeholder com "texto do link" pré-selecionado', () => {
-    const result = applyLink('abc', 1, 1);
-    // placeholder da URL nasce com "https://" (bug da Marivone: placeholder
-    // "url" cru não virava <a> no Preview) -- ver markdownToolbarActions.ts.
-    expect(result.text).toBe('a[texto do link](https://url)bc');
-    expect(result.text.slice(result.selectionStart, result.selectionEnd)).toBe('texto do link');
+describe('buildLinkMarkdown', () => {
+  it('monta [texto](url) com URL já com protocolo', () => {
+    expect(buildLinkMarkdown('cachoeira', 'https://example.com')).toBe('[cachoeira](https://example.com)');
   });
 
-  it('com seleção: usa seleção como texto do link e pré-seleciona o placeholder "https://url"', () => {
-    const result = applyLink('veja a cachoeira', 7, 16); // seleciona "cachoeira"
-    expect(result.text).toBe('veja a [cachoeira](https://url)');
-    expect(result.text.slice(result.selectionStart, result.selectionEnd)).toBe('https://url');
+  it('normaliza URL sem protocolo pra https:// (mesma regra do Preview -- `resolveLinkHref`)', () => {
+    expect(buildLinkMarkdown('site', 'guiaurubici.com.br/pagina')).toBe(
+      '[site](https://guiaurubici.com.br/pagina)',
+    );
+    expect(buildLinkMarkdown('site', 'www.site.com.br')).toBe('[site](https://www.site.com.br)');
+  });
+
+  it('esquema explícito não-http(s) não é bloqueado aqui (só o Preview filtra pra proteger o innerHTML)', () => {
+    expect(buildLinkMarkdown('contato', 'mailto:contato@example.com')).toBe(
+      '[contato](mailto:contato@example.com)',
+    );
+  });
+});
+
+describe('insertLinkMarkdown (confirmação do modal "Inserir link")', () => {
+  it('sem seleção original: insere [texto](url) na posição do cursor, cursor colapsado no fim do link', () => {
+    const result = insertLinkMarkdown('ab', 1, 1, 'cachoeira', 'https://example.com');
+    expect(result.text).toBe('a[cachoeira](https://example.com)b');
+    expect(result.selectionStart).toBe(result.selectionEnd);
+    expect(result.selectionStart).toBe(1 + '[cachoeira](https://example.com)'.length);
+  });
+
+  it('com seleção original: substitui o intervalo [start, end] guardado no clique do botão Link', () => {
+    const text = 'veja a cachoeira';
+    const result = insertLinkMarkdown(text, 7, 16, 'cachoeira', 'https://example.com'); // "cachoeira" selecionado
+    expect(result.text).toBe('veja a [cachoeira](https://example.com)');
+  });
+
+  it('"Texto" editado no modal pode diferir da seleção original -- usa o que está no campo, não a seleção', () => {
+    const text = 'veja a cachoeira';
+    const result = insertLinkMarkdown(text, 7, 16, 'a cachoeira linda', 'https://example.com');
+    expect(result.text).toBe('veja a [a cachoeira linda](https://example.com)');
+  });
+
+  it('normaliza URL sem protocolo igual buildLinkMarkdown', () => {
+    const result = insertLinkMarkdown('', 0, 0, 'site', 'guiaurubici.com.br/pagina');
+    expect(result.text).toBe('[site](https://guiaurubici.com.br/pagina)');
   });
 });
 
@@ -135,16 +170,18 @@ describe('bug Marivone (QA feat-admin-body-toolbar): integração toolbar -> pre
   // seleção e ir direto pro Preview não pode mostrar sintaxe crua (critério
   // de pronto do handoff original) nem renderizar HTML errado.
 
-  it('Link sem seleção: placeholder já nasce reconhecível pelo Preview como <a>', () => {
-    const result = applyLink('', 0, 0);
-    expect(result.text).toBe('[texto do link](https://url)');
+  it('Link via modal: markdown inserido já nasce reconhecível pelo Preview como <a>', () => {
+    const result = insertLinkMarkdown('', 0, 0, 'cachoeira', 'https://example.com');
+    expect(result.text).toBe('[cachoeira](https://example.com)');
     expect(renderMarkdownPreview(result.text)).toBe(
-      '<p><a href="https://url" target="_blank" rel="noopener noreferrer">texto do link</a></p>',
+      '<p><a href="https://example.com" target="_blank" rel="noopener noreferrer">cachoeira</a></p>',
     );
   });
 
-  it('Link: URL real colada sem protocolo (cenário de usuário não-técnico) também renderiza como <a>', () => {
-    expect(renderMarkdownPreview('[cachoeira](guiaurubici.com.br/pagina)')).toBe(
+  it('Link via modal: URL digitada sem protocolo (cenário de usuário não-técnico) também renderiza como <a>', () => {
+    const result = insertLinkMarkdown('', 0, 0, 'cachoeira', 'guiaurubici.com.br/pagina');
+    expect(result.text).toBe('[cachoeira](https://guiaurubici.com.br/pagina)');
+    expect(renderMarkdownPreview(result.text)).toBe(
       '<p><a href="https://guiaurubici.com.br/pagina" target="_blank" rel="noopener noreferrer">cachoeira</a></p>',
     );
     expect(renderMarkdownPreview('[site](www.site.com.br)')).toBe(

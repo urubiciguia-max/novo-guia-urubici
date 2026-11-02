@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   applyHeading,
-  applyLink,
   applyLinePrefix,
+  insertLinkMarkdown,
   wrapInline,
   type SelectionResult,
 } from '../lib/markdownToolbarActions';
+import { LinkDialog } from './LinkDialog';
 import {
   BoldIcon,
   BulletListIcon,
@@ -53,73 +54,107 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
     onApply(transform(value, start, end));
   }
 
+  // Botão Link não insere direto -- abre o modal `LinkDialog` e só insere
+  // no confirm. `linkSelectionRef` guarda a posição do cursor/seleção no
+  // momento do CLIQUE (igual `runTransform` lê hoje), porque a inserção de
+  // verdade só acontece depois, quando o usuário confirma o modal -- nesse
+  // meio tempo a seleção ao vivo do textarea não é mais confiável (o campo
+  // perde o foco pro modal).
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkInitialText, setLinkInitialText] = useState('');
+  const linkSelectionRef = useRef({ start: 0, end: 0 });
+
+  function openLinkDialog() {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    linkSelectionRef.current = { start, end };
+    setLinkInitialText(value.slice(start, end));
+    setLinkDialogOpen(true);
+  }
+
+  function handleLinkConfirm(label: string, url: string) {
+    const { start, end } = linkSelectionRef.current;
+    onApply(insertLinkMarkdown(value, start, end, label, url));
+    setLinkDialogOpen(false);
+  }
+
   return (
-    <div className="md-toolbar" role="toolbar" aria-label="Formatação do texto">
-      <button
-        type="button"
-        className="md-toolbar__btn"
-        aria-label="Negrito"
-        onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '**'))}
-      >
-        <BoldIcon />
-      </button>
-      <button
-        type="button"
-        className="md-toolbar__btn"
-        aria-label="Itálico"
-        onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '*'))}
-      >
-        <ItalicIcon />
-      </button>
-      <button
-        type="button"
-        className="md-toolbar__btn"
-        aria-label="Código inline"
-        onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '`'))}
-      >
-        <InlineCodeIcon />
-      </button>
-      <button type="button" className="md-toolbar__btn" aria-label="Link" onClick={() => runTransform(applyLink)}>
-        <LinkIcon />
-      </button>
+    <>
+      <div className="md-toolbar" role="toolbar" aria-label="Formatação do texto">
+        <button
+          type="button"
+          className="md-toolbar__btn"
+          aria-label="Negrito"
+          onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '**'))}
+        >
+          <BoldIcon />
+        </button>
+        <button
+          type="button"
+          className="md-toolbar__btn"
+          aria-label="Itálico"
+          onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '*'))}
+        >
+          <ItalicIcon />
+        </button>
+        <button
+          type="button"
+          className="md-toolbar__btn"
+          aria-label="Código inline"
+          onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '`'))}
+        >
+          <InlineCodeIcon />
+        </button>
+        <button type="button" className="md-toolbar__btn" aria-label="Link" onClick={openLinkDialog}>
+          <LinkIcon />
+        </button>
 
-      <span className="md-toolbar__separator" aria-hidden="true" />
+        <span className="md-toolbar__separator" aria-hidden="true" />
 
-      <ToolbarDropdown
-        triggerLabel="Parágrafo"
-        triggerIcon={<ParagraphStyleIcon />}
-        ariaLabel="Estilo de parágrafo"
-        items={[
-          { label: 'Parágrafo', onSelect: () => runTransform((t, s) => applyHeading(t, s, 0)) },
-          { label: 'Título H2', onSelect: () => runTransform((t, s) => applyHeading(t, s, 2)) },
-          { label: 'Título H3', onSelect: () => runTransform((t, s) => applyHeading(t, s, 3)) },
-          { label: 'Título H4', onSelect: () => runTransform((t, s) => applyHeading(t, s, 4)) },
-        ]}
+        <ToolbarDropdown
+          triggerLabel="Parágrafo"
+          triggerIcon={<ParagraphStyleIcon />}
+          ariaLabel="Estilo de parágrafo"
+          items={[
+            { label: 'Parágrafo', onSelect: () => runTransform((t, s) => applyHeading(t, s, 0)) },
+            { label: 'Título H2', onSelect: () => runTransform((t, s) => applyHeading(t, s, 2)) },
+            { label: 'Título H3', onSelect: () => runTransform((t, s) => applyHeading(t, s, 3)) },
+            { label: 'Título H4', onSelect: () => runTransform((t, s) => applyHeading(t, s, 4)) },
+          ]}
+        />
+
+        <ToolbarDropdown
+          triggerLabel="Inserir"
+          triggerIcon={<PlusIcon />}
+          ariaLabel="Inserir elemento"
+          items={[
+            {
+              label: 'Lista com marcadores',
+              icon: <BulletListIcon />,
+              onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'bullet')),
+            },
+            {
+              label: 'Lista numerada',
+              icon: <NumberedListIcon />,
+              onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'numbered')),
+            },
+            {
+              label: 'Citação',
+              icon: <QuoteIcon />,
+              onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'quote')),
+            },
+          ]}
+        />
+      </div>
+
+      <LinkDialog
+        open={linkDialogOpen}
+        initialText={linkInitialText}
+        onConfirm={handleLinkConfirm}
+        onCancel={() => setLinkDialogOpen(false)}
       />
-
-      <ToolbarDropdown
-        triggerLabel="Inserir"
-        triggerIcon={<PlusIcon />}
-        ariaLabel="Inserir elemento"
-        items={[
-          {
-            label: 'Lista com marcadores',
-            icon: <BulletListIcon />,
-            onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'bullet')),
-          },
-          {
-            label: 'Lista numerada',
-            icon: <NumberedListIcon />,
-            onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'numbered')),
-          },
-          {
-            label: 'Citação',
-            icon: <QuoteIcon />,
-            onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'quote')),
-          },
-        ]}
-      />
-    </div>
+    </>
   );
 }
 

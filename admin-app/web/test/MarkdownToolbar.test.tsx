@@ -83,7 +83,7 @@ describe('MarkdownToolbar', () => {
     expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('importante');
   });
 
-  it('Link sem seleção pré-seleciona "texto do link" pra sobrescrever', async () => {
+  it('Link sem seleção abre modal vazio, foco no campo URL, Inserir desabilitado', async () => {
     const user = userEvent.setup();
     render(<Harness initialValue="" />);
     const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
@@ -91,12 +91,18 @@ describe('MarkdownToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Link' }));
 
-    expect(textarea.value).toBe('[texto do link](https://url)');
-    await waitFor(() => expect(textarea).toHaveFocus());
-    expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('texto do link');
+    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+    const urlInput = within(dialog).getByLabelText('URL') as HTMLInputElement;
+    const textInput = within(dialog).getByLabelText('Texto') as HTMLInputElement;
+    expect(urlInput.value).toBe('');
+    expect(textInput.value).toBe('');
+    await waitFor(() => expect(urlInput).toHaveFocus());
+    expect(within(dialog).getByRole('button', { name: 'Inserir' })).toBeDisabled();
+    // textarea não muda enquanto o modal só está aberto, sem confirmar.
+    expect(textarea.value).toBe('');
   });
 
-  it('Link com seleção usa a seleção como texto e pré-seleciona "https://url"', async () => {
+  it('Link com seleção pré-preenche "Texto" com a seleção, "URL" continua vazio', async () => {
     const user = userEvent.setup();
     render(<Harness initialValue="veja a cachoeira" />);
     const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
@@ -104,8 +110,91 @@ describe('MarkdownToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Link' }));
 
-    expect(textarea.value).toBe('veja a [cachoeira](https://url)');
-    expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('https://url');
+    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+    expect((within(dialog).getByLabelText('Texto') as HTMLInputElement).value).toBe('cachoeira');
+    expect((within(dialog).getByLabelText('URL') as HTMLInputElement).value).toBe('');
+  });
+
+  it('Inserir fica desabilitado até URL e Texto estarem preenchidos', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialValue="" />);
+    await user.click(screen.getByRole('button', { name: 'Link' }));
+    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+    const insertBtn = within(dialog).getByRole('button', { name: 'Inserir' });
+
+    expect(insertBtn).toBeDisabled();
+    await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
+    expect(insertBtn).toBeDisabled();
+    await user.type(within(dialog).getByLabelText('Texto'), 'cachoeira');
+    expect(insertBtn).not.toBeDisabled();
+  });
+
+  it('Inserir monta [Texto](URL) na posição onde a seleção estava quando o modal abriu, fecha o modal e devolve o foco pro botão Link', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialValue="veja a cachoeira" />);
+    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+    selectRange(textarea, 7, 16); // "cachoeira"
+    const linkBtn = screen.getByRole('button', { name: 'Link' });
+
+    await user.click(linkBtn);
+    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+    await user.type(within(dialog).getByLabelText('URL'), 'guiaurubici.com.br/trilha');
+    await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
+    expect(textarea.value).toBe('veja a [cachoeira](https://guiaurubici.com.br/trilha)');
+    // Foco volta pro botão Link (mesmo padrão do ConfirmDialog: volta pro
+    // elemento que abriu o diálogo) -- não pro textarea.
+    await waitFor(() => expect(linkBtn).toHaveFocus());
+  });
+
+  it('Cancelar fecha o modal sem alterar o textarea e devolve o foco pro botão Link', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialValue="veja a cachoeira" />);
+    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+    selectRange(textarea, 7, 16);
+    const linkBtn = screen.getByRole('button', { name: 'Link' });
+
+    await user.click(linkBtn);
+    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+    await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
+    expect(textarea.value).toBe('veja a cachoeira');
+    await waitFor(() => expect(linkBtn).toHaveFocus());
+  });
+
+  it('Esc fecha o modal de link sem alterar o textarea e devolve o foco pro botão Link', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialValue="veja a cachoeira" />);
+    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+    selectRange(textarea, 7, 16);
+    const linkBtn = screen.getByRole('button', { name: 'Link' });
+
+    await user.click(linkBtn);
+    expect(screen.getByRole('dialog', { name: 'Inserir link' })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
+    expect(textarea.value).toBe('veja a cachoeira');
+    await waitFor(() => expect(linkBtn).toHaveFocus());
+  });
+
+  it('clique no backdrop fecha o modal de link sem alterar o textarea', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialValue="veja a cachoeira" />);
+    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+    selectRange(textarea, 7, 16);
+
+    await user.click(screen.getByRole('button', { name: 'Link' }));
+    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+    const backdrop = dialog.parentElement as HTMLElement;
+    await user.click(backdrop);
+
+    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
+    expect(textarea.value).toBe('veja a cachoeira');
   });
 
   it('dropdown Parágrafo abre, aplica H2 na linha do cursor e fecha o menu', async () => {

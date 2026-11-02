@@ -4,12 +4,14 @@
  * do campo `body` + a seleção atual do textarea e devolve o novo texto +
  * onde a seleção deve ficar depois. Puro de propósito: sem DOM aqui, sem
  * `useState` -- fácil de testar (`test/markdownToolbarActions.test.ts`) e
- * reusar tanto pros botões simples (negrito/itálico/código/link) quanto
- * pros dropdowns (Parágrafo, Inserir).
+ * reusar tanto pros botões simples (negrito/itálico/código) quanto pros
+ * dropdowns (Parágrafo, Inserir) e pro modal "Inserir link" (`LinkDialog`).
  *
  * Estilo "editor do GitHub": insere sintaxe markdown na posição do cursor,
  * não é WYSIWYG contenteditable (decisão do brief, ver handoff do Genilson).
  */
+
+import { resolveLinkHref } from './markdownPreview';
 
 export interface SelectionResult {
   text: string;
@@ -52,35 +54,36 @@ export function wrapInline(text: string, start: number, end: number, marker: str
   };
 }
 
-const LINK_PLACEHOLDER_TEXT = 'texto do link';
-// Com protocolo explícito desde o nascimento: `renderMarkdownPreview` passou
-// a aceitar URL sem protocolo também (ver markdownPreview.ts), mas o
-// placeholder nasce já reconhecível ANTES do usuário trocar por uma URL de
-// verdade -- e o "https://" também sinaliza visualmente "troque isso" (bug
-// encontrado pela Marivone no QA: placeholder "url" cru não virava <a> no
-// Preview).
-const LINK_PLACEHOLDER_URL = 'https://url';
+/** Monta a sintaxe `[texto](url)` normalizando a URL com a MESMA regra do
+ *  Preview (`resolveLinkHref` em `markdownPreview.ts`): sem protocolo ganha
+ *  `https://` automaticamente. Esquema explícito não-http(s) (`mailto:`,
+ *  `tel:`, ...) não é bloqueado aqui -- `resolveLinkHref` devolve `null`
+ *  nesse caso só pra proteger o `dangerouslySetInnerHTML` do Preview; na
+ *  hora de MONTAR o markdown (não renderizar HTML), não há esse risco, então
+ *  cai no fallback e usa a URL exatamente como o usuário digitou. */
+export function buildLinkMarkdown(text: string, url: string): string {
+  const href = resolveLinkHref(url) ?? url;
+  return `[${text}](${href})`;
+}
 
-/** Botão Link. Sem seleção: insere `[texto do link](https://url)` com
- *  "texto do link" pré-selecionado pra sobrescrever. Com seleção: usa a
- *  seleção como texto do link e deixa "https://url" pré-selecionado dentro
- *  dos parênteses, pronto pra colar a URL por cima. */
-export function applyLink(text: string, start: number, end: number): SelectionResult {
+/** Confirmação do modal "Inserir link" (`LinkDialog`): monta `[texto](url)`
+ *  (via `buildLinkMarkdown`) e substitui o intervalo [start, end] -- a
+ *  posição do cursor/seleção capturada no momento em que o botão Link foi
+ *  clicado, ANTES do modal abrir (`MarkdownToolbar` guarda isso, já que a
+ *  inserção real só acontece depois, no confirm). Cursor fica colapsado no
+ *  fim do link inserido. */
+export function insertLinkMarkdown(
+  text: string,
+  start: number,
+  end: number,
+  label: string,
+  url: string,
+): SelectionResult {
   const before = text.slice(0, start);
   const after = text.slice(end);
-
-  if (start === end) {
-    const insert = `[${LINK_PLACEHOLDER_TEXT}](${LINK_PLACEHOLDER_URL})`;
-    const selStart = start + 1;
-    const selEnd = selStart + LINK_PLACEHOLDER_TEXT.length;
-    return { text: before + insert + after, selectionStart: selStart, selectionEnd: selEnd };
-  }
-
-  const selected = text.slice(start, end);
-  const insert = `[${selected}](${LINK_PLACEHOLDER_URL})`;
-  const urlStart = start + 1 + selected.length + 2;
-  const urlEnd = urlStart + LINK_PLACEHOLDER_URL.length;
-  return { text: before + insert + after, selectionStart: urlStart, selectionEnd: urlEnd };
+  const markdown = buildLinkMarkdown(label, url);
+  const pos = start + markdown.length;
+  return { text: before + markdown + after, selectionStart: pos, selectionEnd: pos };
 }
 
 export type HeadingLevel = 0 | 2 | 3 | 4;
