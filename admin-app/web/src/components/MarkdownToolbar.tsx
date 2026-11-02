@@ -93,6 +93,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           { label: 'Parágrafo', onSelect: () => runTransform((t, s) => applyHeading(t, s, 0)) },
           { label: 'Título H2', onSelect: () => runTransform((t, s) => applyHeading(t, s, 2)) },
           { label: 'Título H3', onSelect: () => runTransform((t, s) => applyHeading(t, s, 3)) },
+          { label: 'Título H4', onSelect: () => runTransform((t, s) => applyHeading(t, s, 4)) },
         ]}
       />
 

@@ -123,7 +123,7 @@ describe('MarkdownToolbar', () => {
     await waitFor(() => expect(textarea).toHaveFocus());
   });
 
-  it('dropdown Parágrafo não lista H1', async () => {
+  it('dropdown Parágrafo não lista H1, mas lista H2/H3/H4 nessa ordem', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
@@ -132,6 +132,26 @@ describe('MarkdownToolbar', () => {
     expect(within(menu).getByRole('button', { name: 'Parágrafo' })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: 'Título H2' })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: 'Título H3' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Título H4' })).toBeInTheDocument();
+
+    const labels = within(menu)
+      .getAllByRole('button')
+      .map((btn) => btn.textContent);
+    expect(labels).toEqual(['Parágrafo', 'Título H2', 'Título H3', 'Título H4']);
+  });
+
+  it('dropdown Parágrafo aplica H4 na linha do cursor', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialValue="Minha seção" />);
+    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+    selectRange(textarea, 3, 3);
+
+    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
+    const menu = screen.getByRole('group', { name: 'Estilo de parágrafo' });
+    await user.click(within(menu).getByRole('button', { name: 'Título H4' }));
+
+    expect(textarea.value).toBe('#### Minha seção');
+    await waitFor(() => expect(textarea).toHaveFocus());
   });
 
   it('dropdown Inserir aplica lista com marcadores em seleção multi-linha', async () => {

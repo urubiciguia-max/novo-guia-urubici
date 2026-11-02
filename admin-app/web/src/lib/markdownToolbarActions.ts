@@ -83,9 +83,9 @@ export function applyLink(text: string, start: number, end: number): SelectionRe
   return { text: before + insert + after, selectionStart: urlStart, selectionEnd: urlEnd };
 }
 
-export type HeadingLevel = 0 | 2 | 3;
+export type HeadingLevel = 0 | 2 | 3 | 4;
 
-const HEADING_RE = /^(#{1,3})\s+/;
+const HEADING_RE = /^(#{1,4})\s+/;
 
 /** Dropdown "Parágrafo": aplica no nível de uma única linha (a que contém o
  *  cursor), nunca em múltiplas linhas de uma seleção -- um heading é sempre

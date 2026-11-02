@@ -59,8 +59,29 @@ describe('applyHeading', () => {
     expect(result.text).toBe('### Título');
   });
 
+  it('aplica H4 numa linha sem heading', () => {
+    const result = applyHeading('Olá mundo', 2, 4);
+    expect(result.text).toBe('#### Olá mundo');
+    expect(result.selectionStart).toBe(result.selectionEnd);
+  });
+
+  it('troca H3 por H4 na mesma linha (sem duplicar #)', () => {
+    const result = applyHeading('### Título', 5, 4);
+    expect(result.text).toBe('#### Título');
+  });
+
+  it('troca H4 por H2 na mesma linha (sem duplicar #)', () => {
+    const result = applyHeading('#### Título', 6, 2);
+    expect(result.text).toBe('## Título');
+  });
+
   it('"Parágrafo" (level 0) remove o heading existente', () => {
     const result = applyHeading('### Título', 5, 0);
+    expect(result.text).toBe('Título');
+  });
+
+  it('"Parágrafo" (level 0) remove um heading H4 existente', () => {
+    const result = applyHeading('#### Título', 6, 0);
     expect(result.text).toBe('Título');
   });
 

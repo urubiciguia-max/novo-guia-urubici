@@ -12,6 +12,10 @@ describe('renderMarkdownPreview', () => {
     expect(renderMarkdownPreview('# Título\n## Subtítulo')).toBe('<h1>Título</h1>\n<h2>Subtítulo</h2>');
   });
 
+  it('converte H4 (não deixa "####" cru nem para no H3)', () => {
+    expect(renderMarkdownPreview('#### Um subtítulo menor')).toBe('<h4>Um subtítulo menor</h4>');
+  });
+
   it('converte bold e itálico', () => {
     const html = renderMarkdownPreview('isto é **forte** e isto é *itálico*');
     expect(html).toContain('<strong>forte</strong>');
