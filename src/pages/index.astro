@@ -90,6 +90,8 @@ const stays = [
         href={`/${heroPost.slug}`}
         title={heroPost.data.title}
         excerpt={heroPost.data.description}
+        image={heroPost.data.cover}
+        imageAlt={heroPost.data.coverAlt}
       />
     )}
 
@@ -106,6 +108,8 @@ const stays = [
                 title={post.data.title}
                 excerpt={post.data.description}
                 tag={post.data.category}
+                image={post.data.cover}
+                imageAlt={post.data.coverAlt}
               />
             ))}
           </div>
