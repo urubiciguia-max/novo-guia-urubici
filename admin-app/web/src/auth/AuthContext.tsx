@@ -2,10 +2,15 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { loginWithGitHub } from './popupLogin';
 import { clearToken, loadToken, saveToken } from '../lib/session';
 import { createPostsClient, type PostsClient } from '../lib/postsClient';
+import { createPagesClient, type PagesClient } from '../lib/pagesClient';
 
 interface AuthState {
   status: 'logged-out' | 'logging-in' | 'logged-in';
   client: PostsClient | null;
+  /** Mesma sessão/token de `client`, só que pro client de páginas
+   *  institucionais (ver `lib/pagesClient.ts`) -- instanciado aqui junto,
+   *  pra `PagesProvider` não precisar reimplementar leitura de token. */
+  pagesClient: PagesClient | null;
   error: string | null;
   login: () => Promise<void>;
   logout: () => void;
@@ -56,8 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const client = useMemo(() => (token ? createPostsClient(token) : null), [token]);
+  const pagesClient = useMemo(() => (token ? createPagesClient(token) : null), [token]);
 
-  const value: AuthState = { status, client, error, login, logout, handleUnauthorized };
+  const value: AuthState = { status, client, pagesClient, error, login, logout, handleUnauthorized };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

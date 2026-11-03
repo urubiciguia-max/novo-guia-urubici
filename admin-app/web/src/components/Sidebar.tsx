@@ -1,16 +1,19 @@
-import { DashboardIcon, LogoutIcon, PostsIcon, SiteIcon } from './icons';
+import { DashboardIcon, DocIcon, LogoutIcon, PostsIcon, SiteIcon } from './icons';
 import { SITE_URL } from '../lib/env';
 
 export interface SidebarProps {
-  active: 'dashboard' | 'posts';
+  active: 'dashboard' | 'posts' | 'pages';
   onNavigate: (path: string) => void;
   onLogout: () => void;
 }
 
 /**
- * Só com os itens que têm tela/função real no MVP (Dashboard, Artigos) --
- * sem links mortos pra Menu/Páginas/Equipe (não existem nesta fase). Ver
- * regra 6 do escopo na task do Genilson.
+ * "Páginas" fica numa seção própria ("Conteúdo institucional"), separada
+ * de "Principal" (Dashboard/Artigos) -- separação visual deliberada pedida
+ * na spec (páginas institucionais fixas, sem publicação/categoria, não são
+ * "mais um tipo de post"). Ícone `DocIcon` (documento simples) em vez de
+ * `PostsIcon` (que já carrega a semântica de "artigo de blog com linhas de
+ * texto") pra reforçar a diferença à primeira vista.
  */
 export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
   return (
@@ -41,6 +44,17 @@ export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
         >
           <PostsIcon />
           <span className="sidebar__link-label">Artigos</span>
+        </button>
+
+        <p className="sidebar__section-label">Conteúdo institucional</p>
+        <button
+          type="button"
+          className={`sidebar__link${active === 'pages' ? ' sidebar__link--active' : ''}`}
+          aria-current={active === 'pages' ? 'page' : undefined}
+          onClick={() => onNavigate('/pages')}
+        >
+          <DocIcon />
+          <span className="sidebar__link-label">Páginas</span>
         </button>
       </nav>
 

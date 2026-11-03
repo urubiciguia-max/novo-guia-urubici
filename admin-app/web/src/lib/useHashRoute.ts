@@ -50,3 +50,14 @@ export function matchEditRoute(path: string): string | null {
   const match = /^\/posts\/([^/]+)\/editar$/.exec(path);
   return match ? decodeURIComponent(match[1]) : null;
 }
+
+/**
+ * Casa `/pages/:slug` contra o path atual. Devolve o `slug` ou `null`.
+ * Sem sufixo `/editar` (diferente de posts) porque não existe rota
+ * `/pages/novo` com que colidir -- páginas não têm fluxo de criação
+ * (lista fechada de 4), então `/pages/<slug>` só pode significar "editar".
+ */
+export function matchPageEditRoute(path: string): string | null {
+  const match = /^\/pages\/([^/]+)$/.exec(path);
+  return match ? decodeURIComponent(match[1]) : null;
+}
