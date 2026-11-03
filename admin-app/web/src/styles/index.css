@@ -363,6 +363,21 @@ a {
     padding: 0 12px 6px;
   }
 
+  /* `.sidebar__nav` usa `gap: 4px` uniforme entre TODOS os filhos -- ótimo
+     pra separar item de item dentro da mesma seção, mas deixa o label de
+     uma seção nova (ex: "Conteúdo institucional", chegou com Páginas)
+     visualmente mais perto do ÚLTIMO ITEM DA SEÇÃO ANTERIOR (Artigos) do
+     que do seu próprio item (Páginas) -- quebra a lei da proximidade,
+     some como "mais um link" em vez de dono do grupo abaixo. Confirmado
+     visualmente (screenshot 1280px) antes de mexer. `:not(:first-child)`
+     deixa "Principal" (primeiro label, já tem respiro do `gap: 24px` da
+     logo acima) intocado -- só empurra o 2º label em diante. 14px some
+     com o gap:4px existente pra ~18px, mesma escala já usada em
+     `.post-form`/`.page` (não é valor novo arbitrário). */
+  .sidebar__section-label:not(:first-child) {
+    margin-top: 14px;
+  }
+
   .sidebar__footer {
     flex-direction: column;
     margin-top: auto;
@@ -892,6 +907,29 @@ a {
 .field-hint {
   color: var(--body-text);
   font-size: 0.78rem;
+  /* `.form-field` (o `<label>` pai) é `font-weight: 600` e isso cascateia
+     pra qualquer texto dentro dele, `.field-hint` incluso -- sem resetar
+     aqui, um hint secundário (ex: "Vira o <title>...", ou o contador de
+     caracteres do título/descrição de Páginas) fica com o MESMO peso
+     bold do label principal, só diferindo na cor. Peso bold "grita"
+     importância que a cor (mais clara) já nega -- mismatch de hierarquia.
+     400 deixa claro que é dado secundário em qualquer lugar que a classe
+     apareça (dentro ou fora de `.form-field`), sem mudar nada pra quem já
+     usava (cor/tamanho continuam os mesmos). */
+  font-weight: 400;
+}
+
+/* Contador de caracteres (Título/Descrição de Páginas, ver `PageFormPage`)
+   perto do limite -- pedido explícito do handoff. Mesmos tokens semânticos
+   usados no resto do admin (`--warning`/`--danger`), não cor nova. */
+.field-hint--near-limit {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.field-hint--limit {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 /* ==========================================================================

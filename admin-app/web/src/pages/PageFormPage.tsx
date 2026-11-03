@@ -23,6 +23,18 @@ export interface PageFormPageProps {
 const EMPTY_FORM: PageFormState = { title: '', description: '', body: '' };
 
 /**
+ * Classe de cor do contador "(X/max)" perto do label -- puramente
+ * apresentação (não valida nada, `maxLength` do input já impede passar do
+ * limite). `--near-limit` nos últimos 10%, `--limit` ao atingir o máximo.
+ * Ver `.field-hint--near-limit`/`.field-hint--limit` em `index.css`.
+ */
+function charCountHintClass(length: number, max: number): string {
+  if (length >= max) return ' field-hint--limit';
+  if (length >= max * 0.9) return ' field-hint--near-limit';
+  return '';
+}
+
+/**
  * Editor de uma página institucional -- SEM categoria/capa/autor/draft/data
  * (essa página não tem nada disso, diferente de Artigos). Sempre edição
  * nunca criação: `slug` vem fixo da rota (`/pages/:slug`), não existe
@@ -208,7 +220,10 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
           <div className="form-row">
             <label className="form-field">
               <span>
-                Título <span className="field-hint">({form.title.length}/90)</span>
+                Título{' '}
+                <span className={`field-hint${charCountHintClass(form.title.length, 90)}`}>
+                  ({form.title.length}/90)
+                </span>
               </span>
               <input
                 type="text"
@@ -225,7 +240,10 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
           <div className="form-row">
             <label className="form-field">
               <span>
-                Descrição (meta/SEO) <span className="field-hint">({form.description.length}/160)</span>
+                Descrição (meta/SEO){' '}
+                <span className={`field-hint${charCountHintClass(form.description.length, 160)}`}>
+                  ({form.description.length}/160)
+                </span>
               </span>
               <textarea
                 value={form.description}
