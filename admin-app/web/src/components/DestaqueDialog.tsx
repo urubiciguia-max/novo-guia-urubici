@@ -44,14 +44,26 @@ export function DestaqueDialog({ open, initialText, returnFocusRef, onConfirm, o
   const [type, setType] = useState<DestaqueType>('dica');
   const [text, setText] = useState('');
   const firstRadioRef = useRef<HTMLInputElement>(null);
+  /** Diferente do `LinkDialog`/`ConfirmDialog` (cujo `triggerRef` nasce
+   *  `null` e só é preenchido dentro do `if (open)`), o `returnFocusRef`
+   *  aqui vem de FORA já apontando pra um botão real no DOM desde antes
+   *  deste componente montar -- então o `else` abaixo não pode usar
+   *  "`returnFocusRef.current` existe" como sinal de "estava aberto e
+   *  fechou", ou dispara `.focus()` (e o scroll que vem junto) no mount
+   *  inicial, sem o modal nunca ter aberto. `wasOpenRef` guarda
+   *  explicitamente "este efeito já viu `open === true`", só autorizando
+   *  a devolução de foco na transição real `true -> false`. */
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     if (open) {
+      wasOpenRef.current = true;
       setType('dica');
       setText(initialText);
       firstRadioRef.current?.focus();
-    } else if (returnFocusRef.current) {
-      returnFocusRef.current.focus();
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      returnFocusRef.current?.focus();
     }
     // Só reage à abertura/fechamento (`open`) -- `initialText` é lido uma
     // vez no momento em que o modal abre, não deve re-sincronizar enquanto
