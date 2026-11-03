@@ -1,5 +1,5 @@
 ---
-title: "Sobre o Guia Urubici"
+title: "Sobre nós"
 description: "Conheça o Guia Urubici: quem escreve, como escolhemos o que recomendar e por que confiar no nosso guia de viagem sobre Urubici-SC."
 ---
 

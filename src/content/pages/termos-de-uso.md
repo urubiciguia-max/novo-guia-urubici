@@ -4,7 +4,7 @@ description: "Termos de uso do site Guia Urubici: regras de uso do conteúdo, pr
 ---
 
 _Texto institucional de exemplo, gerado no scaffold do site — revisar com um
-advogado antes de ir pra produção de verdade._
+advogado antes de publicar em produção._
 
 ## 1. Aceitação dos termos
 
