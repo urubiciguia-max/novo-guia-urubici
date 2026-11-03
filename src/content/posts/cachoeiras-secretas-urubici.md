@@ -6,7 +6,7 @@ updatedDate: '2026-02-14'
 tags:
   - cachoeiras
   - trilhas
-draft: true
+draft: false
 author: Equipe Guia de Urubici
 category: O Que Fazer
 faq:
