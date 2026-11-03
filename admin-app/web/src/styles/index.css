@@ -1273,6 +1273,90 @@ a {
   color: var(--purple-dark);
 }
 
+/* Menu flutuante de seleção (ver components/MarkdownToolbar.tsx) -- aparece
+   acima (ou, sem espaço na viewport, abaixo) de um trecho selecionado no
+   `<textarea>` do corpo, estilo Medium/Notion. `position: fixed` porque o
+   componente não tem (nem precisa de) um ancestral posicionado em comum com
+   o textarea -- `top`/`left` chegam calculados via `computeSelectionMenuPosition`
+   (`lib/textareaCaretPosition.ts`) e são aplicados inline.
+
+   Animação própria (`md-selection-menu-in`) em vez de reaproveitar
+   `md-toolbar-menu-in`: aquela assume o menu nasce de um gatilho fixo acima
+   dele (translateY negativo + transform-origin top left, como um dropdown
+   convencional). Este menu pode nascer ACIMA ou ABAIXO da seleção (flip de
+   viewport em `computeSelectionMenuPosition`) e fica centrado sobre o meio
+   do trecho selecionado, não ancorado a um botão -- um fade+scale a partir
+   do centro (sem deslocamento vertical) é o único que fica certo nos dois
+   casos, como o "pop" de menu de seleção do Medium/Notion. */
+.md-selection-menu {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  box-shadow: var(--shadow-card-hover);
+  animation: md-selection-menu-in 140ms ease-out;
+}
+
+@keyframes md-selection-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Botões menores que os da toolbar fixa -- o menu flutuante é um atalho
+   compacto, não precisa do mesmo padding generoso. */
+.md-selection-menu__btn {
+  height: 28px;
+  padding: 0 7px;
+  font-size: 0.75rem;
+}
+
+/* Hover herdado de `.md-toolbar__btn:hover` pinta o fundo de `--surface`
+   (branco) -- na toolbar fixa isso contrasta contra o `--neutral-bg`
+   (cinza) do container, mas este menu JÁ é `--surface` branco: sem esta
+   regra o hover ficava praticamente invisível (só a borda sutil
+   `--line` a 10% de opacidade denunciava, sem mudança de fundo).
+   `:not(:active)` é necessário pra não ganhar de `.md-toolbar__btn:active`
+   (mesma especificidade entre si, então empate vai pra quem vem depois no
+   arquivo -- sem o `:not`, este fix de hover passaria a vencer o estado de
+   "pressionado" dentro do menu flutuante, apagando o feedback roxo do
+   clique). */
+.md-selection-menu .md-toolbar__btn:hover:not(:active) {
+  background: var(--neutral-bg);
+  border-color: var(--line);
+}
+
+/* Escala tipográfica simulando a própria hierarquia que o clique produz --
+   contraste de TAMANHO (não só peso) deixa explícito, antes de aplicar,
+   que H2 > H3 > H4. Texto puro (não ícone) continua de propósito: pro
+   usuário leigo "H2"/"H3"/"H4" é inequívoco, um glifo genérico de heading
+   exigiria tooltip pra significar o mesmo. */
+.md-selection-menu__btn--h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.md-selection-menu__btn--h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.md-selection-menu__btn--h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--body-text);
+}
+
 .post-form__body {
   font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
   font-size: 0.85rem;

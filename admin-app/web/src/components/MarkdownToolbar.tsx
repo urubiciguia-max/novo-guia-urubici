@@ -6,8 +6,10 @@ import {
   insertLinkMarkdown,
   wrapInline,
   type DestaqueType,
+  type HeadingLevel,
   type SelectionResult,
 } from '../lib/markdownToolbarActions';
+import { computeSelectionMenuPosition, type FloatingMenuPosition } from '../lib/textareaCaretPosition';
 import { DestaqueDialog } from './DestaqueDialog';
 import { LinkDialog } from './LinkDialog';
 import {
@@ -108,6 +110,158 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
     setDestaqueDialogOpen(false);
   }
 
+  // Menu flutuante de seleção (estilo Medium/Notion): aparece acima de um
+  // trecho selecionado no textarea com botões H2/H3/H4 + Link, pra não
+  // obrigar o usuário a ir até o dropdown "Parágrafo" lá no topo da toolbar
+  // fixa toda vez que quiser transformar uma linha em título (pedido do
+  // handoff). O dropdown "Parágrafo" continua existindo -- ver comentário
+  // dele mais abaixo -- como fallback 100% por teclado/Tab, já que o menu
+  // flutuante em si é posicionado com `position: fixed` fora da ordem normal
+  // do DOM (não dá pra alcançar por Tab a partir do textarea).
+  //
+  // `floatingPos`: null = escondido. Não-null = coordenadas calculadas pela
+  // última seleção não vazia detectada.
+  // `floatingDismissed`: true depois de Esc/clique fora -- a seleção pode
+  // continuar a mesma, mas o usuário pediu pra fechar; só reabre se a seleção
+  // mudar de novo OU se o atalho Alt+Enter for usado (ver efeito de teclado).
+  const [floatingPos, setFloatingPos] = useState<FloatingMenuPosition | null>(null);
+  const [floatingDismissed, setFloatingDismissed] = useState(false);
+  const floatingMenuRef = useRef<HTMLDivElement>(null);
+  const floatingFirstBtnRef = useRef<HTMLButtonElement>(null);
+
+  const floatingMenuVisible = floatingPos !== null && !floatingDismissed;
+
+  // Alt+Enter precisa focar o primeiro botão do menu DEPOIS que ele existir
+  // no DOM -- `setState` não aplica sincronamente, então chamar `.focus()`
+  // na mesma função que chama `setFloatingDismissed(false)` focaria um ref
+  // ainda nulo (o menu só remonta no próximo commit). Esta flag registra a
+  // intenção e o efeito abaixo foca assim que `floatingMenuVisible` virar
+  // true por causa dela -- seleção feita via mouse/teclado normal NUNCA seta
+  // essa flag, então nunca rouba o foco do textarea à toa.
+  const focusMenuOnShowRef = useRef(false);
+
+  useEffect(() => {
+    if (floatingMenuVisible && focusMenuOnShowRef.current) {
+      focusMenuOnShowRef.current = false;
+      floatingFirstBtnRef.current?.focus();
+    }
+  }, [floatingMenuVisible]);
+
+  // Detecção de seleção: igual ao pedido do handoff, via `mouseup`/`keyup`
+  // no textarea (não `onSelect` do React -- a toolbar não é quem renderiza o
+  // `<textarea>`, só recebe a ref dele via prop, então precisa de listener
+  // nativo). Recalcula a posição toda vez que a seleção deixa de estar vazia
+  // e também reabre o menu se o usuário tinha fechado (ex: voltou a apertar
+  // Shift depois de um Esc) -- ver nota no `floatingDismissed` acima.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+
+    function syncFromSelection(skipKeys?: Set<string>, key?: string) {
+      if (key && skipKeys?.has(key)) return;
+      const start = el!.selectionStart ?? 0;
+      const end = el!.selectionEnd ?? 0;
+      if (start === end) {
+        setFloatingPos(null);
+        return;
+      }
+      setFloatingPos(computeSelectionMenuPosition(el!, start, end));
+      setFloatingDismissed(false);
+    }
+
+    // Escape é tratado só pelo listener de teclado global (fecha o menu) --
+    // sem este filtro, o `keyup` do PRÓPRIO Escape (disparado pelo navegador
+    // ao soltar a tecla, depois do `keydown` já ter fechado) reabriria o menu
+    // imediatamente, já que a seleção em si não muda com Esc.
+    const SKIP_ON_KEYUP = new Set(['Escape']);
+
+    function onMouseUp() {
+      syncFromSelection();
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      syncFromSelection(SKIP_ON_KEYUP, e.key);
+    }
+    function onScroll() {
+      const start = el!.selectionStart ?? 0;
+      const end = el!.selectionEnd ?? 0;
+      if (start === end) return;
+      setFloatingPos(computeSelectionMenuPosition(el!, start, end));
+    }
+
+    el.addEventListener('mouseup', onMouseUp);
+    el.addEventListener('keyup', onKeyUp);
+    el.addEventListener('scroll', onScroll);
+    return () => {
+      el.removeEventListener('mouseup', onMouseUp);
+      el.removeEventListener('keyup', onKeyUp);
+      el.removeEventListener('scroll', onScroll);
+    };
+  }, [textareaRef]);
+
+  // Fecha ao clicar fora (textarea e o próprio menu contam como "dentro"),
+  // ao perder a seleção não se aplica aqui -- já é coberto pelo efeito acima.
+  useEffect(() => {
+    if (!floatingMenuVisible) return;
+
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      const insideMenu = floatingMenuRef.current?.contains(target);
+      const insideTextarea = textareaRef.current?.contains(target);
+      if (!insideMenu && !insideTextarea) {
+        setFloatingDismissed(true);
+      }
+    }
+
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [floatingMenuVisible, textareaRef]);
+
+  // Atalho de teclado pedido no handoff: com uma seleção não vazia ativa,
+  // Alt+Enter leva o foco pro primeiro botão do menu flutuante (abre/reabre
+  // mesmo se tinha sido fechado com Esc) -- cobre o caso "Shift+setas pra
+  // selecionar, depois um atalho pra abrir o menu" sem depender de ordem de
+  // Tab (o menu é `position: fixed`, fora do fluxo normal do DOM). Esc, com
+  // foco no textarea OU dentro do próprio menu, fecha e devolve o foco pro
+  // textarea (que preserva a seleção/cursor internos mesmo sem estar
+  // focado -- mesma garantia que `LinkDialog`/`DestaqueDialog` já assumem).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const el = textareaRef.current;
+      if (!el) return;
+      const active = document.activeElement;
+      const focusInTextarea = active === el;
+      const focusInMenu = !!floatingMenuRef.current?.contains(active);
+      if (!focusInTextarea && !focusInMenu) return;
+
+      if (e.key === 'Enter' && e.altKey) {
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        if (start === end) return;
+        e.preventDefault();
+        focusMenuOnShowRef.current = true;
+        setFloatingPos(computeSelectionMenuPosition(el, start, end));
+        setFloatingDismissed(false);
+      } else if (e.key === 'Escape' && floatingMenuVisible) {
+        e.preventDefault();
+        setFloatingDismissed(true);
+        el.focus();
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [textareaRef, floatingMenuVisible]);
+
+  function applyFloatingHeading(level: HeadingLevel) {
+    runTransform((t, s) => applyHeading(t, s, level));
+    setFloatingPos(null);
+  }
+
+  function openLinkDialogFromFloatingMenu() {
+    setFloatingPos(null);
+    openLinkDialog();
+  }
+
   return (
     <>
       <div className="md-toolbar" role="toolbar" aria-label="Formatação do texto">
@@ -182,6 +336,51 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           ]}
         />
       </div>
+
+      {floatingMenuVisible && floatingPos && (
+        <div
+          ref={floatingMenuRef}
+          className="md-selection-menu"
+          role="group"
+          aria-label="Formatação rápida da seleção"
+          style={{ top: floatingPos.top, left: floatingPos.left }}
+        >
+          <button
+            ref={floatingFirstBtnRef}
+            type="button"
+            className="md-toolbar__btn md-selection-menu__btn md-selection-menu__btn--h2"
+            aria-label="Título H2"
+            onClick={() => applyFloatingHeading(2)}
+          >
+            H2
+          </button>
+          <button
+            type="button"
+            className="md-toolbar__btn md-selection-menu__btn md-selection-menu__btn--h3"
+            aria-label="Título H3"
+            onClick={() => applyFloatingHeading(3)}
+          >
+            H3
+          </button>
+          <button
+            type="button"
+            className="md-toolbar__btn md-selection-menu__btn md-selection-menu__btn--h4"
+            aria-label="Título H4"
+            onClick={() => applyFloatingHeading(4)}
+          >
+            H4
+          </button>
+          <span className="md-toolbar__separator" aria-hidden="true" />
+          <button
+            type="button"
+            className="md-toolbar__btn md-selection-menu__btn"
+            aria-label="Link"
+            onClick={openLinkDialogFromFloatingMenu}
+          >
+            <LinkIcon />
+          </button>
+        </div>
+      )}
 
       <LinkDialog
         open={linkDialogOpen}

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MarkdownToolbar } from '../src/components/MarkdownToolbar';
@@ -44,6 +44,24 @@ function Harness({ initialValue = '' }: { initialValue?: string }) {
 function selectRange(el: HTMLTextAreaElement, start: number, end: number) {
   el.focus();
   el.setSelectionRange(start, end);
+}
+
+/** Mesma seleção de `selectRange`, mas dispara o `mouseup` que o menu
+ *  flutuante escuta de verdade pra detectar seleção (ver efeito em
+ *  `MarkdownToolbar.tsx`) -- `setSelectionRange` sozinho não emite nenhum
+ *  evento no jsdom (nem emitiria num browser real: é uma seleção
+ *  simulada/instantânea, não um gesto de mouse/teclado). */
+function selectRangeViaMouse(el: HTMLTextAreaElement, start: number, end: number) {
+  selectRange(el, start, end);
+  fireEvent.mouseUp(el);
+}
+
+function getSelectionMenu() {
+  return screen.getByRole('group', { name: 'Formatação rápida da seleção' });
+}
+
+function querySelectionMenu() {
+  return screen.queryByRole('group', { name: 'Formatação rápida da seleção' });
 }
 
 describe('MarkdownToolbar', () => {
@@ -285,6 +303,131 @@ describe('MarkdownToolbar', () => {
     await user.click(screen.getByRole('button', { name: 'fora' }));
 
     expect(screen.queryByRole('group', { name: 'Inserir elemento' })).not.toBeInTheDocument();
+  });
+
+  describe('Menu flutuante de seleção (H2/H3/H4 + Link ao marcar texto)', () => {
+    it('não aparece sem seleção (seleção colapsada no mouseup)', async () => {
+      render(<Harness initialValue="melhores trilhas" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 3, 3);
+
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+    });
+
+    it('aparece ao selecionar texto via mouseup, com H2/H3/H4 e Link', () => {
+      render(<Harness initialValue="melhores trilhas de Urubici" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 0, 16); // "melhores trilhas"
+
+      const menu = getSelectionMenu();
+      expect(within(menu).getByRole('button', { name: 'Título H2' })).toBeInTheDocument();
+      expect(within(menu).getByRole('button', { name: 'Título H3' })).toBeInTheDocument();
+      expect(within(menu).getByRole('button', { name: 'Título H4' })).toBeInTheDocument();
+      expect(within(menu).getByRole('button', { name: 'Link' })).toBeInTheDocument();
+    });
+
+    it('aparece também ao selecionar via teclado (keyup com seleção não vazia)', () => {
+      render(<Harness initialValue="melhores trilhas de Urubici" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRange(textarea, 0, 16);
+      fireEvent.keyUp(textarea, { key: 'ArrowLeft', shiftKey: true });
+
+      expect(querySelectionMenu()).toBeInTheDocument();
+    });
+
+    it('H2 no menu flutuante aplica o heading na linha do cursor e fecha o menu', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="Melhores trilhas" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 0, 8); // "Melhores"
+
+      await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Título H2' }));
+
+      expect(textarea.value).toBe('## Melhores trilhas');
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+      await waitFor(() => expect(textarea).toHaveFocus());
+    });
+
+    it('H4 no menu flutuante aplica o heading', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="Melhores trilhas" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 0, 8);
+
+      await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Título H4' }));
+
+      expect(textarea.value).toBe('#### Melhores trilhas');
+    });
+
+    it('Link no menu flutuante abre o LinkDialog pré-preenchido com a seleção e fecha o menu', async () => {
+      const user = userEvent.setup();
+      render(<Harness initialValue="veja a cachoeira" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 7, 16); // "cachoeira"
+
+      await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Link' }));
+
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+      const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
+      expect((within(dialog).getByLabelText('Texto') as HTMLInputElement).value).toBe('cachoeira');
+
+      await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
+      await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+      expect(textarea.value).toBe('veja a [cachoeira](https://example.com)');
+    });
+
+    it('Esc fecha o menu flutuante sem alterar o texto e devolve o foco pro textarea', () => {
+      render(<Harness initialValue="melhores trilhas" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 0, 8);
+      expect(querySelectionMenu()).toBeInTheDocument();
+
+      fireEvent.keyDown(textarea, { key: 'Escape' });
+
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+      expect(textarea.value).toBe('melhores trilhas');
+      expect(textarea).toHaveFocus();
+    });
+
+    it('clicar fora (fora do textarea e do menu) fecha o menu flutuante', async () => {
+      const user = userEvent.setup();
+      render(
+        <div>
+          <Harness initialValue="melhores trilhas" />
+          <button>fora</button>
+        </div>,
+      );
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 0, 8);
+      expect(querySelectionMenu()).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'fora' }));
+
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+    });
+
+    it('Alt+Enter com seleção ativa foca o primeiro botão do menu (reabre mesmo depois de um Esc)', () => {
+      render(<Harness initialValue="melhores trilhas" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRangeViaMouse(textarea, 0, 8);
+      fireEvent.keyDown(textarea, { key: 'Escape' });
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+
+      fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
+
+      const menu = getSelectionMenu();
+      expect(within(menu).getByRole('button', { name: 'Título H2' })).toHaveFocus();
+    });
+
+    it('Alt+Enter sem seleção (cursor colapsado) não abre o menu', () => {
+      render(<Harness initialValue="melhores trilhas" />);
+      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
+      selectRange(textarea, 3, 3);
+
+      fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
+
+      expect(querySelectionMenu()).not.toBeInTheDocument();
+    });
   });
 
   describe('Destaque (caixa colorida)', () => {
