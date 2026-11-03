@@ -5,7 +5,7 @@ pubDate: 2026-01-25
 author: "Equipe Guia de Urubici"
 category: "Geral"
 tags: ["onde-ficar", "hospedagem"]
-draft: false
+draft: true
 legacySlug: "pousadas-perto-das-trilhas-urubici"
 affiliates:
   - label: "Compare preços de aluguel de carro pra chegar na serra"

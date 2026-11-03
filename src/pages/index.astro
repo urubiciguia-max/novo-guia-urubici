@@ -1,4 +1,5 @@
 ---
+import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
 import DisclosureStrip from '../components/DisclosureStrip.astro';
 import Header from '../components/Header.astro';
@@ -10,34 +11,18 @@ import AffiliateButton from '../components/AffiliateButton.astro';
 import Newsletter from '../components/Newsletter.astro';
 import Footer from '../components/Footer.astro';
 
-// Conteudo de exemplo pra montar a home — troque por dados reais
-// (Content Collection / CMS) quando a pauta estiver pronta.
-const recentPosts = [
-  {
-    href: '/roteiros/cachoeiras-urubici-1-dia',
-    title: 'Roteiro de 1 dia nas cachoeiras de Urubici',
-    excerpt: 'Avencal, Bauer e Pericó num só dia: ordem certa, horário pra evitar fila e onde comer no caminho.',
-    tag: 'Roteiros',
-  },
-  {
-    href: '/pra-levar/o-que-levar-serra-catarinense-inverno',
-    title: 'O que levar pra Serra Catarinense no inverno',
-    excerpt: 'Camada térmica, bota impermeável e os erros mais comuns de quem vem do litoral sem saber o frio que pega.',
-    tag: 'Preparo',
-  },
-  {
-    href: '/onde-ficar/melhores-bairros-urubici',
-    title: 'Onde ficar em Urubici: centro ou perto das trilhas?',
-    excerpt: 'Comparamos localização, preço médio e facilidade de acesso às principais atrações da região.',
-    tag: 'Onde ficar',
-  },
-  {
-    href: '/roteiros/morro-da-igreja-por-do-sol',
-    title: 'Morro da Igreja: vale ver o pôr do sol lá em cima?',
-    excerpt: 'Horário de fechamento, taxa de acesso e se compensa trocar o calçadão da praia pelo frio da serra.',
-    tag: 'Roteiros',
-  },
-];
+/**
+ * Dados reais via Content Collection (mesmo padrao de o-que-fazer.astro e
+ * guia-pratico.astro: filtra draft, ordena por pubDate desc). O post mais
+ * recente vira o Hero; os seguintes preenchem o grid de "Dicas para o
+ * viajante" — ate 4 slots, sem duplicar o post do Hero e sem quebrar
+ * quando houver so 1 post publicado.
+ */
+const allPosts = await getCollection('posts', ({ data }) => !data.draft);
+const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const [heroPost, ...rest] = sortedPosts;
+const gridPosts = rest.slice(0, 4);
 
 const highlights = [
   {
@@ -100,29 +85,38 @@ const stays = [
   </h1>
 
   <main id="conteudo-principal">
-    <Hero
-      href={recentPosts[0].href}
-      title={recentPosts[0].title}
-      excerpt={recentPosts[0].excerpt}
-    />
+    {heroPost && (
+      <Hero
+        href={`/${heroPost.slug}`}
+        title={heroPost.data.title}
+        excerpt={heroPost.data.description}
+      />
+    )}
 
-    <section class="section" aria-labelledby="dicas-heading">
-      <div class="container">
-        <p class="eyebrow">Dicas para o viajante</p>
-        <h2 id="dicas-heading" class="section-title">O que todo mundo pergunta antes de vir pra Urubici</h2>
+    {gridPosts.length > 0 && (
+      <section class="section" aria-labelledby="dicas-heading">
+        <div class="container">
+          <p class="eyebrow">Dicas para o viajante</p>
+          <h2 id="dicas-heading" class="section-title">O que todo mundo pergunta antes de vir pra Urubici</h2>
 
-        <div class="posts-grid">
-          {recentPosts.map((post) => (
-            <PostCard href={post.href} title={post.title} excerpt={post.excerpt} tag={post.tag} />
-          ))}
+          <div class="posts-grid">
+            {gridPosts.map((post) => (
+              <PostCard
+                href={`/${post.slug}`}
+                title={post.data.title}
+                excerpt={post.data.description}
+                tag={post.data.category}
+              />
+            ))}
+          </div>
+
+          <div class="posts-grid-footer">
+            <!-- Estatico por enquanto: pagina sem paginacao real ainda (SSG, sem JS de fetch). -->
+            <a href="/guia-pratico" class="btn btn--outline-green">Carregar mais dicas</a>
+          </div>
         </div>
-
-        <div class="posts-grid-footer">
-          <!-- Estatico por enquanto: pagina sem paginacao real ainda (SSG, sem JS de fetch). -->
-          <a href="/roteiros" class="btn btn--outline-green">Carregar mais dicas</a>
-        </div>
-      </div>
-    </section>
+      </section>
+    )}
 
     <section class="section section--soft" aria-labelledby="sobre-heading">
       <div class="container sobre-grid">

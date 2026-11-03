@@ -6,7 +6,7 @@ updatedDate: 2026-02-14
 author: "Equipe Guia de Urubici"
 category: "O Que Fazer"
 tags: ["cachoeiras", "trilhas"]
-draft: false
+draft: true
 legacySlug: "cachoeiras-secretas-urubici"
 faq:
   - question: "Precisa de guia pra visitar as cachoeiras?"

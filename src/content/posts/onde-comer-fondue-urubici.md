@@ -5,7 +5,7 @@ pubDate: 2026-01-20
 author: "Equipe Guia de Urubici"
 category: "Onde Comer"
 tags: ["gastronomia"]
-draft: false
+draft: true
 legacySlug: "onde-comer-fondue-urubici"
 affiliates:
   - label: "Reserve mesa com antecedência via hospedagem parceira"

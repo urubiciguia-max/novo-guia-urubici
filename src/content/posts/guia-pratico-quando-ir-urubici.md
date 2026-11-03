@@ -5,7 +5,7 @@ pubDate: 2026-01-15
 author: "Equipe Guia de Urubici"
 category: "Guia Prático"
 tags: ["planejamento", "clima"]
-draft: false
+draft: true
 legacySlug: "quando-ir-urubici"
 relatedSlugs: ["cachoeiras-secretas-urubici"]
 ---
