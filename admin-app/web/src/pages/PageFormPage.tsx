@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import type { PageFrontmatter } from '@admin-data/index.js';
 import { PageNotFoundError, PageShaConflictError, ValidationError, pageFrontmatterSchema } from '@admin-data/index.js';
 // `zodIssuesToErrors` não é exportado pelo barrel (`index.ts`) -- só por `schema.ts` direto.
@@ -7,8 +8,7 @@ import { usePages } from '../data/PagesContext';
 import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
 import { recordToPageFormState, pageFormStateToFrontmatter, type PageFormState } from '../lib/pageForm';
-import { renderMarkdownPreview } from '../lib/markdownPreview';
-import type { SelectionResult } from '../lib/markdownToolbarActions';
+import { createMarkdownEditorExtensions } from '../lib/markdownEditorExtensions';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
@@ -38,10 +38,9 @@ function charCountHintClass(length: number, max: number): string {
  * Editor de uma página institucional -- SEM categoria/capa/autor/draft/data
  * (essa página não tem nada disso, diferente de Artigos). Sempre edição
  * nunca criação: `slug` vem fixo da rota (`/pages/:slug`), não existe
- * `/pages/novo`. Reaproveita a mesma `MarkdownToolbar` e o mesmo
- * `renderMarkdownPreview` do corpo de Artigos -- mesmo comportamento de
- * foco/cursor depois de uma ação da toolbar (ver comentário em
- * `PostFormPage.tsx`).
+ * `/pages/novo`. Reaproveita o mesmo editor rich-text (`MarkdownToolbar` +
+ * `createMarkdownEditorExtensions`) do corpo de Artigos -- mesmo
+ * comportamento (ver comentário em `PostFormPage.tsx`).
  */
 export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
   const { getPage, updatePage, refresh } = usePages();
@@ -57,34 +56,29 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
   const [shaConflictOpen, setShaConflictOpen] = useState(false);
 
   // Guarda o último frontmatter validado que tentou salvar -- usado pra
   // "Sobrescrever" depois de um 409 (ver `resolveShaConflict`).
   const lastAttemptRef = useRef<PageFrontmatter | null>(null);
 
-  // Mesmo padrão de `PostFormPage.tsx`: `bodyRef` dá pra `MarkdownToolbar`
-  // ler `selectionStart`/`selectionEnd` ao vivo, `pendingSelectionRef`
-  // guarda onde o cursor deveria ficar depois que o textarea é recriado
-  // com o novo `value`, aplicado pelo `useLayoutEffect` antes do navegador
-  // pintar o novo frame.
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const pending = pendingSelectionRef.current;
-    const el = bodyRef.current;
-    if (!pending || !el) return;
-    el.focus();
-    el.setSelectionRange(pending.start, pending.end);
-    pendingSelectionRef.current = null;
-  }, [form.body]);
-
-  function applyToolbarResult(result: SelectionResult) {
-    pendingSelectionRef.current = { start: result.selectionStart, end: result.selectionEnd };
-    updateField('body', result.text);
-  }
+  // Mesmo padrão de `PostFormPage.tsx`: editor rich-text do corpo (ver spec
+  // "Editor WYSIWYG no corpo do artigo/página") -- `onUpdate` mantém
+  // `form.body` sincronizado como markdown puro a cada edição.
+  const editor = useEditor({
+    extensions: createMarkdownEditorExtensions('Escreva o conteúdo da página...'),
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'post-form__body',
+        id: 'page-body',
+        'aria-labelledby': 'page-body-label',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      updateField('body', editor.storage.markdown.getMarkdown());
+    },
+  });
 
   const loadFromServer = useCallback(async () => {
     setLoadingInitial(true);
@@ -93,6 +87,7 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
     try {
       const record = await getPage(slug);
       setForm(recordToPageFormState(record));
+      editor?.commands.setContent(record.body, { emitUpdate: false });
       setSha(record.sha);
       setInitialValid(record.valid);
       setInitialValidationErrors(record.validationErrors ?? []);
@@ -105,6 +100,9 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
     } finally {
       setLoadingInitial(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `editor` do
+    // `useEditor` é estável entre renders (ver nota equivalente em
+    // `PostFormPage.tsx`).
   }, [slug, getPage]);
 
   useEffect(() => {
@@ -260,50 +258,10 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
         <div className="form-row">
           <div className="form-field">
             <div className="post-form__body-header">
-              <span id="page-body-label">Corpo (markdown)</span>
-              <div className="tabs" role="tablist" aria-label="Alternar editor/preview">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={!previewMode}
-                  className={`tabs__tab${!previewMode ? ' tabs__tab--active' : ''}`}
-                  onClick={() => setPreviewMode(false)}
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={previewMode}
-                  className={`tabs__tab${previewMode ? ' tabs__tab--active' : ''}`}
-                  onClick={() => setPreviewMode(true)}
-                >
-                  Preview
-                </button>
-              </div>
+              <span id="page-body-label">Corpo</span>
             </div>
-            {previewMode ? (
-              <div
-                className="post-form__preview"
-                id="page-body"
-                aria-labelledby="page-body-label"
-                // eslint-disable-next-line react/no-danger -- conteúdo escapado em `renderMarkdownPreview` antes de qualquer transformação.
-                dangerouslySetInnerHTML={{ __html: renderMarkdownPreview(form.body) || '<p><em>Vazio.</em></p>' }}
-              />
-            ) : (
-              <>
-                <MarkdownToolbar textareaRef={bodyRef} value={form.body} onApply={applyToolbarResult} />
-                <textarea
-                  ref={bodyRef}
-                  className="post-form__body"
-                  id="page-body"
-                  aria-labelledby="page-body-label"
-                  value={form.body}
-                  onChange={(e) => updateField('body', e.target.value)}
-                  rows={16}
-                />
-              </>
-            )}
+            <MarkdownToolbar editor={editor} />
+            <EditorContent editor={editor} />
           </div>
         </div>
 

@@ -1,15 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import {
-  applyHeading,
-  applyLinePrefix,
-  insertDestaqueMarkdown,
-  insertLinkMarkdown,
-  wrapInline,
-  type DestaqueType,
-  type HeadingLevel,
-  type SelectionResult,
-} from '../lib/markdownToolbarActions';
-import { computeSelectionMenuPosition, type FloatingMenuPosition } from '../lib/textareaCaretPosition';
+import { useEffect, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
+import type { Editor } from '@tiptap/core';
+import { buildDestaqueMarkdown, resolveLinkHref, type DestaqueType } from '../lib/markdownToolbarActions';
+import { HEADING_LEVELS, type AllowedHeadingLevel } from '../lib/markdownEditorExtensions';
+import { computeSelectionMenuPosition, type FloatingMenuPosition } from '../lib/selectionMenuPosition';
 import { DestaqueDialog } from './DestaqueDialog';
 import { LinkDialog } from './LinkDialog';
 import {
@@ -27,17 +20,12 @@ import {
 } from './icons';
 
 export interface MarkdownToolbarProps {
-  /** Ref do `<textarea>` que a toolbar edita -- precisa ler `selectionStart`/
-   *  `selectionEnd` ao vivo no momento do clique (por isso ref, não só o valor). */
-  textareaRef: RefObject<HTMLTextAreaElement | null>;
-  value: string;
-  /** Devolve o resultado da transformação (texto novo + onde a seleção deve
-   *  ficar) pro componente pai aplicar -- quem possui `form.body` e o
-   *  reposicionamento de foco/cursor é o `PostFormPage`, não esta toolbar. */
-  onApply: (result: SelectionResult) => void;
+  /** Instância do editor TipTap (`PostFormPage`/`PageFormPage` criam via
+   *  `useEditor`) -- `null` só no instante inicial antes do editor montar
+   *  (ver `immediatelyRender`/ciclo de vida do `useEditor`), a toolbar
+   *  renderiza os botões desabilitados nesse meio tempo. */
+  editor: Editor | null;
 }
-
-type Transform = (text: string, start: number, end: number) => SelectionResult;
 
 interface DropdownItem {
   label: string;
@@ -46,84 +34,127 @@ interface DropdownItem {
 }
 
 /**
- * Toolbar de formatação markdown acima do campo "Conteúdo do artigo" --
- * estilo editor do GitHub: insere sintaxe markdown na posição do cursor do
- * textarea (não é WYSIWYG contenteditable). Fica visível só no modo Editar
- * (`PostFormPage` não renderiza isto quando `previewMode` é true).
+ * Toolbar de formatação acima do corpo do artigo/página -- estilo
+ * WordPress/Notion: os botões chamam comandos nativos do editor rich-text
+ * (`editor.chain().focus().toggleBold().run()` etc), que atualizam o
+ * documento ao vivo (sem alternância Editar/Preview, ver spec "Editor
+ * WYSIWYG"). Substitui a v1 (29/10-02/11), que manipulava string num
+ * `<textarea>` cru via `lib/markdownToolbarActions.ts` -- a camada VISUAL
+ * (ícones, posição dos botões, menu flutuante, atalho Alt+Enter) sobrevive
+ * quase 1:1, só a implementação por trás de cada botão mudou.
  */
-export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbarProps) {
-  function runTransform(transform: Transform) {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart ?? value.length;
-    const end = el.selectionEnd ?? value.length;
-    onApply(transform(value, start, end));
+export function MarkdownToolbar({ editor }: MarkdownToolbarProps) {
+  // `useEditor` (nos componentes pai) não força re-render deste componente a
+  // cada transação por padrão -- sem isso, `editor.isActive(...)` (estado
+  // dos botões toggle) e a detecção de seleção pro menu flutuante ficariam
+  // desatualizados enquanto o usuário digita/navega. A toolbar cuida da
+  // própria reatividade, não depende de configuração do pai.
+  const [, forceTick] = useReducer((c: number) => c + 1, 0);
+  useEffect(() => {
+    if (!editor) return;
+    const onTransaction = () => forceTick();
+    editor.on('transaction', onTransaction);
+    return () => {
+      editor.off('transaction', onTransaction);
+    };
+  }, [editor]);
+
+  function run(fn: (editor: Editor) => void) {
+    if (!editor) return;
+    fn(editor);
   }
 
-  // Botão Link não insere direto -- abre o modal `LinkDialog` e só insere
-  // no confirm. `linkSelectionRef` guarda a posição do cursor/seleção no
-  // momento do CLIQUE (igual `runTransform` lê hoje), porque a inserção de
-  // verdade só acontece depois, quando o usuário confirma o modal -- nesse
-  // meio tempo a seleção ao vivo do textarea não é mais confiável (o campo
-  // perde o foco pro modal).
+  function isActive(name: string, attrs?: Record<string, unknown>): boolean {
+    return editor?.isActive(name, attrs) ?? false;
+  }
+
+  // Botão Link não insere direto -- abre o modal `LinkDialog` e só aplica a
+  // marca no confirm. `linkRangeRef` guarda a posição [from, to] do
+  // documento no momento do CLIQUE, porque a aplicação de verdade só
+  // acontece depois, quando o usuário confirma o modal -- nesse meio tempo o
+  // editor perde o foco pro modal (a seleção ao vivo não é mais confiável).
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkInitialText, setLinkInitialText] = useState('');
-  const linkSelectionRef = useRef({ start: 0, end: 0 });
+  const linkRangeRef = useRef({ from: 0, to: 0 });
 
   function openLinkDialog() {
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? value.length;
-    const end = el?.selectionEnd ?? value.length;
-    linkSelectionRef.current = { start, end };
-    setLinkInitialText(value.slice(start, end));
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    linkRangeRef.current = { from, to };
+    setLinkInitialText(editor.state.doc.textBetween(from, to));
     setLinkDialogOpen(true);
   }
 
   function handleLinkConfirm(label: string, url: string) {
-    const { start, end } = linkSelectionRef.current;
-    onApply(insertLinkMarkdown(value, start, end, label, url));
+    if (!editor) return;
+    const { from, to } = linkRangeRef.current;
+    const href = resolveLinkHref(url) ?? url;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt(
+        { from, to },
+        { type: 'text', text: label || url, marks: [{ type: 'link', attrs: { href } }] },
+      )
+      .run();
     setLinkDialogOpen(false);
   }
 
-  // Item "Destaque (caixa colorida)" do dropdown Inserir -- mesmo padrão do
-  // botão Link: não insere direto, abre o `DestaqueDialog` e só insere no
-  // confirm. `insertTriggerRef` é o botão-gatilho do dropdown "Inserir" (não
-  // o item "Destaque" em si, que desmonta junto com o menu no clique que
-  // abre o modal) -- é pra ele que o foco volta quando o modal fecha.
+  // Item "Destaque (caixa colorida)" do dropdown Inserir -- fora do escopo
+  // de formatação AO VIVO nesta entrega (SHOULD, não MUST -- ver spec do
+  // editor WYSIWYG). Continuamos montando a sintaxe `> [!TIPO]` como
+  // markdown puro (`buildDestaqueMarkdown`) e inserindo via o MESMO parser
+  // que carrega o conteúdo inicial do editor (`editor.storage.markdown.
+  // parser`) -- aparece como citação simples no editor (sem cor/ícone), mas
+  // o markdown salvo é idêntico ao que `remark-destaque.mjs` reconhece no
+  // site publicado. Mesmo padrão de captura de posição do Link:
+  // `destaqueRangeRef` guarda [from, to] no momento em que o item foi
+  // escolhido no dropdown.
   const [destaqueDialogOpen, setDestaqueDialogOpen] = useState(false);
   const [destaqueInitialText, setDestaqueInitialText] = useState('');
-  const destaqueSelectionRef = useRef({ start: 0, end: 0 });
+  const destaqueRangeRef = useRef({ from: 0, to: 0 });
   const insertTriggerRef = useRef<HTMLButtonElement>(null);
 
   function openDestaqueDialog() {
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? value.length;
-    const end = el?.selectionEnd ?? value.length;
-    destaqueSelectionRef.current = { start, end };
-    setDestaqueInitialText(value.slice(start, end));
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    destaqueRangeRef.current = { from, to };
+    setDestaqueInitialText(editor.state.doc.textBetween(from, to));
     setDestaqueDialogOpen(true);
   }
 
   function handleDestaqueConfirm(type: DestaqueType, text: string) {
-    const { start, end } = destaqueSelectionRef.current;
-    onApply(insertDestaqueMarkdown(value, start, end, type, text));
+    if (!editor) return;
+    const { from, to } = destaqueRangeRef.current;
+    const markdown = buildDestaqueMarkdown(type, text);
+    // Passa o MARKDOWN cru pro `insertContentAt`, não HTML pré-processado --
+    // `tiptap-markdown` já troca o comando `insertContentAt` por uma versão
+    // que chama `editor.storage.markdown.parser.parse(content, ...)`
+    // INTERNAMENTE (ver `node_modules/tiptap-markdown/src/Markdown.js`,
+    // `addCommands`). Chamar `.parser.parse()` aqui também faria o parse
+    // acontecer DUAS vezes -- a segunda vez (dentro do comando) trataria o
+    // HTML já pronto da primeira como TEXTO cru (com `html: false` no
+    // `Markdown.configure`, ver `markdownEditorExtensions.ts`), escapando
+    // as tags inteiras pra dentro de um parágrafo em vez de criar o
+    // blockquote de verdade. Bug descoberto escrevendo o teste deste botão
+    // (`test/MarkdownToolbar.test.tsx`, "Destaque (SHOULD, não MUST)").
+    editor.chain().focus().insertContentAt({ from, to }, markdown).run();
     setDestaqueDialogOpen(false);
   }
 
   // Menu flutuante de seleção (estilo Medium/Notion): aparece acima de um
-  // trecho selecionado no textarea com botões H2/H3/H4 + Link, pra não
+  // trecho selecionado no editor com botões H2/H3/H4 + Link, pra não
   // obrigar o usuário a ir até o dropdown "Parágrafo" lá no topo da toolbar
-  // fixa toda vez que quiser transformar uma linha em título (pedido do
-  // handoff). O dropdown "Parágrafo" continua existindo -- ver comentário
-  // dele mais abaixo -- como fallback 100% por teclado/Tab, já que o menu
-  // flutuante em si é posicionado com `position: fixed` fora da ordem normal
-  // do DOM (não dá pra alcançar por Tab a partir do textarea).
+  // fixa toda vez que quiser transformar uma linha em título. O dropdown
+  // "Parágrafo" continua existindo como fallback 100% por teclado/Tab, já
+  // que o menu flutuante em si é posicionado com `position: fixed` fora da
+  // ordem normal do DOM (não dá pra alcançar por Tab a partir do editor).
   //
   // `floatingPos`: null = escondido. Não-null = coordenadas calculadas pela
   // última seleção não vazia detectada.
   // `floatingDismissed`: true depois de Esc/clique fora -- a seleção pode
-  // continuar a mesma, mas o usuário pediu pra fechar; só reabre se a seleção
-  // mudar de novo OU se o atalho Alt+Enter for usado (ver efeito de teclado).
+  // continuar a mesma, mas o usuário pediu pra fechar; só reabre se a
+  // seleção mudar de novo OU se o atalho Alt+Enter for usado.
   const [floatingPos, setFloatingPos] = useState<FloatingMenuPosition | null>(null);
   const [floatingDismissed, setFloatingDismissed] = useState(false);
   const floatingMenuRef = useRef<HTMLDivElement>(null);
@@ -134,126 +165,122 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
   // Alt+Enter precisa focar o primeiro botão do menu DEPOIS que ele existir
   // no DOM -- `setState` não aplica sincronamente, então chamar `.focus()`
   // na mesma função que chama `setFloatingDismissed(false)` focaria um ref
-  // ainda nulo (o menu só remonta no próximo commit). Esta flag registra a
-  // intenção e o efeito abaixo foca assim que `floatingMenuVisible` virar
-  // true por causa dela -- seleção feita via mouse/teclado normal NUNCA seta
-  // essa flag, então nunca rouba o foco do textarea à toa.
-  const focusMenuOnShowRef = useRef(false);
+  // ainda nulo (ou, se o menu já estava visível antes do Alt+Enter --
+  // seleção feita via mouse/teclado já deixa `floatingMenuVisible` em
+  // `true` por conta própria --, focaria um botão que ainda não existia
+  // nesse frame específico).
+  //
+  // Por isso o gatilho do efeito abaixo NÃO é `floatingMenuVisible`
+  // (booleano que pode já valer `true` antes do Alt+Enter, caso em que a
+  // transição `false -> true` nunca ocorre e o efeito não reexecuta --
+  // bug encontrado pela Marivone em QA, 2026-11-03: Alt+Enter só focava
+  // depois de um Esc prévio, porque só o Esc forçava `floatingMenuVisible`
+  // a passar por `false` antes). Em vez disso, cada Alt+Enter incrementa
+  // este contador -- `Object.is` nunca considera dois valores
+  // consecutivos iguais, então o efeito SEMPRE reexecuta depois do
+  // próximo commit (já com o menu no DOM, porque os dois `setState` abaixo
+  // batched junto com este são aplicados no mesmo render), seja essa a
+  // primeira seleção ou a enésima. `0` é o valor inicial/sentinel -- nunca
+  // dispara foco no mount, só a partir do primeiro Alt+Enter de verdade.
+  const [focusRequestId, setFocusRequestId] = useState(0);
 
   useEffect(() => {
-    if (floatingMenuVisible && focusMenuOnShowRef.current) {
-      focusMenuOnShowRef.current = false;
-      floatingFirstBtnRef.current?.focus();
-    }
-  }, [floatingMenuVisible]);
+    if (focusRequestId === 0) return;
+    floatingFirstBtnRef.current?.focus();
+  }, [focusRequestId]);
 
-  // Detecção de seleção: igual ao pedido do handoff, via `mouseup`/`keyup`
-  // no textarea (não `onSelect` do React -- a toolbar não é quem renderiza o
-  // `<textarea>`, só recebe a ref dele via prop, então precisa de listener
-  // nativo). Recalcula a posição toda vez que a seleção deixa de estar vazia
-  // e também reabre o menu se o usuário tinha fechado (ex: voltou a apertar
-  // Shift depois de um Esc) -- ver nota no `floatingDismissed` acima.
+  // Detecção de seleção: diferente da era textarea (que precisava de
+  // listener nativo de mouseup/keyup porque textarea não emite nenhum
+  // evento de "seleção mudou"), o ProseMirror por baixo do editor já tem
+  // esse conceito de fábrica -- `editor.on('selectionUpdate', ...)` dispara
+  // toda vez que a seleção muda, por mouse, teclado ou programaticamente.
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
+    if (!editor) return;
 
-    function syncFromSelection(skipKeys?: Set<string>, key?: string) {
-      if (key && skipKeys?.has(key)) return;
-      const start = el!.selectionStart ?? 0;
-      const end = el!.selectionEnd ?? 0;
-      if (start === end) {
+    function syncFromSelection() {
+      const { from, to } = editor!.state.selection;
+      if (from === to) {
         setFloatingPos(null);
         return;
       }
-      setFloatingPos(computeSelectionMenuPosition(el!, start, end));
+      setFloatingPos(computeSelectionMenuPosition(editor!.view, from, to));
       setFloatingDismissed(false);
     }
 
-    // Escape é tratado só pelo listener de teclado global (fecha o menu) --
-    // sem este filtro, o `keyup` do PRÓPRIO Escape (disparado pelo navegador
-    // ao soltar a tecla, depois do `keydown` já ter fechado) reabriria o menu
-    // imediatamente, já que a seleção em si não muda com Esc.
-    const SKIP_ON_KEYUP = new Set(['Escape']);
-
-    function onMouseUp() {
-      syncFromSelection();
-    }
-    function onKeyUp(e: KeyboardEvent) {
-      syncFromSelection(SKIP_ON_KEYUP, e.key);
-    }
-    function onScroll() {
-      const start = el!.selectionStart ?? 0;
-      const end = el!.selectionEnd ?? 0;
-      if (start === end) return;
-      setFloatingPos(computeSelectionMenuPosition(el!, start, end));
-    }
-
-    el.addEventListener('mouseup', onMouseUp);
-    el.addEventListener('keyup', onKeyUp);
-    el.addEventListener('scroll', onScroll);
+    editor.on('selectionUpdate', syncFromSelection);
     return () => {
-      el.removeEventListener('mouseup', onMouseUp);
-      el.removeEventListener('keyup', onKeyUp);
-      el.removeEventListener('scroll', onScroll);
+      editor.off('selectionUpdate', syncFromSelection);
     };
-  }, [textareaRef]);
+  }, [editor]);
 
-  // Fecha ao clicar fora (textarea e o próprio menu contam como "dentro"),
-  // ao perder a seleção não se aplica aqui -- já é coberto pelo efeito acima.
+  // Reposiciona o menu flutuante ao rolar a página (a seleção em si não
+  // muda, só as coordenadas de viewport) -- diferente da era textarea (onde
+  // o PRÓPRIO textarea tinha scroll interno), agora é a página em volta do
+  // editor que rola, então o listener fica na window, não no editor.
   useEffect(() => {
-    if (!floatingMenuVisible) return;
+    if (!floatingMenuVisible || !editor) return;
+
+    function onScroll() {
+      const { from, to } = editor!.state.selection;
+      if (from === to) return;
+      setFloatingPos(computeSelectionMenuPosition(editor!.view, from, to));
+    }
+
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, [floatingMenuVisible, editor]);
+
+  // Fecha ao clicar fora (o editor e o próprio menu contam como "dentro").
+  useEffect(() => {
+    if (!floatingMenuVisible || !editor) return;
 
     function onDocMouseDown(e: MouseEvent) {
       const target = e.target as Node;
       const insideMenu = floatingMenuRef.current?.contains(target);
-      const insideTextarea = textareaRef.current?.contains(target);
-      if (!insideMenu && !insideTextarea) {
+      const insideEditor = editor!.view.dom.contains(target);
+      if (!insideMenu && !insideEditor) {
         setFloatingDismissed(true);
       }
     }
 
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [floatingMenuVisible, textareaRef]);
+  }, [floatingMenuVisible, editor]);
 
-  // Atalho de teclado pedido no handoff: com uma seleção não vazia ativa,
-  // Alt+Enter leva o foco pro primeiro botão do menu flutuante (abre/reabre
-  // mesmo se tinha sido fechado com Esc) -- cobre o caso "Shift+setas pra
-  // selecionar, depois um atalho pra abrir o menu" sem depender de ordem de
-  // Tab (o menu é `position: fixed`, fora do fluxo normal do DOM). Esc, com
-  // foco no textarea OU dentro do próprio menu, fecha e devolve o foco pro
-  // textarea (que preserva a seleção/cursor internos mesmo sem estar
-  // focado -- mesma garantia que `LinkDialog`/`DestaqueDialog` já assumem).
+  // Atalho de teclado: com uma seleção não vazia ativa, Alt+Enter leva o
+  // foco pro primeiro botão do menu flutuante (abre/reabre mesmo se tinha
+  // sido fechado com Esc). Esc, com foco no editor OU dentro do próprio
+  // menu, fecha e devolve o foco pro editor.
   useEffect(() => {
+    if (!editor) return;
+
     function onKeyDown(e: KeyboardEvent) {
-      const el = textareaRef.current;
-      if (!el) return;
       const active = document.activeElement;
-      const focusInTextarea = active === el;
+      const focusInEditor = !!active && editor!.view.dom.contains(active);
       const focusInMenu = !!floatingMenuRef.current?.contains(active);
-      if (!focusInTextarea && !focusInMenu) return;
+      if (!focusInEditor && !focusInMenu) return;
+
+      const { from, to } = editor!.state.selection;
 
       if (e.key === 'Enter' && e.altKey) {
-        const start = el.selectionStart ?? 0;
-        const end = el.selectionEnd ?? 0;
-        if (start === end) return;
+        if (from === to) return;
         e.preventDefault();
-        focusMenuOnShowRef.current = true;
-        setFloatingPos(computeSelectionMenuPosition(el, start, end));
+        setFocusRequestId((id) => id + 1);
+        setFloatingPos(computeSelectionMenuPosition(editor!.view, from, to));
         setFloatingDismissed(false);
       } else if (e.key === 'Escape' && floatingMenuVisible) {
         e.preventDefault();
         setFloatingDismissed(true);
-        el.focus();
+        editor!.commands.focus();
       }
     }
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [textareaRef, floatingMenuVisible]);
+  }, [editor, floatingMenuVisible]);
 
-  function applyFloatingHeading(level: HeadingLevel) {
-    runTransform((t, s) => applyHeading(t, s, level));
+  function applyFloatingHeading(level: AllowedHeadingLevel) {
+    run((e) => e.chain().focus().setHeading({ level }).run());
     setFloatingPos(null);
   }
 
@@ -269,7 +296,9 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           type="button"
           className="md-toolbar__btn"
           aria-label="Negrito"
-          onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '**'))}
+          aria-pressed={isActive('bold')}
+          disabled={!editor}
+          onClick={() => run((e) => e.chain().focus().toggleBold().run())}
         >
           <BoldIcon />
         </button>
@@ -277,7 +306,9 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           type="button"
           className="md-toolbar__btn"
           aria-label="Itálico"
-          onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '*'))}
+          aria-pressed={isActive('italic')}
+          disabled={!editor}
+          onClick={() => run((e) => e.chain().focus().toggleItalic().run())}
         >
           <ItalicIcon />
         </button>
@@ -285,11 +316,20 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           type="button"
           className="md-toolbar__btn"
           aria-label="Código inline"
-          onClick={() => runTransform((t, s, e) => wrapInline(t, s, e, '`'))}
+          aria-pressed={isActive('code')}
+          disabled={!editor}
+          onClick={() => run((e) => e.chain().focus().toggleCode().run())}
         >
           <InlineCodeIcon />
         </button>
-        <button type="button" className="md-toolbar__btn" aria-label="Link" onClick={openLinkDialog}>
+        <button
+          type="button"
+          className="md-toolbar__btn"
+          aria-label="Link"
+          aria-pressed={isActive('link')}
+          disabled={!editor}
+          onClick={openLinkDialog}
+        >
           <LinkIcon />
         </button>
 
@@ -299,11 +339,13 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           triggerLabel="Parágrafo"
           triggerIcon={<ParagraphStyleIcon />}
           ariaLabel="Estilo de parágrafo"
+          disabled={!editor}
           items={[
-            { label: 'Parágrafo', onSelect: () => runTransform((t, s) => applyHeading(t, s, 0)) },
-            { label: 'Título H2', onSelect: () => runTransform((t, s) => applyHeading(t, s, 2)) },
-            { label: 'Título H3', onSelect: () => runTransform((t, s) => applyHeading(t, s, 3)) },
-            { label: 'Título H4', onSelect: () => runTransform((t, s) => applyHeading(t, s, 4)) },
+            { label: 'Parágrafo', onSelect: () => run((e) => e.chain().focus().setParagraph().run()) },
+            ...HEADING_LEVELS.map((level) => ({
+              label: `Título H${level}`,
+              onSelect: () => run((e) => e.chain().focus().setHeading({ level }).run()),
+            })),
           ]}
         />
 
@@ -312,21 +354,22 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
           triggerLabel="Inserir"
           triggerIcon={<PlusIcon />}
           ariaLabel="Inserir elemento"
+          disabled={!editor}
           items={[
             {
               label: 'Lista com marcadores',
               icon: <BulletListIcon />,
-              onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'bullet')),
+              onSelect: () => run((e) => e.chain().focus().toggleBulletList().run()),
             },
             {
               label: 'Lista numerada',
               icon: <NumberedListIcon />,
-              onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'numbered')),
+              onSelect: () => run((e) => e.chain().focus().toggleOrderedList().run()),
             },
             {
               label: 'Citação',
               icon: <QuoteIcon />,
-              onSelect: () => runTransform((t, s, e) => applyLinePrefix(t, s, e, 'quote')),
+              onSelect: () => run((e) => e.chain().focus().toggleBlockquote().run()),
             },
             {
               label: 'Destaque (caixa colorida)',
@@ -350,6 +393,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
             type="button"
             className="md-toolbar__btn md-selection-menu__btn md-selection-menu__btn--h2"
             aria-label="Título H2"
+            aria-pressed={isActive('heading', { level: 2 })}
             onClick={() => applyFloatingHeading(2)}
           >
             H2
@@ -358,6 +402,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
             type="button"
             className="md-toolbar__btn md-selection-menu__btn md-selection-menu__btn--h3"
             aria-label="Título H3"
+            aria-pressed={isActive('heading', { level: 3 })}
             onClick={() => applyFloatingHeading(3)}
           >
             H3
@@ -366,6 +411,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
             type="button"
             className="md-toolbar__btn md-selection-menu__btn md-selection-menu__btn--h4"
             aria-label="Título H4"
+            aria-pressed={isActive('heading', { level: 4 })}
             onClick={() => applyFloatingHeading(4)}
           >
             H4
@@ -375,6 +421,7 @@ export function MarkdownToolbar({ textareaRef, value, onApply }: MarkdownToolbar
             type="button"
             className="md-toolbar__btn md-selection-menu__btn"
             aria-label="Link"
+            aria-pressed={isActive('link')}
             onClick={openLinkDialogFromFloatingMenu}
           >
             <LinkIcon />
@@ -409,6 +456,7 @@ interface ToolbarDropdownProps {
   triggerIcon: ReactNode;
   ariaLabel: string;
   items: DropdownItem[];
+  disabled?: boolean;
   /** Ref opcional do botão-gatilho, exposto pro componente pai conseguir
    *  devolver o foco a ele depois que um modal aberto por um ITEM deste
    *  dropdown (ex: `DestaqueDialog`, aberto pelo item "Destaque") fechar --
@@ -421,16 +469,17 @@ interface ToolbarDropdownProps {
 /**
  * Dropdown simples (disclosure pattern -- botão que revela um grupo de
  * botões comuns, não um `role="menu"` com navegação por seta). Escolha
- * deliberada: o critério de a11y pedido é "navegável via Tab + Enter/Space"
- * (ver handoff), que botões nativos já satisfazem sozinhos -- implementar
- * `role="menu"`/`menuitem` de verdade exigiria roving tabindex + setas pra
- * não violar WAI-ARIA Authoring Practices, o que é mais do que foi pedido.
+ * deliberada: o critério de a11y pedido é "navegável via Tab + Enter/Space",
+ * que botões nativos já satisfazem sozinhos -- implementar `role="menu"`/
+ * `menuitem` de verdade exigiria roving tabindex + setas pra não violar
+ * WAI-ARIA Authoring Practices, o que é mais do que foi pedido.
  */
 function ToolbarDropdown({
   triggerLabel,
   triggerIcon,
   ariaLabel,
   items,
+  disabled,
   triggerRef: externalTriggerRef,
 }: ToolbarDropdownProps) {
   const [open, setOpen] = useState(false);
@@ -470,6 +519,7 @@ function ToolbarDropdown({
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={ariaLabel}
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
       >
         {triggerIcon}

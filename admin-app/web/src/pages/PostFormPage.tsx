@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import type { PostFrontmatter } from '@admin-data/index.js';
 import {
   PostAlreadyExistsError,
@@ -13,8 +14,7 @@ import { usePosts } from '../data/PostsContext';
 import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
 import { emptyFormState, formStateToFrontmatter, recordToFormState, type PostFormState } from '../lib/postForm';
-import { renderMarkdownPreview } from '../lib/markdownPreview';
-import type { SelectionResult } from '../lib/markdownToolbarActions';
+import { createMarkdownEditorExtensions } from '../lib/markdownEditorExtensions';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
@@ -45,7 +45,6 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
   const [shaConflictOpen, setShaConflictOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -54,28 +53,32 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
   // "Sobrescrever" depois de um 409 (ver `resolveShaConflict`).
   const lastAttemptRef = useRef<PostFrontmatter | null>(null);
 
-  // `bodyRef` dá pra `MarkdownToolbar` ler `selectionStart`/`selectionEnd`
-  // ao vivo (o React não expõe isso via estado). Depois de uma ação da
-  // toolbar, o textarea é recriado com o novo `value` -- `pendingSelectionRef`
-  // guarda onde o cursor/seleção deveriam ficar, e o `useLayoutEffect`
-  // abaixo aplica isso (+ foco) assim que o DOM atualiza, antes do navegador
-  // pintar o novo frame (evita qualquer flash do cursor no lugar errado).
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const pending = pendingSelectionRef.current;
-    const el = bodyRef.current;
-    if (!pending || !el) return;
-    el.focus();
-    el.setSelectionRange(pending.start, pending.end);
-    pendingSelectionRef.current = null;
-  }, [form.body]);
-
-  function applyToolbarResult(result: SelectionResult) {
-    pendingSelectionRef.current = { start: result.selectionStart, end: result.selectionEnd };
-    updateField('body', result.text);
-  }
+  // Editor rich-text do corpo (ver spec "Editor WYSIWYG no corpo do artigo/
+  // página", `.agents/inbox/genilson.md`) -- substitui o par
+  // `<textarea>` + toggle Editar/Preview. `onUpdate` mantém `form.body`
+  // sincronizado (sempre como MARKDOWN puro, via `tiptap-markdown`) a cada
+  // edição -- o editor em si é a fonte da verdade do conteúdo, `form.body`
+  // é só o espelho que `submit()` já lia antes.
+  const editor = useEditor({
+    extensions: createMarkdownEditorExtensions('Escreva o conteúdo do artigo...'),
+    content: '',
+    // `editorProps.attributes` vai pro elemento contenteditable DE VERDADE
+    // (`editor.view.dom`) -- diferente de passar `id`/`className` pro
+    // `<EditorContent>` JSX, que só chegariam na DIV wrapper que o
+    // `@tiptap/react` usa como ponto de montagem (ver `PureEditorContent`).
+    // O rótulo (`aria-labelledby`) só funciona pra leitor de tela se estiver
+    // no elemento que de fato recebe foco/tem `role` de textbox.
+    editorProps: {
+      attributes: {
+        class: 'post-form__body',
+        id: 'post-body',
+        'aria-labelledby': 'post-body-label',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      updateField('body', editor.storage.markdown.getMarkdown());
+    },
+  });
 
   const loadFromServer = useCallback(async () => {
     if (!slug) return;
@@ -85,6 +88,11 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
     try {
       const record = await getPost(slug);
       setForm(recordToFormState(record, slug));
+      // `{ emitUpdate: false }` -- carregar o post não deve re-disparar
+      // `onUpdate` (acima) com o MESMO conteúdo que acabou de vir do
+      // servidor; evita um round-trip markdown->doc->markdown redundante
+      // logo na carga (inofensivo, mas sem propósito).
+      editor?.commands.setContent(record.body, { emitUpdate: false });
       setSha(record.sha);
       setInitialValid(record.valid);
       setInitialValidationErrors(record.validationErrors ?? []);
@@ -97,6 +105,10 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
     } finally {
       setLoadingInitial(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `editor` do
+    // `useEditor` já é estável entre renders (mesma instância, não recria
+    // por mudança de conteúdo); incluir na lista só adicionaria ruído sem
+    // mudar quando este callback é recriado.
   }, [slug, getPost]);
 
   useEffect(() => {
@@ -400,50 +412,10 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
         <div className="form-row">
           <div className="form-field">
             <div className="post-form__body-header">
-              <span id="post-body-label">Corpo (markdown)</span>
-              <div className="tabs" role="tablist" aria-label="Alternar editor/preview">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={!previewMode}
-                  className={`tabs__tab${!previewMode ? ' tabs__tab--active' : ''}`}
-                  onClick={() => setPreviewMode(false)}
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={previewMode}
-                  className={`tabs__tab${previewMode ? ' tabs__tab--active' : ''}`}
-                  onClick={() => setPreviewMode(true)}
-                >
-                  Preview
-                </button>
-              </div>
+              <span id="post-body-label">Corpo</span>
             </div>
-            {previewMode ? (
-              <div
-                className="post-form__preview"
-                id="post-body"
-                aria-labelledby="post-body-label"
-                // eslint-disable-next-line react/no-danger -- conteúdo escapado em `renderMarkdownPreview` antes de qualquer transformação.
-                dangerouslySetInnerHTML={{ __html: renderMarkdownPreview(form.body) || '<p><em>Vazio.</em></p>' }}
-              />
-            ) : (
-              <>
-                <MarkdownToolbar textareaRef={bodyRef} value={form.body} onApply={applyToolbarResult} />
-                <textarea
-                  ref={bodyRef}
-                  className="post-form__body"
-                  id="post-body"
-                  aria-labelledby="post-body-label"
-                  value={form.body}
-                  onChange={(e) => updateField('body', e.target.value)}
-                  rows={16}
-                />
-              </>
-            )}
+            <MarkdownToolbar editor={editor} />
+            <EditorContent editor={editor} />
           </div>
         </div>
 

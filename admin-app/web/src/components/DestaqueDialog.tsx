@@ -36,9 +36,12 @@ const OPTIONS: Array<{ value: DestaqueType; icon: string; label: string }> = [
  * backdrop fecha, foco inicial no primeiro campo), mas com um grupo de
  * rádios (tipo) + textarea (corpo, pode ter mais de uma linha/parágrafo) em
  * vez de 2 inputs de texto. Monta a sintaxe `> [!TIPO]` que
- * `markdownPreview.ts` (admin) e `remark-destaque.mjs` (site publicado)
- * reconhecem como caixa "Destaque" -- ver documentação da convenção no topo
- * de `remark-destaque.mjs`.
+ * `remark-destaque.mjs` (site publicado) reconhece como caixa "Destaque" --
+ * ver documentação da convenção no topo de `remark-destaque.mjs`. No editor
+ * rich-text (`MarkdownToolbar.tsx`, `handleDestaqueConfirm`) isso aparece
+ * como citação simples, sem cor/ícone ao vivo -- formatação ao vivo pra
+ * este bloco é SHOULD, não MUST, nesta entrega (ver
+ * `lib/markdownToolbarActions.ts`).
  */
 export function DestaqueDialog({ open, initialText, returnFocusRef, onConfirm, onCancel }: DestaqueDialogProps) {
   const [type, setType] = useState<DestaqueType>('dica');

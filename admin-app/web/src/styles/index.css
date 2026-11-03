@@ -1070,11 +1070,13 @@ a {
 
 /* Cada tipo de destaque já comunica a própria cor no seletor, antes mesmo
    de inserir -- mesmos tokens semânticos (`--success`/`--warning`/
-   `--danger`) que `.post-form__preview .destaque--*` usa pra caixa
-   inserida, só que aqui no texto do label + no próprio círculo do rádio
-   (`accent-color`), pra reconhecimento rápido entre os 3 (brief do
-   Genilson, item 2). Os 3 hex já têm contraste alto o bastante pra texto
-   sobre `--surface` (mesmos tons usados como `color` em `.badge--*`). */
+   `--danger`) usados em `.badge--*`, aqui no texto do label + no próprio
+   círculo do rádio (`accent-color`), pra reconhecimento rápido entre os 3
+   (brief do Genilson, item 2). O bloco inserido em si aparece como citação
+   simples no editor (sem cor/ícone ao vivo -- ver nota em
+   `.post-form__body blockquote`), então essa cor no seletor é o único
+   sinal visual de qual tipo foi escolhido até o post ser publicado. Os 3
+   hex já têm contraste alto o bastante pra texto sobre `--surface`. */
 .radio-option--dica {
   color: var(--success);
 }
@@ -1106,34 +1108,10 @@ a {
   margin-bottom: 6px;
 }
 
-.tabs {
-  display: inline-flex;
-  background: var(--neutral-bg);
-  border-radius: var(--radius-pill);
-  padding: 3px;
-  gap: 2px;
-}
-
-.tabs__tab {
-  border: none;
-  background: transparent;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--body-text);
-}
-
-.tabs__tab--active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-card);
-}
-
-/* Toolbar de formatação markdown (ver components/MarkdownToolbar.tsx) --
-   só aparece no modo Editar, some no Preview (PostFormPage não renderiza o
-   componente quando previewMode é true). */
+/* Toolbar de formatação do editor rich-text (ver components/
+   MarkdownToolbar.tsx) -- fica sempre visível acima do corpo: desde a
+   migração pro editor WYSIWYG (ver spec "Editor WYSIWYG no corpo do
+   artigo/página") não existe mais toggle Editar/Preview, é um modo só. */
 .md-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1170,20 +1148,41 @@ a {
   transition: background-color var(--ease), border-color var(--ease), transform var(--ease), color var(--ease);
 }
 
-.md-toolbar__btn:hover {
+.md-toolbar__btn:hover:not(:disabled) {
   background: var(--surface);
   border-color: var(--line);
 }
 
-/* Feedback de "pressionado" ao clicar -- os botões de ação (negrito, itálico,
-   código, link) não têm estado persistente (não são toggle: aplicam a
-   sintaxe e pronto), então o retorno é só o instante do clique, não um
-   aria-pressed. */
-.md-toolbar__btn:active {
+/* Feedback de "pressionado" ao clicar. */
+.md-toolbar__btn:active:not(:disabled) {
   background: var(--purple-soft);
   border-color: var(--purple);
   color: var(--purple-dark);
   transform: scale(0.96);
+}
+
+/* Desabilitado (`disabled={!editor}`, só o instante inicial antes do TipTap
+   montar -- ver `MarkdownToolbar.tsx`): sem isso, opacity ficava 1 e cursor
+   `pointer` (herdado de `.md-toolbar__btn` acima), indistinguível de um botão
+   clicável de verdade (confirmado visualmente -- ver harness de polish).
+   Mesmo tratamento que `.btn:disabled` já usa no resto do admin, pra não
+   inventar uma segunda linguagem visual de "desabilitado". */
+.md-toolbar__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Estado ligado dos botões de formatação que agora são toggle de verdade
+   (negrito/itálico/código/link e as opções do menu flutuante) -- o editor
+   rich-text sabe dizer se o cursor está dentro de um trecho já formatado
+   (`editor.isActive(...)`, ver MarkdownToolbar.tsx), diferente da v1 em
+   textarea (onde os botões só inseriam sintaxe, sem estado persistente).
+   Mesmo tratamento visual do dropdown aberto (`aria-expanded`) abaixo, pra
+   manter só uma linguagem de "ativo" na toolbar inteira. */
+.md-toolbar__btn[aria-pressed='true'] {
+  background: var(--purple-soft);
+  border-color: var(--purple);
+  color: var(--purple-dark);
 }
 
 .md-toolbar__btn--dropdown {
@@ -1275,10 +1274,11 @@ a {
 
 /* Menu flutuante de seleção (ver components/MarkdownToolbar.tsx) -- aparece
    acima (ou, sem espaço na viewport, abaixo) de um trecho selecionado no
-   `<textarea>` do corpo, estilo Medium/Notion. `position: fixed` porque o
+   editor rich-text, estilo Medium/Notion. `position: fixed` porque o
    componente não tem (nem precisa de) um ancestral posicionado em comum com
-   o textarea -- `top`/`left` chegam calculados via `computeSelectionMenuPosition`
-   (`lib/textareaCaretPosition.ts`) e são aplicados inline.
+   o editor -- `top`/`left` chegam calculados via `computeSelectionMenuPosition`
+   (`lib/selectionMenuPosition.ts`, via `EditorView.coordsAtPos`) e são
+   aplicados inline.
 
    Animação própria (`md-selection-menu-in`) em vez de reaproveitar
    `md-toolbar-menu-in`: aquela assume o menu nasce de um gatilho fixo acima
@@ -1357,68 +1357,108 @@ a {
   color: var(--body-text);
 }
 
+/*
+ * Corpo do editor rich-text (TipTap) -- `.post-form__body` é a classe que
+ * `editorProps.attributes.class` (PostFormPage.tsx/PageFormPage.tsx) aplica
+ * DIRETO no elemento contenteditable (`editor.view.dom`, que já carrega a
+ * própria classe `.ProseMirror` do TipTap por baixo) -- não é mais um
+ * textarea monoespaçado, é a área de edição "ao vivo" em si (ver spec
+ * "Editor WYSIWYG no corpo do artigo/página", critério "negrito/itálico/
+ * H2-H4/link/lista/citação aparecem formatados sem alternar abas").
+ */
 .post-form__body {
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
-.post-form__preview {
   border: 1px solid var(--line);
   border-radius: var(--radius-input);
   padding: 16px;
   min-height: 280px;
   background: var(--surface);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ink);
+  outline: none;
 }
 
-.post-form__preview h1,
-.post-form__preview h2,
-.post-form__preview h3 {
-  margin-top: 0.6em;
+.post-form__body:focus-visible {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px var(--purple-soft);
 }
 
-.post-form__preview p {
-  margin-bottom: 0.8em;
+.post-form__body p {
+  margin: 0 0 0.8em;
   color: var(--body-text);
 }
 
-/*
- * Caixa "Destaque" (Dica/Atenção/Importante) no Preview -- espelha visual
- * do que `src/pages/[...slug].astro` (site publicado) já faz pro mesmo
- * HTML (`<div class="destaque destaque--<tipo>">`), reaproveitando as
- * semânticas que o admin já tem (`--success`/`--warning`/`--danger`) em vez
- * dos tokens `--green`/`--amber`/`--red` do site -- o admin tem identidade
- * visual própria (roxo, ver topo deste arquivo), essas 3 cores semânticas
- * já cobrem o mesmo papel (positivo/atenção/perigo) sem inventar token novo.
- */
-.post-form__preview .destaque {
-  margin: 0 0 0.8em;
-  padding: 12px 16px;
-  border-left: 3px solid var(--success);
-  background: var(--bg);
-  border-radius: 0 var(--radius-input) var(--radius-input) 0;
-}
-
-.post-form__preview .destaque__label {
-  margin: 0 0 4px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.post-form__preview .destaque p:last-child {
+.post-form__body p:last-child {
   margin-bottom: 0;
 }
 
-.post-form__preview .destaque--dica {
-  border-left-color: var(--success);
+.post-form__body h2,
+.post-form__body h3,
+.post-form__body h4 {
+  margin: 1em 0 0.4em;
+  line-height: 1.3;
+  color: var(--ink);
 }
 
-.post-form__preview .destaque--atencao {
-  border-left-color: var(--warning);
+.post-form__body h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
-.post-form__preview .destaque--importante {
-  border-left-color: var(--danger);
+.post-form__body h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.post-form__body h4 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.post-form__body code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.85em;
+  background: var(--neutral-bg);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.post-form__body a {
+  color: var(--purple-dark);
+  text-decoration: underline;
+}
+
+.post-form__body ul,
+.post-form__body ol {
+  margin: 0 0 0.8em;
+  padding-left: 1.4em;
+}
+
+.post-form__body li {
+  margin-bottom: 0.3em;
+}
+
+/* Citação (markdown `> `) -- também é o que o bloco "Destaque" (dica/
+   atenção/importante) aparenta aqui dentro: formatação ao vivo pra ele é
+   SHOULD, não MUST, nesta entrega (ver limitação documentada em
+   `lib/markdownToolbarActions.ts`), então uma citação simples -- sem cor/
+   ícone -- é o visual esperado pra esse bloco por enquanto. */
+.post-form__body blockquote {
+  margin: 0 0 0.8em;
+  padding: 2px 16px;
+  border-left: 3px solid var(--line);
+  color: var(--body-text);
+}
+
+/* Texto fantasma quando o corpo está vazio (`@tiptap/extension-placeholder`
+   marca o parágrafo vazio com esta classe + `data-placeholder`). */
+.post-form__body p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--body-text);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .post-form__actions {
