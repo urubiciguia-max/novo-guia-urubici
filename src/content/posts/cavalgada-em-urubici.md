@@ -12,8 +12,6 @@ category: Geral
 legacySlug: cavalgada-em-urubici
 ---
 
-Cavalgada em Urubici: Passeios pelos Cânions e Vales (Guia 2026)
-
 Há algo profundamente transformador em desacelerar o ritmo na Serra Catarinense. Enquanto a maioria dos visitantes passa os dias correndo de carro entre um mirante e outro — lidando com a frustração do sinal de celular que desaparece na subida da serra ou com a neblina repentina que fecha a visibilidade —, quem escolhe explorar a região a cavalo enxerga uma Urubici que o turismo tradicional raramente alcança.
 
 Sentir o baque cadenciado do casco na terra úmida, o vento gelado de altitude cortando o rosto e o silêncio dos vales cercados por araucárias cria uma conexão visceral com a paisagem.

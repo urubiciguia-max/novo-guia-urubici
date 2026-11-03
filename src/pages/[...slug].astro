@@ -108,20 +108,25 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
     </div>
 
     <article class="post container">
-      <header class="post-header">
-        <span class="badge badge--charcoal">{post.data.category}</span>
-        <h1>{post.data.title}</h1>
-        <p class="post-description">{post.data.description}</p>
-      </header>
-
       {post.data.cover && (
         <figure class="post-cover">
-          <Image src={post.data.cover} alt={post.data.coverAlt ?? ''} />
+          <Image
+            src={post.data.cover}
+            alt={post.data.coverAlt ?? ''}
+            loading="eager"
+            fetchpriority="high"
+          />
           {post.data.coverCredit && <figcaption class="post-cover__credit">{post.data.coverCredit}</figcaption>}
         </figure>
       )}
 
       <AuthorBox author={post.data.author} pubDate={post.data.pubDate} updatedDate={post.data.updatedDate} />
+
+      <header class="post-header">
+        <span class="badge badge--charcoal">{post.data.category}</span>
+        <h1>{post.data.title}</h1>
+        <p class="post-description">{post.data.description}</p>
+      </header>
 
       <div class="post-body">
         <Content />
@@ -156,6 +161,7 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
   }
 
   .post-header {
+    margin-top: 24px;
     margin-bottom: 20px;
   }
 
