@@ -9,12 +9,14 @@ export {
   RateLimitError,
   ValidationError,
   GitHubApiError,
+  PageNotFoundError,
+  PageShaConflictError,
 } from './errors.js';
 
-export { postFrontmatterSchema } from './schema.js';
-export type { ValidatedPostFrontmatter } from './schema.js';
+export { postFrontmatterSchema, pageFrontmatterSchema } from './schema.js';
+export type { ValidatedPostFrontmatter, ValidatedPageFrontmatter } from './schema.js';
 
-export { parsePostFile, serializePostFile, MalformedPostFileError } from './markdown.js';
+export { parsePostFile, serializePostFile, parsePageFile, serializePageFile, MalformedPostFileError } from './markdown.js';
 
 export { CATEGORIES, AFFILIATE_PROVIDERS } from './types.js';
 export type {
@@ -26,4 +28,7 @@ export type {
   PostListItem,
   PostRecord,
   WriteResult,
+  PageFrontmatter,
+  PageListItem,
+  PageRecord,
 } from './types.js';

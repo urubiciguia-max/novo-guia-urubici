@@ -105,3 +105,46 @@ export interface WriteResult {
   /** SHA do commit criado. */
   commitSha: string;
 }
+
+/**
+ * Tipos da collection `pages`, espelhando o bloco `pages` em
+ * `src/content/config.ts` (fonte de verdade do schema).
+ *
+ * Bem mais enxuto que `PostFrontmatter` de proposito: pagina institucional
+ * (sobre-nos, contato, politica-de-privacidade, termos-de-uso) nao tem
+ * pubDate/tags/category/author/faq/affiliates/legacySlug -- lista fechada
+ * de 4 arquivos, sem publicacao agendada nem SEO de blog (ver spec do
+ * Carlito, aprovada pelo dono do site).
+ */
+export interface PageFrontmatter {
+  /** Vira o <title> da aba E o <h1> da pagina -- unificado, sem `heading` separado. */
+  title: string;
+  description: string;
+}
+
+/**
+ * Projeção leve de uma página pra tabela "Páginas" do painel -- é o que
+ * `listPages()` devolve. Mesmo padrão de `PostListItem`: nunca quebra a
+ * listagem por causa de um arquivo malformado, entra com `valid: false`.
+ */
+export interface PageListItem {
+  /** Nome do arquivo sem `.md` -- é o slug da URL (`/sobre-nos`, `/contato`, etc). */
+  slug: string;
+  title: string;
+  description: string;
+  /** SHA do blob no git -- mesmo valor que `getPage`/`updatePage` esperam. */
+  sha: string;
+  valid: boolean;
+  validationErrors?: string[];
+}
+
+/** Retorno de `getPage()` -- página completa pronta pra edição. */
+export interface PageRecord {
+  slug: string;
+  frontmatter: PageFrontmatter;
+  body: string;
+  /** SHA do blob -- obrigatório em `updatePage` (optimistic lock). */
+  sha: string;
+  valid: boolean;
+  validationErrors?: string[];
+}

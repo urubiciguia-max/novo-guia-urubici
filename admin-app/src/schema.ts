@@ -71,6 +71,19 @@ export const postFrontmatterSchema = z.object({
 
 export type ValidatedPostFrontmatter = z.infer<typeof postFrontmatterSchema>;
 
+/**
+ * Espelha o bloco `pages` em `src/content/config.ts`. Mesmos limites de
+ * `title`/`description` do schema de post (max 90 / max 160) -- sao os
+ * mesmos campos (titulo de aba + meta description), so sem o resto do
+ * frontmatter de post que nao se aplica a pagina institucional.
+ */
+export const pageFrontmatterSchema = z.object({
+  title: z.string().min(1).max(90),
+  description: z.string().min(1).max(160),
+});
+
+export type ValidatedPageFrontmatter = z.infer<typeof pageFrontmatterSchema>;
+
 /** Formata os `issues` do Zod no shape simples que `ValidationError` espera. */
 export function zodIssuesToErrors(issues: z.core.$ZodIssue[]): { path: string; message: string }[] {
   return issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }));

@@ -1,14 +1,24 @@
 import {
   GitHubApiError,
+  PageNotFoundError,
+  PageShaConflictError,
   PostAlreadyExistsError,
   PostNotFoundError,
   RateLimitError,
   ShaConflictError,
   ValidationError,
 } from './errors.js';
-import { parsePostFile, serializePostFile } from './markdown.js';
-import { postFrontmatterSchema, SLUG_PATTERN, zodIssuesToErrors } from './schema.js';
-import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from './types.js';
+import { parsePageFile, parsePostFile, serializePageFile, serializePostFile } from './markdown.js';
+import { pageFrontmatterSchema, postFrontmatterSchema, SLUG_PATTERN, zodIssuesToErrors } from './schema.js';
+import type {
+  PageFrontmatter,
+  PageListItem,
+  PageRecord,
+  PostFrontmatter,
+  PostListItem,
+  PostRecord,
+  WriteResult,
+} from './types.js';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
@@ -23,6 +33,8 @@ export interface GitHubPostsClientConfig {
   branch?: string;
   /** Pasta da collection no repo. Default: `src/content/posts` (mesma de `config.yml`). */
   postsPath?: string;
+  /** Pasta da collection `pages` no repo. Default: `src/content/pages`. Lista fechada de 4 arquivos (ver spec do Carlito). */
+  pagesPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +198,7 @@ export class GitHubPostsClient {
   private readonly repo: string;
   private readonly branch: string;
   private readonly postsPath: string;
+  private readonly pagesPath: string;
 
   constructor(config: GitHubPostsClientConfig) {
     this.token = config.token;
@@ -193,6 +206,7 @@ export class GitHubPostsClient {
     this.repo = config.repo;
     this.branch = config.branch ?? 'main';
     this.postsPath = config.postsPath ?? 'src/content/posts';
+    this.pagesPath = config.pagesPath ?? 'src/content/pages';
   }
 
   // -- listPosts -------------------------------------------------------------
@@ -553,6 +567,171 @@ export class GitHubPostsClient {
     return { path: `./${filename}`, sha: data.content.sha, commitSha: data.commit.sha };
   }
 
+  // -- listPages ---------------------------------------------------------
+
+  /**
+   * Lista as paginas institucionais com os campos pra tabela "Paginas" do
+   * painel. Mesma estrategia de `listPosts` (GraphQL em lote, UMA
+   * requisicao) -- mesmo a pasta `pages` tendo so 4 arquivos fixos (lista
+   * fechada, sem create/delete), nao vale a pena ter dois caminhos de
+   * codigo diferentes (REST N+1 pra pages, GraphQL pra posts) por uma pasta
+   * pequena; a pasta nunca cresce (WON'T da spec do Carlito), entao o
+   * trade-off de custo de query do GraphQL nem se aplica aqui.
+   *
+   * Pagina cujo frontmatter nao valida no schema Zod NAO derruba a
+   * listagem -- entra com `valid: false`, mesmo padrao de `listPosts`.
+   */
+  async listPages(): Promise<PageListItem[]> {
+    const query = `
+      query($owner: String!, $repo: String!, $expr: String!) {
+        repository(owner: $owner, name: $repo) {
+          object(expression: $expr) {
+            ... on Tree {
+              entries {
+                name
+                type
+                object {
+                  ... on Blob {
+                    text
+                    oid
+                    isBinary
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+    const expr = `${this.branch}:${this.pagesPath}`;
+    const body = await this.graphqlRequest<GraphQlTreeResponse>(query, {
+      owner: this.owner,
+      repo: this.repo,
+      expr,
+    });
+
+    const entries = body.data?.repository?.object?.entries ?? [];
+    const items: PageListItem[] = [];
+
+    for (const entry of entries) {
+      if (entry.type !== 'blob' || !entry.name.endsWith('.md')) continue;
+      const slug = entry.name.slice(0, -'.md'.length);
+      const sha = entry.object?.oid ?? '';
+      if (entry.object?.isBinary || entry.object?.text == null) {
+        items.push({
+          slug,
+          title: slug,
+          description: '',
+          sha,
+          valid: false,
+          validationErrors: ['Conteúdo do blob vazio ou binário -- não foi possível ler o frontmatter.'],
+        });
+        continue;
+      }
+
+      try {
+        const { frontmatter } = parsePageFile(entry.object.text);
+        const parsed = pageFrontmatterSchema.safeParse(frontmatter);
+        if (parsed.success) {
+          items.push({
+            slug,
+            title: parsed.data.title,
+            description: parsed.data.description,
+            sha,
+            valid: true,
+          });
+        } else {
+          items.push({
+            slug,
+            title: typeof frontmatter.title === 'string' ? frontmatter.title : slug,
+            description: typeof frontmatter.description === 'string' ? frontmatter.description : '',
+            sha,
+            valid: false,
+            validationErrors: zodIssuesToErrors(parsed.error.issues).map((i) => `${i.path || '(raiz)'}: ${i.message}`),
+          });
+        }
+      } catch (err) {
+        items.push({
+          slug,
+          title: slug,
+          description: '',
+          sha,
+          valid: false,
+          validationErrors: [err instanceof Error ? err.message : 'Erro desconhecido ao parsear o arquivo.'],
+        });
+      }
+    }
+
+    return items;
+  }
+
+  // -- getPage -------------------------------------------------------------
+
+  /**
+   * Busca uma pagina especifica via Contents API (REST), mesmo padrao de
+   * `getPost`. Pagina com frontmatter invalido NAO lanca erro -- devolve
+   * `valid: false` pra UI abrir o editor e deixar corrigir.
+   */
+  async getPage(slug: string): Promise<PageRecord> {
+    this.assertValidSlug(slug);
+    const path = `${this.pagesPath}/${slug}.md`;
+    const res = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${path}?ref=${this.branch}`, {
+      method: 'GET',
+    });
+
+    if (res.status === 404) {
+      throw new PageNotFoundError(slug);
+    }
+    const data = await this.parseJsonOrThrow<ContentsGetResponse>(res);
+
+    const raw = base64ToUtf8(data.content);
+    const { frontmatter, body } = parsePageFile(raw);
+    const parsed = pageFrontmatterSchema.safeParse(frontmatter);
+
+    if (parsed.success) {
+      return { slug, frontmatter: parsed.data, body, sha: data.sha, valid: true };
+    }
+    return {
+      slug,
+      frontmatter: frontmatter as unknown as PageFrontmatter,
+      body,
+      sha: data.sha,
+      valid: false,
+      validationErrors: zodIssuesToErrors(parsed.error.issues).map((i) => `${i.path || '(raiz)'}: ${i.message}`),
+    };
+  }
+
+  // -- updatePage ------------------------------------------------------------
+
+  /**
+   * Atualiza uma pagina institucional existente. Exige o `sha` atual (de
+   * `getPage`/`listPages`) -- conflito (409) se alguem salvou por cima
+   * antes. SEM `createPage`/`deletePage` de proposito -- lista fechada de 4
+   * arquivos (ver spec do Carlito, WON'T).
+   */
+  async updatePage(slug: string, frontmatter: PageFrontmatter, body: string, sha: string): Promise<WriteResult> {
+    this.assertValidSlug(slug);
+    const validated = this.validatePageOrThrow(frontmatter);
+    const path = `${this.pagesPath}/${slug}.md`;
+    const content = serializePageFile(validated, body);
+
+    const res = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${path}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: `content: atualiza página "${slug}"`,
+        content: utf8ToBase64(content),
+        branch: this.branch,
+        sha,
+      }),
+    });
+
+    if (res.status === 404) throw new PageNotFoundError(slug);
+    if (res.status === 409) throw new PageShaConflictError(slug);
+
+    const data = await this.parseJsonOrThrow<ContentsPutResponse>(res);
+    return { sha: data.content.sha, commitSha: data.commit.sha };
+  }
+
   // -- helpers internos ------------------------------------------------------
 
   /**
@@ -582,6 +761,14 @@ export class GitHubPostsClient {
 
   private validateOrThrow(frontmatter: PostFrontmatter): Record<string, unknown> {
     const parsed = postFrontmatterSchema.safeParse(frontmatter);
+    if (!parsed.success) {
+      throw new ValidationError(zodIssuesToErrors(parsed.error.issues));
+    }
+    return parsed.data;
+  }
+
+  private validatePageOrThrow(frontmatter: PageFrontmatter): Record<string, unknown> {
+    const parsed = pageFrontmatterSchema.safeParse(frontmatter);
     if (!parsed.success) {
       throw new ValidationError(zodIssuesToErrors(parsed.error.issues));
     }

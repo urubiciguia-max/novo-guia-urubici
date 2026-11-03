@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MalformedPostFileError, parsePostFile, serializePostFile } from '../src/markdown.js';
+import {
+  MalformedPostFileError,
+  parsePageFile,
+  parsePostFile,
+  serializePageFile,
+  serializePostFile,
+} from '../src/markdown.js';
 
 const SAMPLE = `---
 title: "Quando ir pra Urubici"
@@ -129,5 +135,50 @@ describe('serializePostFile', () => {
     // `parsePostFile` entende os dois formatos igual (ver teste acima).
     expect(out).toMatch(/pubDate:\s*'?2026-03-01'?/);
     expect(out).not.toContain('2026-03-01T00:00:00');
+  });
+});
+
+const SAMPLE_PAGE = `---
+title: "Sobre o Guia Urubici"
+description: "Conheça o Guia Urubici."
+---
+
+## Como escrevemos
+
+Corpo da página.
+`;
+
+describe('parsePageFile', () => {
+  it('separa frontmatter e corpo (mesmo parser de parsePostFile, reaproveitado)', () => {
+    const { frontmatter, body } = parsePageFile(SAMPLE_PAGE);
+    expect(frontmatter.title).toBe('Sobre o Guia Urubici');
+    expect(frontmatter.description).toBe('Conheça o Guia Urubici.');
+    expect(body).toContain('## Como escrevemos');
+  });
+
+  it('lança MalformedPostFileError se não tiver os delimitadores ---', () => {
+    expect(() => parsePageFile('sem frontmatter nenhum')).toThrow(MalformedPostFileError);
+  });
+});
+
+describe('serializePageFile', () => {
+  it('serializa e reparseia preservando title+description, nessa ordem', () => {
+    const frontmatter = { title: 'Contato', description: 'Fale com a gente.' };
+    const out = serializePageFile(frontmatter, 'Corpo da página.');
+    expect(out.startsWith('---\n')).toBe(true);
+
+    const { frontmatter: reparsed, body } = parsePageFile(out);
+    expect(reparsed).toMatchObject(frontmatter);
+    expect(body.trim()).toBe('Corpo da página.');
+
+    const titleIdx = out.indexOf('title:');
+    const descriptionIdx = out.indexOf('description:');
+    expect(titleIdx).toBeGreaterThan(-1);
+    expect(descriptionIdx).toBeGreaterThan(titleIdx);
+  });
+
+  it('não grava campos fora de title/description', () => {
+    const out = serializePageFile({ title: 'Teste', description: 'Desc', pubDate: '2026-01-01' }, 'Corpo.');
+    expect(out).not.toContain('pubDate');
   });
 });
