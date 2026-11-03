@@ -13,8 +13,23 @@ contato por e-mail, as informações que você mesmo nos enviar.
 
 ## 2. Cookies
 
-Podemos usar cookies técnicos pra funcionamento do site. Não usamos cookies
-de rastreamento publicitário próprios.
+As páginas deste site não usam cookie de rastreamento, analytics ou pixel
+de publicidade de terceiros — nenhum Google Analytics, Meta Pixel, Hotjar
+ou similar.
+
+O único cookie que existe em todo o projeto é técnico e só entra em jogo se
+você fizer login no nosso painel administrativo interno — nunca na
+navegação comum do site. É um cookie de curta duração (10 minutos, uso
+único) que protege esse login contra fraude durante a autenticação; não
+afeta quem só está lendo o guia.
+
+O aviso de cookies que aparece no rodapé guarda sua escolha no
+`localStorage` do seu navegador, não em cookie — é um dado que fica só no
+seu aparelho, pra não mostrar o aviso de novo depois que você já viu.
+
+Os links de afiliados citados no item 3 levam a sites de terceiros, que
+podem definir cookies próprios deles. Isso está fora do nosso controle —
+vale a pena olhar a política de privacidade de cada um.
 
 ## 3. Links de afiliados
 

@@ -10,6 +10,7 @@ import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '../styles/tokens.css';
 import Organization from '../components/schema/Organization.astro';
+import CookieConsent from '../components/CookieConsent.astro';
 
 /**
  * Layout base do site. Fontes Poppins/Inter vem do @fontsource (auto-hospedadas
@@ -45,7 +46,7 @@ const resolvedOgImage = new URL(ogImage ?? '/og-default.jpg', Astro.site).toStri
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
@@ -82,5 +83,6 @@ const resolvedOgImage = new URL(ogImage ?? '/og-default.jpg', Astro.site).toStri
   <body>
     <a href="#conteudo-principal" class="skip-link">Pular para o conteudo</a>
     <slot />
+    <CookieConsent />
   </body>
 </html>

@@ -1,0 +1,177 @@
+---
+/**
+ * Banner de consentimento de cookies (LGPD).
+ *
+ * PRIMEIRO JS client-side do projeto. Mantido minimo, vanilla, sem
+ * framework: nao bloqueia render (script roda depois do HTML parseado) e
+ * nao causa CLS porque o banner e `position: fixed` (fora do fluxo do
+ * documento) e comeca oculto via atributo `hidden` nativo, nao via
+ * display:none em CSS que precisaria de JS pra reverter.
+ *
+ * Persistencia: localStorage, chave abaixo. So aparece quando nao ha
+ * escolha salva. Ao clicar OK, salva e esconde na hora, sem reload.
+ */
+const STORAGE_KEY = 'guia-urubici-cookie-consent';
+---
+
+<div
+  id="cookie-consent"
+  class="cookie-consent"
+  role="region"
+  aria-label="Aviso de cookies"
+  aria-live="polite"
+  aria-atomic="true"
+  hidden
+>
+  <p class="cookie-consent__text">
+    Sem cookie de rastreamento por aqui — guardamos sua escolha só neste navegador.
+    Veja a
+    <a href="/politica-de-privacidade" class="link-under cookie-consent__link"
+      >Política de Privacidade</a
+    >.
+  </p>
+  <button type="button" id="cookie-consent-accept" class="btn btn--green btn--sm cookie-consent__btn">
+    Entendi
+  </button>
+</div>
+
+<style>
+  .cookie-consent {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    background: var(--charcoal);
+    color: #fff;
+    padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px rgba(26, 26, 26, 0.18);
+    /* estado inicial da entrada — fixed/fora do fluxo, entao animar
+       opacity+transform aqui nao gera CLS nem atrasa o clique (o botao
+       ja esta interativo durante a transicao). */
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  }
+
+  .cookie-consent.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* `hidden` ja remove do layout/accessibility tree; isso aqui e so
+     reforco visual caso o atributo seja removido sem querer. */
+  .cookie-consent[hidden] {
+    display: none;
+  }
+
+  .cookie-consent__text {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-width: 1160px;
+  }
+
+  .cookie-consent__link {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .cookie-consent__link::after {
+    background: #fff;
+  }
+
+  /* outline charcoal padrao fica quase invisivel sobre fundo charcoal —
+     mesma armadilha ja mapeada no disclosure-strip. Aqui dentro troco
+     pra um outline que contrasta com o fundo escuro. */
+  .cookie-consent :focus-visible {
+    outline-color: var(--green-bright);
+  }
+
+  .cookie-consent__btn {
+    align-self: flex-end;
+    flex-shrink: 0;
+    /* .btn--sm (padding 9px / font 0.85rem) fica com ~32px de altura —
+       confortavel visualmente mas abaixo da area de toque recomendada.
+       min-height local garante ~44px sem alterar o padding compartilhado
+       da classe global. */
+    min-height: 44px;
+  }
+
+  @media (min-width: 860px) {
+    .cookie-consent {
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 14px 32px calc(14px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .cookie-consent__text {
+      flex: 1;
+      text-align: right;
+    }
+
+    .cookie-consent__btn {
+      align-self: center;
+    }
+  }
+</style>
+
+<script>
+  const STORAGE_KEY = 'guia-urubici-cookie-consent';
+
+  function hasConsented(): boolean {
+    try {
+      return window.localStorage.getItem(STORAGE_KEY) === 'accepted';
+    } catch {
+      // localStorage indisponivel (modo privado restrito, storage
+      // bloqueado etc.) — nao insiste no banner, so deixa oculto.
+      return true;
+    }
+  }
+
+  function saveConsent(): void {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, 'accepted');
+    } catch {
+      // Sem storage disponivel pra persistir — o banner so some nesta
+      // visita, mas nao trava o clique do usuario.
+    }
+  }
+
+  const banner = document.getElementById('cookie-consent');
+  const acceptBtn = document.getElementById('cookie-consent-accept');
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const EXIT_TRANSITION_MS = 220;
+
+  if (banner instanceof HTMLElement && acceptBtn instanceof HTMLButtonElement && !hasConsented()) {
+    banner.hidden = false;
+
+    // dupla rAF: garante que o navegador pinte o estado inicial
+    // (opacity:0) antes de adicionar a classe que dispara a transicao —
+    // senao o browser pode "fundir" os dois estados e pular a animacao.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => banner.classList.add('is-visible'));
+    });
+
+    acceptBtn.addEventListener('click', () => {
+      saveConsent();
+      banner.classList.remove('is-visible');
+
+      if (prefersReducedMotion) {
+        banner.hidden = true;
+      } else {
+        // espera a transicao de saida antes de tirar do accessibility
+        // tree, senao o banner "pisca" pro estado final sem animar.
+        setTimeout(() => {
+          banner.hidden = true;
+        }, EXIT_TRANSITION_MS);
+      }
+    });
+  }
+</script>
