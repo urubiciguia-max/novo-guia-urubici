@@ -1,59 +1,73 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useEffect, useState } from 'react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import { MarkdownToolbar } from '../src/components/MarkdownToolbar';
-import { renderMarkdownPreview } from '../src/lib/markdownPreview';
-import type { SelectionResult } from '../src/lib/markdownToolbarActions';
+import { createMarkdownEditorExtensions } from '../src/lib/markdownEditorExtensions';
 
 /**
- * Harness que reproduz a fiação real feita em `PostFormPage.tsx`: um
- * textarea controlado + a toolbar, onde `onApply` escreve o texto novo e
- * reposiciona seleção/foco via `useLayoutEffect` (ver `pendingSelectionRef`
- * lá). Testar contra esse harness, não só funções puras isoladas, é o que
- * garante que o requisito #9 do handoff ("foco/cursor corretos após
- * qualquer inserção") realmente se sustenta integrado ao DOM.
+ * Harness que reproduz a fiação real feita em `PostFormPage.tsx`: o editor
+ * TipTap (via `useEditor`) + a toolbar, ambos recebendo a MESMA instância
+ * de `editor`. `onEditor` expõe a instância pro teste poder ler
+ * `editor.storage.markdown.getMarkdown()` (fonte da verdade do conteúdo,
+ * não existe mais um `value`/`onApply` controlado por fora -- ver
+ * `MarkdownToolbarProps`) e mover a seleção programaticamente
+ * (`editor.commands.setTextSelection`), já que jsdom não simula arrasto de
+ * mouse em contenteditable de forma confiável.
  */
-function Harness({ initialValue = '' }: { initialValue?: string }) {
-  const [value, setValue] = useState(initialValue);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pendingRef = useRef<{ start: number; end: number } | null>(null);
+function Harness({ initialMarkdown = '', onEditor }: { initialMarkdown?: string; onEditor?: (e: Editor) => void }) {
+  const [ready, setReady] = useState(false);
+  const editor = useEditor({
+    extensions: createMarkdownEditorExtensions('Escreva aqui...'),
+    content: initialMarkdown,
+    editorProps: { attributes: { class: 'post-form__body', id: 'test-body' } },
+  });
 
-  useLayoutEffect(() => {
-    const pending = pendingRef.current;
-    const el = textareaRef.current;
-    if (!pending || !el) return;
-    el.focus();
-    el.setSelectionRange(pending.start, pending.end);
-    pendingRef.current = null;
-  }, [value]);
-
-  function onApply(result: SelectionResult) {
-    pendingRef.current = { start: result.selectionStart, end: result.selectionEnd };
-    setValue(result.text);
-  }
+  useEffect(() => {
+    if (editor && !ready) {
+      setReady(true);
+      onEditor?.(editor);
+    }
+  }, [editor, ready, onEditor]);
 
   return (
     <div>
-      <MarkdownToolbar textareaRef={textareaRef} value={value} onApply={onApply} />
-      <textarea ref={textareaRef} aria-label="corpo" value={value} onChange={(e) => setValue(e.target.value)} />
+      <MarkdownToolbar editor={editor} />
+      <EditorContent editor={editor} />
     </div>
   );
 }
 
-function selectRange(el: HTMLTextAreaElement, start: number, end: number) {
-  el.focus();
-  el.setSelectionRange(start, end);
+function renderHarness(initialMarkdown = '') {
+  let editor: Editor = null as unknown as Editor;
+  render(<Harness initialMarkdown={initialMarkdown} onEditor={(e) => (editor = e)} />);
+  return () => editor;
 }
 
-/** Mesma seleção de `selectRange`, mas dispara o `mouseup` que o menu
- *  flutuante escuta de verdade pra detectar seleção (ver efeito em
- *  `MarkdownToolbar.tsx`) -- `setSelectionRange` sozinho não emite nenhum
- *  evento no jsdom (nem emitiria num browser real: é uma seleção
- *  simulada/instantânea, não um gesto de mouse/teclado). */
-function selectRangeViaMouse(el: HTMLTextAreaElement, start: number, end: number) {
-  selectRange(el, start, end);
-  fireEvent.mouseUp(el);
+function markdown(getEditor: () => Editor): string {
+  return getEditor().storage.markdown.getMarkdown();
+}
+
+/** Seleciona [from, to] no documento do editor -- equivalente ao "arrastar
+ *  o mouse sobre um trecho" da era textarea, mas via API do ProseMirror
+ *  (jsdom não tem motor de layout pra simular arrasto de verdade num
+ *  contenteditable). Envolto em `act` porque dispara os listeners de
+ *  `selectionUpdate` que atualizam estado do React (menu flutuante). */
+function selectRange(getEditor: () => Editor, from: number, to: number) {
+  act(() => {
+    // Foca o DOM nativamente (`view.dom.focus()`), NÃO via
+    // `editor.commands.focus()` -- o comando do TipTap adia o `.focus()`
+    // de verdade pra um `requestAnimationFrame` (ver `delayedFocus` em
+    // `@tiptap/core`), que não roda sincronamente dentro de um `act()` de
+    // teste. No uso real (clique/teclado do usuário), quem foca o
+    // contenteditable é o PRÓPRIO NAVEGADOR nativamente, igual aqui --
+    // `editor.commands.focus()` só importa pra foco PROGRAMÁTICO (ex:
+    // reabrir o menu flutuante via Alt+Enter), não pra esta simulação de
+    // "usuário selecionou um trecho".
+    getEditor().view.dom.focus();
+    getEditor().commands.setTextSelection({ from, to });
+  });
 }
 
 function getSelectionMenu() {
@@ -64,9 +78,17 @@ function querySelectionMenu() {
   return screen.queryByRole('group', { name: 'Formatação rápida da seleção' });
 }
 
+/** Toolbar fixa (`role="toolbar"`) -- escopo necessário pros botões que têm
+ *  um equivalente de mesmo `aria-label` no menu flutuante de seleção (ex:
+ *  "Link" existe nos dois lugares; com uma seleção não vazia ativa, os dois
+ *  ficam montados ao mesmo tempo e `getByRole` sem escopo acha os dois). */
+function getToolbar() {
+  return screen.getByRole('toolbar', { name: 'Formatação do texto' });
+}
+
 describe('MarkdownToolbar', () => {
   it('todos os controles de nível superior têm aria-label', () => {
-    render(<Harness />);
+    renderHarness();
     expect(screen.getByRole('button', { name: 'Negrito' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Itálico' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Código inline' })).toBeInTheDocument();
@@ -75,480 +97,295 @@ describe('MarkdownToolbar', () => {
     expect(screen.getByRole('button', { name: 'Inserir elemento' })).toBeInTheDocument();
   });
 
-  it('Negrito sem seleção insere marcadores vazios com cursor no meio e mantém o foco', async () => {
+  it('Negrito com seleção envolve o trecho em **; clicar de novo remove (toggle de verdade)', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 0, 0);
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3); // "oi"
 
     await user.click(screen.getByRole('button', { name: 'Negrito' }));
-
-    expect(textarea.value).toBe('****');
-    await waitFor(() => expect(textarea).toHaveFocus());
-    expect(textarea.selectionStart).toBe(2);
-    expect(textarea.selectionEnd).toBe(2);
-  });
-
-  it('Negrito com seleção envolve o texto selecionado e mantém o foco no textarea', async () => {
-    const user = userEvent.setup();
-    render(<Harness initialValue="texto importante" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 6, 16); // "importante"
+    expect(markdown(getEditor)).toBe('**oi** mundo');
+    expect(screen.getByRole('button', { name: 'Negrito' })).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByRole('button', { name: 'Negrito' }));
-
-    expect(textarea.value).toBe('texto **importante**');
-    await waitFor(() => expect(textarea).toHaveFocus());
-    expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('importante');
+    expect(markdown(getEditor)).toBe('oi mundo');
+    expect(screen.getByRole('button', { name: 'Negrito' })).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('Link sem seleção abre modal vazio, foco no campo URL, Inserir desabilitado', async () => {
+  it('Itálico com seleção', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 0, 0);
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
 
-    await user.click(screen.getByRole('button', { name: 'Link' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-    const urlInput = within(dialog).getByLabelText('URL') as HTMLInputElement;
-    const textInput = within(dialog).getByLabelText('Texto') as HTMLInputElement;
-    expect(urlInput.value).toBe('');
-    expect(textInput.value).toBe('');
-    await waitFor(() => expect(urlInput).toHaveFocus());
-    expect(within(dialog).getByRole('button', { name: 'Inserir' })).toBeDisabled();
-    // textarea não muda enquanto o modal só está aberto, sem confirmar.
-    expect(textarea.value).toBe('');
+    await user.click(screen.getByRole('button', { name: 'Itálico' }));
+    expect(markdown(getEditor)).toBe('*oi* mundo');
   });
 
-  it('Link com seleção pré-preenche "Texto" com a seleção, "URL" continua vazio', async () => {
+  it('Código inline com seleção', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="veja a cachoeira" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 7, 16); // "cachoeira"
+    const getEditor = renderHarness('use npm aqui');
+    const start = 'use '.length + 1; // posições do doc: 1-based, "u" de "npm"
+    selectRange(getEditor, start, start + 3);
 
-    await user.click(screen.getByRole('button', { name: 'Link' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-    expect((within(dialog).getByLabelText('Texto') as HTMLInputElement).value).toBe('cachoeira');
-    expect((within(dialog).getByLabelText('URL') as HTMLInputElement).value).toBe('');
+    await user.click(screen.getByRole('button', { name: 'Código inline' }));
+    expect(markdown(getEditor)).toBe('use `npm` aqui');
   });
 
-  it('Inserir fica desabilitado até URL e Texto estarem preenchidos', async () => {
+  it('Dropdown Parágrafo: aplica H2/H3/H4 e remove heading (Parágrafo)', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="" />);
-    await user.click(screen.getByRole('button', { name: 'Link' }));
-    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-    const insertBtn = within(dialog).getByRole('button', { name: 'Inserir' });
+    const getEditor = renderHarness('Título qualquer');
+    selectRange(getEditor, 1, 1);
 
-    expect(insertBtn).toBeDisabled();
-    await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
-    expect(insertBtn).toBeDisabled();
-    await user.type(within(dialog).getByLabelText('Texto'), 'cachoeira');
-    expect(insertBtn).not.toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
+    await user.click(screen.getByRole('button', { name: 'Título H2' }));
+    expect(markdown(getEditor)).toBe('## Título qualquer');
+
+    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
+    await user.click(screen.getByRole('button', { name: 'Título H3' }));
+    expect(markdown(getEditor)).toBe('### Título qualquer');
+
+    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
+    await user.click(screen.getByRole('button', { name: 'Título H4' }));
+    expect(markdown(getEditor)).toBe('#### Título qualquer');
+
+    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
+    await user.click(screen.getByRole('button', { name: 'Parágrafo' }));
+    expect(markdown(getEditor)).toBe('Título qualquer');
   });
 
-  it('Inserir monta [Texto](URL) na posição onde a seleção estava quando o modal abriu, fecha o modal e devolve o foco pro botão Link', async () => {
+  it('H1 não existe como opção no dropdown Parágrafo (mesma regra de sempre -- H1 é do frontmatter)', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="veja a cachoeira" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 7, 16); // "cachoeira"
-    const linkBtn = screen.getByRole('button', { name: 'Link' });
+    renderHarness('x');
+    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
+    const menu = screen.getByRole('group', { name: 'Estilo de parágrafo' });
+    expect(within(menu).queryByText(/título h1/i)).not.toBeInTheDocument();
+  });
 
-    await user.click(linkBtn);
-    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-    await user.type(within(dialog).getByLabelText('URL'), 'guiaurubici.com.br/trilha');
+  it('Dropdown Inserir: lista com marcadores, lista numerada e citação', async () => {
+    const user = userEvent.setup();
+    const getEditor = renderHarness('item um');
+    selectRange(getEditor, 1, 1);
+
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    await user.click(screen.getByRole('button', { name: 'Lista com marcadores' }));
+    expect(markdown(getEditor)).toBe('- item um');
+
+    // alterna de volta pra parágrafo antes de testar o próximo (toggle)
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    await user.click(screen.getByRole('button', { name: 'Lista com marcadores' }));
+    expect(markdown(getEditor)).toBe('item um');
+
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    await user.click(screen.getByRole('button', { name: 'Lista numerada' }));
+    expect(markdown(getEditor)).toBe('1. item um');
+
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    await user.click(screen.getByRole('button', { name: 'Lista numerada' }));
+
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    await user.click(screen.getByRole('button', { name: 'Citação' }));
+    expect(markdown(getEditor)).toBe('> item um');
+  });
+
+  it('Link com seleção: usa o texto selecionado como label do modal e aplica a marca no range original', async () => {
+    const user = userEvent.setup();
+    const getEditor = renderHarness('veja a cachoeira');
+    const start = 'veja a '.length + 1;
+    selectRange(getEditor, start, start + 'cachoeira'.length);
+
+    await user.click(within(getToolbar()).getByRole('button', { name: 'Link' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Texto')).toHaveValue('cachoeira');
+
+    await user.type(within(dialog).getByLabelText('URL'), 'guiaurubici.com.br/cachoeira');
     await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
-    expect(textarea.value).toBe('veja a [cachoeira](https://guiaurubici.com.br/trilha)');
-    // Foco volta pro botão Link (mesmo padrão do ConfirmDialog: volta pro
-    // elemento que abriu o diálogo) -- não pro textarea.
-    await waitFor(() => expect(linkBtn).toHaveFocus());
+    expect(markdown(getEditor)).toBe('veja a [cachoeira](https://guiaurubici.com.br/cachoeira)');
   });
 
-  it('Cancelar fecha o modal sem alterar o textarea e devolve o foco pro botão Link', async () => {
+  it('Link sem seleção: insere no cursor com o texto digitado no modal', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="veja a cachoeira" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 7, 16);
-    const linkBtn = screen.getByRole('button', { name: 'Link' });
-
-    await user.click(linkBtn);
-    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-    await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
-
-    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
-    expect(textarea.value).toBe('veja a cachoeira');
-    await waitFor(() => expect(linkBtn).toHaveFocus());
-  });
-
-  it('Esc fecha o modal de link sem alterar o textarea e devolve o foco pro botão Link', async () => {
-    const user = userEvent.setup();
-    render(<Harness initialValue="veja a cachoeira" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 7, 16);
-    const linkBtn = screen.getByRole('button', { name: 'Link' });
-
-    await user.click(linkBtn);
-    expect(screen.getByRole('dialog', { name: 'Inserir link' })).toBeInTheDocument();
-
-    await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
-    expect(textarea.value).toBe('veja a cachoeira');
-    await waitFor(() => expect(linkBtn).toHaveFocus());
-  });
-
-  it('clique no backdrop fecha o modal de link sem alterar o textarea', async () => {
-    const user = userEvent.setup();
-    render(<Harness initialValue="veja a cachoeira" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 7, 16);
+    const getEditor = renderHarness('ab');
+    selectRange(getEditor, 2, 2); // cursor entre "a" e "b"
 
     await user.click(screen.getByRole('button', { name: 'Link' }));
-    const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-    const backdrop = dialog.parentElement as HTMLElement;
-    await user.click(backdrop);
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Texto'), 'cachoeira');
+    await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
+    await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Inserir link' })).not.toBeInTheDocument();
-    expect(textarea.value).toBe('veja a cachoeira');
+    expect(markdown(getEditor)).toBe('a[cachoeira](https://example.com)b');
   });
 
-  it('dropdown Parágrafo abre, aplica H2 na linha do cursor e fecha o menu', async () => {
+  it('Destaque (SHOULD, não MUST): monta a sintaxe `> [!TIPO]` e insere como citação no editor', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="Minha seção" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 3, 3);
+    const getEditor = renderHarness('ab');
+    selectRange(getEditor, 2, 2);
 
-    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
-    const menu = screen.getByRole('group', { name: 'Estilo de parágrafo' });
-    await user.click(within(menu).getByRole('button', { name: 'Título H2' }));
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    await user.click(screen.getByRole('button', { name: 'Destaque (caixa colorida)' }));
 
-    expect(textarea.value).toBe('## Minha seção');
-    expect(screen.queryByRole('group', { name: 'Estilo de parágrafo' })).not.toBeInTheDocument();
-    await waitFor(() => expect(textarea).toHaveFocus());
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Texto do destaque'), 'cuidado com a trilha');
+    await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+
+    // colchetes do marcador vêm escapados na serialização (texto puro com
+    // `[`/`]`) -- seguro pro `remark-destaque.mjs` do site, que resolve o
+    // escape de volta ao reler (ver test/markdownRoundtrip.test.ts, caso
+    // "bloco Destaque"). O importante aqui é que nada se perde.
+    expect(markdown(getEditor)).toContain('DICA');
+    expect(markdown(getEditor)).toContain('cuidado com a trilha');
+    expect(markdown(getEditor)).toContain('>');
+    // devolve o foco pro gatilho "Inserir" depois de fechar (mesmo
+    // comportamento do DestaqueDialog, já coberto em DestaqueDialog.test.tsx
+    // isoladamente -- aqui só confirmamos que a fiação não quebrou).
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Inserir elemento' })).toHaveFocus());
   });
 
-  it('dropdown Parágrafo não lista H1, mas lista H2/H3/H4 nessa ordem', async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
-    const menu = screen.getByRole('group', { name: 'Estilo de parágrafo' });
-    expect(within(menu).queryByText(/^Título H1$/)).not.toBeInTheDocument();
-    expect(within(menu).getByRole('button', { name: 'Parágrafo' })).toBeInTheDocument();
+  it('menu flutuante aparece com seleção não vazia e some sem seleção', () => {
+    const getEditor = renderHarness('oi mundo grande');
+    expect(querySelectionMenu()).not.toBeInTheDocument();
+
+    selectRange(getEditor, 1, 3);
+    expect(getSelectionMenu()).toBeInTheDocument();
+
+    selectRange(getEditor, 4, 4);
+    expect(querySelectionMenu()).not.toBeInTheDocument();
+  });
+
+  it('menu flutuante: H2/H3/H4 e Link, com aria-label', () => {
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
+    const menu = getSelectionMenu();
     expect(within(menu).getByRole('button', { name: 'Título H2' })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: 'Título H3' })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: 'Título H4' })).toBeInTheDocument();
-
-    const labels = within(menu)
-      .getAllByRole('button')
-      .map((btn) => btn.textContent);
-    expect(labels).toEqual(['Parágrafo', 'Título H2', 'Título H3', 'Título H4']);
+    expect(within(menu).getByRole('button', { name: 'Link' })).toBeInTheDocument();
   });
 
-  it('dropdown Parágrafo aplica H4 na linha do cursor', async () => {
+  it('menu flutuante: clicar H2 aplica o heading e fecha o menu', async () => {
     const user = userEvent.setup();
-    render(<Harness initialValue="Minha seção" />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 3, 3);
+    const getEditor = renderHarness('titulo aqui');
+    selectRange(getEditor, 1, 1);
 
-    await user.click(screen.getByRole('button', { name: 'Estilo de parágrafo' }));
-    const menu = screen.getByRole('group', { name: 'Estilo de parágrafo' });
-    await user.click(within(menu).getByRole('button', { name: 'Título H4' }));
+    const menu = getSelectionMenu.bind(null);
+    selectRange(getEditor, 1, 7); // "titulo"
+    await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Título H2' }));
 
-    expect(textarea.value).toBe('#### Minha seção');
-    await waitFor(() => expect(textarea).toHaveFocus());
+    expect(markdown(getEditor)).toBe('## titulo aqui');
+    expect(querySelectionMenu()).not.toBeInTheDocument();
+    void menu;
   });
 
-  it('dropdown Inserir aplica lista com marcadores em seleção multi-linha', async () => {
-    const user = userEvent.setup();
-    const text = 'primeira linha\nsegunda linha';
-    render(<Harness initialValue={text} />);
-    const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-    selectRange(textarea, 0, text.length);
+  it('Alt+Enter na PRIMEIRA seleção (sem Esc prévio) já foca o primeiro botão do menu', async () => {
+    // Regressão do bug reportado pela Marivone em QA (2026-11-03): o menu
+    // flutuante já aparece sozinho quando o usuário seleciona texto (ver
+    // `syncFromSelection`), ou seja `floatingMenuVisible` já é `true` ANTES
+    // do Alt+Enter ser pressionado aqui. O mecanismo antigo (`focusMenuOnShowRef`
+    // + efeito dependente só de `floatingMenuVisible`) só focava o botão
+    // quando esse booleano fazia a transição false -> true -- que não
+    // acontece neste caminho (já era true), então o foco nunca ia pro botão
+    // na primeira seleção, só depois de um Esc prévio (ver teste abaixo).
+    // Agora o gatilho é `focusRequestId` (contador que SEMPRE muda a cada
+    // Alt+Enter), então este caminho precisa funcionar sem nenhum Esc antes.
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
+    expect(getSelectionMenu()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
-    const menu = screen.getByRole('group', { name: 'Inserir elemento' });
-    await user.click(within(menu).getByRole('button', { name: /Lista com marcadores/ }));
+    fireEvent.keyDown(document, { key: 'Enter', altKey: true });
 
-    expect(textarea.value).toBe('- primeira linha\n- segunda linha');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Título H2' })).toHaveFocus());
   });
 
-  it('Esc fecha o dropdown e devolve o foco pro botão que abriu', async () => {
+  it('Alt+Enter reabre o menu flutuante (mesmo depois de fechado com Esc) e foca o primeiro botão', async () => {
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
+    expect(getSelectionMenu()).toBeInTheDocument();
+
+    // Fecha primeiro -- este teste cobre especificamente o caminho PÓS-Esc
+    // (que já funcionava antes da correção); o caminho da primeira seleção,
+    // sem Esc, está coberto no teste anterior.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(querySelectionMenu()).not.toBeInTheDocument());
+
+    fireEvent.keyDown(document, { key: 'Enter', altKey: true });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Título H2' })).toHaveFocus());
+  });
+
+  it('Alt+Enter pressionado duas vezes em seguida (sem Esc) continua focando o botão', async () => {
+    // Garante que o contador `focusRequestId` não "satura": duas chamadas
+    // consecutivas de Alt+Enter, ambas sem o menu nunca ter sido fechado,
+    // devem focar o botão nas duas vezes -- não só na primeira.
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
+    expect(getSelectionMenu()).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Enter', altKey: true });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Título H2' })).toHaveFocus());
+
+    // Move o foco embora de propósito pra garantir que o 2o Alt+Enter é
+    // quem traz ele de volta (não um acidente de o foco já estar lá) --
+    // pro handler de Alt+Enter processar a tecla, o foco precisa continuar
+    // dentro do editor OU do próprio menu flutuante (ver `onKeyDown` em
+    // `MarkdownToolbar.tsx`), por isso move pra outro botão do MENU (H3),
+    // não pra toolbar fixa.
+    screen.getByRole('button', { name: 'Título H3' }).focus();
+    expect(screen.getByRole('button', { name: 'Título H2' })).not.toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Enter', altKey: true });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Título H2' })).toHaveFocus());
+  });
+
+  it('Alt+Enter sem seleção (cursor colapsado) não abre o menu', () => {
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 3, 3);
+
+    fireEvent.keyDown(document, { key: 'Enter', altKey: true });
+
+    expect(querySelectionMenu()).not.toBeInTheDocument();
+  });
+
+  it('Esc fecha o menu flutuante e devolve o foco pro editor', async () => {
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
+    expect(getSelectionMenu()).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => expect(querySelectionMenu()).not.toBeInTheDocument());
+  });
+
+  it('clicar fora do editor e do menu fecha o menu flutuante', () => {
+    const getEditor = renderHarness('oi mundo');
+    selectRange(getEditor, 1, 3);
+    expect(getSelectionMenu()).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(querySelectionMenu()).not.toBeInTheDocument();
+  });
+
+  it('editor null (ainda não montado): botões ficam desabilitados, sem quebrar', () => {
+    render(<MarkdownToolbar editor={null} />);
+    expect(screen.getByRole('button', { name: 'Negrito' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Estilo de parágrafo' })).toBeDisabled();
+  });
+
+  it('dropdowns fecham com Escape e devolvem o foco pro gatilho', async () => {
     const user = userEvent.setup();
-    render(<Harness />);
-    const trigger = screen.getByRole('button', { name: 'Inserir elemento' });
+    renderHarness('x');
+    const trigger = screen.getByRole('button', { name: 'Estilo de parágrafo' });
     await user.click(trigger);
-    expect(screen.getByRole('group', { name: 'Inserir elemento' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Estilo de parágrafo' })).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('group', { name: 'Inserir elemento' })).not.toBeInTheDocument();
-    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(screen.queryByRole('group', { name: 'Estilo de parágrafo' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
-  it('clicar fora fecha o dropdown', async () => {
-    const user = userEvent.setup();
-    render(
-      <div>
-        <Harness />
-        <button>fora</button>
-      </div>,
-    );
-    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
-    expect(screen.getByRole('group', { name: 'Inserir elemento' })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'fora' }));
-
-    expect(screen.queryByRole('group', { name: 'Inserir elemento' })).not.toBeInTheDocument();
-  });
-
-  describe('Menu flutuante de seleção (H2/H3/H4 + Link ao marcar texto)', () => {
-    it('não aparece sem seleção (seleção colapsada no mouseup)', async () => {
-      render(<Harness initialValue="melhores trilhas" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 3, 3);
-
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-    });
-
-    it('aparece ao selecionar texto via mouseup, com H2/H3/H4 e Link', () => {
-      render(<Harness initialValue="melhores trilhas de Urubici" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 0, 16); // "melhores trilhas"
-
-      const menu = getSelectionMenu();
-      expect(within(menu).getByRole('button', { name: 'Título H2' })).toBeInTheDocument();
-      expect(within(menu).getByRole('button', { name: 'Título H3' })).toBeInTheDocument();
-      expect(within(menu).getByRole('button', { name: 'Título H4' })).toBeInTheDocument();
-      expect(within(menu).getByRole('button', { name: 'Link' })).toBeInTheDocument();
-    });
-
-    it('aparece também ao selecionar via teclado (keyup com seleção não vazia)', () => {
-      render(<Harness initialValue="melhores trilhas de Urubici" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRange(textarea, 0, 16);
-      fireEvent.keyUp(textarea, { key: 'ArrowLeft', shiftKey: true });
-
-      expect(querySelectionMenu()).toBeInTheDocument();
-    });
-
-    it('H2 no menu flutuante aplica o heading na linha do cursor e fecha o menu', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="Melhores trilhas" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 0, 8); // "Melhores"
-
-      await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Título H2' }));
-
-      expect(textarea.value).toBe('## Melhores trilhas');
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-      await waitFor(() => expect(textarea).toHaveFocus());
-    });
-
-    it('H4 no menu flutuante aplica o heading', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="Melhores trilhas" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 0, 8);
-
-      await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Título H4' }));
-
-      expect(textarea.value).toBe('#### Melhores trilhas');
-    });
-
-    it('Link no menu flutuante abre o LinkDialog pré-preenchido com a seleção e fecha o menu', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="veja a cachoeira" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 7, 16); // "cachoeira"
-
-      await user.click(within(getSelectionMenu()).getByRole('button', { name: 'Link' }));
-
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-      const dialog = screen.getByRole('dialog', { name: 'Inserir link' });
-      expect((within(dialog).getByLabelText('Texto') as HTMLInputElement).value).toBe('cachoeira');
-
-      await user.type(within(dialog).getByLabelText('URL'), 'https://example.com');
-      await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
-      expect(textarea.value).toBe('veja a [cachoeira](https://example.com)');
-    });
-
-    it('Esc fecha o menu flutuante sem alterar o texto e devolve o foco pro textarea', () => {
-      render(<Harness initialValue="melhores trilhas" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 0, 8);
-      expect(querySelectionMenu()).toBeInTheDocument();
-
-      fireEvent.keyDown(textarea, { key: 'Escape' });
-
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-      expect(textarea.value).toBe('melhores trilhas');
-      expect(textarea).toHaveFocus();
-    });
-
-    it('clicar fora (fora do textarea e do menu) fecha o menu flutuante', async () => {
-      const user = userEvent.setup();
-      render(
-        <div>
-          <Harness initialValue="melhores trilhas" />
-          <button>fora</button>
-        </div>,
-      );
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 0, 8);
-      expect(querySelectionMenu()).toBeInTheDocument();
-
-      await user.click(screen.getByRole('button', { name: 'fora' }));
-
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-    });
-
-    it('Alt+Enter com seleção ativa foca o primeiro botão do menu (reabre mesmo depois de um Esc)', () => {
-      render(<Harness initialValue="melhores trilhas" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRangeViaMouse(textarea, 0, 8);
-      fireEvent.keyDown(textarea, { key: 'Escape' });
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-
-      fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
-
-      const menu = getSelectionMenu();
-      expect(within(menu).getByRole('button', { name: 'Título H2' })).toHaveFocus();
-    });
-
-    it('Alt+Enter sem seleção (cursor colapsado) não abre o menu', () => {
-      render(<Harness initialValue="melhores trilhas" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRange(textarea, 3, 3);
-
-      fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
-
-      expect(querySelectionMenu()).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Destaque (caixa colorida)', () => {
-    async function openDestaqueDialog(user: ReturnType<typeof userEvent.setup>) {
-      await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
-      const menu = screen.getByRole('group', { name: 'Inserir elemento' });
-      await user.click(within(menu).getByRole('button', { name: /Destaque \(caixa colorida\)/ }));
-      return screen.getByRole('dialog', { name: 'Inserir destaque' });
-    }
-
-    it('item "Destaque (caixa colorida)" existe no dropdown Inserir', async () => {
-      const user = userEvent.setup();
-      render(<Harness />);
-      await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
-      const menu = screen.getByRole('group', { name: 'Inserir elemento' });
-      expect(within(menu).getByRole('button', { name: /Destaque \(caixa colorida\)/ })).toBeInTheDocument();
-    });
-
-    it('sem seleção: abre com "Dica" marcada por padrão, texto vazio, foco no primeiro rádio, Inserir desabilitado', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRange(textarea, 0, 0);
-
-      const dialog = await openDestaqueDialog(user);
-
-      const dicaRadio = within(dialog).getByRole('radio', { name: /Dica/ }) as HTMLInputElement;
-      expect(dicaRadio.checked).toBe(true);
-      await waitFor(() => expect(dicaRadio).toHaveFocus());
-      expect((within(dialog).getByLabelText('Texto do destaque') as HTMLTextAreaElement).value).toBe('');
-      expect(within(dialog).getByRole('button', { name: 'Inserir' })).toBeDisabled();
-    });
-
-    it('com seleção: pré-preenche "Texto do destaque" com a seleção', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="acesso com barro em dias de chuva" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRange(textarea, 0, textarea.value.length);
-
-      const dialog = await openDestaqueDialog(user);
-
-      expect((within(dialog).getByLabelText('Texto do destaque') as HTMLTextAreaElement).value).toBe(
-        'acesso com barro em dias de chuva',
-      );
-    });
-
-    it('Inserir fica desabilitado até o texto estar preenchido (tipo já nasce com "Dica" marcada)', async () => {
-      const user = userEvent.setup();
-      render(<Harness />);
-      const dialog = await openDestaqueDialog(user);
-      const insertBtn = within(dialog).getByRole('button', { name: 'Inserir' });
-
-      expect(insertBtn).toBeDisabled();
-      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'cuidado com a trilha');
-      expect(insertBtn).not.toBeDisabled();
-    });
-
-    it('escolher "Atenção" + preencher texto + Inserir monta "> [!ATENCAO]\\n> texto", fecha o modal e devolve o foco pro botão Inserir', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRange(textarea, 0, 0);
-      const insertTrigger = screen.getByRole('button', { name: 'Inserir elemento' });
-
-      const dialog = await openDestaqueDialog(user);
-      await user.click(within(dialog).getByRole('radio', { name: /Atenção/ }));
-      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'acesso escorregadio na chuva');
-      await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
-
-      expect(screen.queryByRole('dialog', { name: 'Inserir destaque' })).not.toBeInTheDocument();
-      expect(textarea.value).toBe('> [!ATENCAO]\n> acesso escorregadio na chuva');
-      // Foco volta pro botão "Inserir" da toolbar (gatilho do dropdown), não
-      // pro textarea nem pro item de menu (que já desmontou) -- ver comentário
-      // do `returnFocusRef` em DestaqueDialog.tsx.
-      await waitFor(() => expect(insertTrigger).toHaveFocus());
-    });
-
-    it('Cancelar fecha o modal sem alterar o textarea e devolve o foco pro botão Inserir', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="texto original" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      const insertTrigger = screen.getByRole('button', { name: 'Inserir elemento' });
-
-      const dialog = await openDestaqueDialog(user);
-      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'algo');
-      await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
-
-      expect(screen.queryByRole('dialog', { name: 'Inserir destaque' })).not.toBeInTheDocument();
-      expect(textarea.value).toBe('texto original');
-      await waitFor(() => expect(insertTrigger).toHaveFocus());
-    });
-
-    it('Esc fecha o modal de destaque sem alterar o textarea e devolve o foco pro botão Inserir', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="texto original" />);
-      const insertTrigger = screen.getByRole('button', { name: 'Inserir elemento' });
-
-      await openDestaqueDialog(user);
-      await user.keyboard('{Escape}');
-
-      expect(screen.queryByRole('dialog', { name: 'Inserir destaque' })).not.toBeInTheDocument();
-      await waitFor(() => expect(insertTrigger).toHaveFocus());
-    });
-
-    it('markdown inserido pelo fluxo completo da UI já nasce reconhecível pelo Preview como caixa colorida', async () => {
-      const user = userEvent.setup();
-      render(<Harness initialValue="" />);
-      const textarea = screen.getByLabelText('corpo') as HTMLTextAreaElement;
-      selectRange(textarea, 0, 0);
-
-      const dialog = await openDestaqueDialog(user);
-      await user.type(within(dialog).getByLabelText('Texto do destaque'), 'leve água e protetor solar');
-      await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
-
-      expect(textarea.value).toBe('> [!DICA]\n> leve água e protetor solar');
-      expect(renderMarkdownPreview(textarea.value)).toBe(
-        '<div class="destaque destaque--dica">' +
-          '<p class="destaque__label"><span aria-hidden="true">💡</span> Dica</p>' +
-          '<p>leve água e protetor solar</p>' +
-          '</div>',
-      );
-    });
+  it('não quebra o uso em DestaqueDialog aberto sem seleção prévia (regression Marivone 2026-11-03: sem foco/scroll roubado no mount)', () => {
+    renderHarness('');
+    // mesmo bug relatado pro `insertTriggerRef`: no mount, sem nenhuma
+    // interação, o botão "Inserir" não deveria estar focado sozinho.
+    expect(screen.getByRole('button', { name: 'Inserir elemento' })).not.toHaveFocus();
   });
 });

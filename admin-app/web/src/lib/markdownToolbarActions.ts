@@ -1,233 +1,83 @@
 /**
- * Transformações puras de texto/seleção usadas pela `MarkdownToolbar`
- * (`components/MarkdownToolbar.tsx`) -- cada função recebe o texto inteiro
- * do campo `body` + a seleção atual do textarea e devolve o novo texto +
- * onde a seleção deve ficar depois. Puro de propósito: sem DOM aqui, sem
- * `useState` -- fácil de testar (`test/markdownToolbarActions.test.ts`) e
- * reusar tanto pros botões simples (negrito/itálico/código) quanto pros
- * dropdowns (Parágrafo, Inserir) e pro modal "Inserir link" (`LinkDialog`).
+ * Helpers de markdown que sobrevivem à migração pro editor rich-text
+ * (TipTap) -- ver `components/MarkdownToolbar.tsx` e
+ * `lib/markdownEditorExtensions.ts`.
  *
- * Estilo "editor do GitHub": insere sintaxe markdown na posição do cursor,
- * não é WYSIWYG contenteditable (decisão do brief, ver handoff do Genilson).
+ * Até a v1 do WYSIWYG (ver `.agents/inbox/genilson.md`, spec "Editor WYSIWYG
+ * no corpo do artigo/página"), este arquivo tinha um conjunto grande de
+ * transformações puras de STRING + offset de cursor (`wrapInline`,
+ * `applyHeading`, `applyLinePrefix`, `insertLinkMarkdown`...), porque a
+ * toolbar manipulava um `<textarea>` cru. Esse mundo não existe mais: Negrito/
+ * Itálico/Código/H2-H4/Lista/Lista numerada/Citação agora são comandos nativos
+ * do editor (`editor.chain().focus().toggleBold().run()` etc, ver
+ * `MarkdownToolbar.tsx`) -- não precisam (nem deveriam) de nenhuma função
+ * aqui.
+ *
+ * O que SOBRA, e por quê:
+ * - `resolveLinkHref`: normalização de URL (bare domain -> `https://`,
+ *   bloqueia esquemas não-http(s) como `javascript:`) usada pelo `LinkDialog`
+ *   antes de aplicar a marca `link` no editor -- mesma regra de sempre,
+ *   movida de `markdownPreview.ts` (deletado nesta migração, era só o
+ *   renderizador regex do Preview que não existe mais) pra aqui.
+ * - `DestaqueType`/`buildDestaqueMarkdown`: o bloco "Destaque" (dica/atenção/
+ *   importante) continua FORA do escopo de formatação ao vivo nesta entrega
+ *   (SHOULD, não MUST -- ver spec) -- construímos a sintaxe `> [!TIPO]` como
+ *   markdown puro e inserimos no editor via
+ *   `editor.storage.markdown.parser.parse(...)` (o MESMO parser usado pra
+ *   carregar o conteúdo inicial, ver `MarkdownToolbar.tsx`), em vez de
+ *   reimplementar um nó de editor dedicado. Resultado: aparece como citação
+ *   simples no editor (sem cor/ícone ao vivo), mas o markdown salvo é
+ *   idêntico ao que `remark-destaque.mjs` já reconhece no site publicado --
+ *   limitação documentada no handoff, não um bug.
  */
 
-import { resolveLinkHref } from './markdownPreview';
-
-export interface SelectionResult {
-  text: string;
-  selectionStart: number;
-  selectionEnd: number;
-}
+// Esquema explícito tipo `javascript:`, `data:`, `vbscript:` etc no início
+// da string (RFC 3986: letra seguida de letras/dígitos/+/-/. até o `:`).
+const URL_SCHEME_RE = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;
 
 /**
- * Mapeia um offset dentro de uma linha (relativo ao início dela) de "antes"
- * pra "depois" quando só o prefixo da linha muda (heading/lista/citação
- * sempre mexem no início da linha, nunca no meio). Se o offset caía dentro
- * do prefixo antigo (que deixou de existir), ele cai pro início do conteúdo
- * novo -- não faz sentido manter cursor "dentro" de um prefixo que sumiu.
+ * Decide se uma URL digitada no `LinkDialog` é segura/normalizável antes de
+ * virar a marca `link` do editor, e resolve o caso mais realista de usuário
+ * não-técnico: URL colada sem protocolo (`guiaurubici.com.br/pagina`,
+ * `www.site.com.br`) -- bug original reportado pela Marivone no QA da
+ * toolbar v1 (antes do textarea), mesma regra preservada aqui.
+ *
+ * Allowlist por design: só `http(s)://` explícito ou NENHUM esquema (bare
+ * domain, vira `https://` automaticamente). Qualquer outro esquema
+ * (`javascript:`, `data:`, `vbscript:`, ...) é rejeitado -- devolve `null`,
+ * quem chama decide o fallback (`MarkdownToolbar` usa a URL literal digitada
+ * nesse caso; a própria extensão `@tiptap/extension-link` também valida o
+ * esquema de novo antes de renderizar `<a>`, então não é a única camada).
  */
-function mapLineOffset(offset: number, oldPrefixLen: number, newPrefixLen: number): number {
-  if (offset <= oldPrefixLen) return newPrefixLen;
-  return offset - oldPrefixLen + newPrefixLen;
-}
+export function resolveLinkHref(rawUrl: string): string | null {
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
 
-/** Envolve a seleção com `marker` dos dois lados (negrito/itálico/código inline).
- *  Sem seleção: insere os marcadores vazios com o cursor entre eles.
- *  Com seleção: envolve o texto selecionado e mantém a MESMA seleção (agora
- *  deslocada pelo tamanho do marcador à esquerda), pra dar pra continuar
- *  editando/sobrescrevendo sem precisar reselecionar. */
-export function wrapInline(text: string, start: number, end: number, marker: string): SelectionResult {
-  const before = text.slice(0, start);
-  const selected = text.slice(start, end);
-  const after = text.slice(end);
-  const newText = `${before}${marker}${selected}${marker}${after}`;
+  const schemeMatch = URL_SCHEME_RE.exec(rawUrl);
+  if (schemeMatch) return null; // esquema não-http(s): bloqueado
 
-  if (start === end) {
-    const pos = start + marker.length;
-    return { text: newText, selectionStart: pos, selectionEnd: pos };
-  }
-
-  return {
-    text: newText,
-    selectionStart: start + marker.length,
-    selectionEnd: end + marker.length,
-  };
-}
-
-/** Monta a sintaxe `[texto](url)` normalizando a URL com a MESMA regra do
- *  Preview (`resolveLinkHref` em `markdownPreview.ts`): sem protocolo ganha
- *  `https://` automaticamente. Esquema explícito não-http(s) (`mailto:`,
- *  `tel:`, ...) não é bloqueado aqui -- `resolveLinkHref` devolve `null`
- *  nesse caso só pra proteger o `dangerouslySetInnerHTML` do Preview; na
- *  hora de MONTAR o markdown (não renderizar HTML), não há esse risco, então
- *  cai no fallback e usa a URL exatamente como o usuário digitou. */
-export function buildLinkMarkdown(text: string, url: string): string {
-  const href = resolveLinkHref(url) ?? url;
-  return `[${text}](${href})`;
-}
-
-/** Confirmação do modal "Inserir link" (`LinkDialog`): monta `[texto](url)`
- *  (via `buildLinkMarkdown`) e substitui o intervalo [start, end] -- a
- *  posição do cursor/seleção capturada no momento em que o botão Link foi
- *  clicado, ANTES do modal abrir (`MarkdownToolbar` guarda isso, já que a
- *  inserção real só acontece depois, no confirm). Cursor fica colapsado no
- *  fim do link inserido. */
-export function insertLinkMarkdown(
-  text: string,
-  start: number,
-  end: number,
-  label: string,
-  url: string,
-): SelectionResult {
-  const before = text.slice(0, start);
-  const after = text.slice(end);
-  const markdown = buildLinkMarkdown(label, url);
-  const pos = start + markdown.length;
-  return { text: before + markdown + after, selectionStart: pos, selectionEnd: pos };
-}
-
-export type HeadingLevel = 0 | 2 | 3 | 4;
-
-const HEADING_RE = /^(#{1,4})\s+/;
-
-/** Dropdown "Parágrafo": aplica no nível de uma única linha (a que contém o
- *  cursor), nunca em múltiplas linhas de uma seleção -- um heading é sempre
- *  uma linha só. `level: 0` = "Parágrafo" (remove heading existente).
- *  H1 não existe aqui de propósito: `src/pages/[...slug].astro` já renderiza
- *  `<h1>` a partir do frontmatter, então H1 no corpo duplicaria hierarquia
- *  (ver handoff). */
-export function applyHeading(text: string, cursorPos: number, level: HeadingLevel): SelectionResult {
-  const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
-  let lineEnd = text.indexOf('\n', cursorPos);
-  if (lineEnd === -1) lineEnd = text.length;
-
-  const line = text.slice(lineStart, lineEnd);
-  const match = HEADING_RE.exec(line);
-  const oldPrefixLen = match ? match[0].length : 0;
-  const content = line.slice(oldPrefixLen);
-  const newPrefix = level === 0 ? '' : `${'#'.repeat(level)} `;
-  const newLine = newPrefix + content;
-
-  const newText = text.slice(0, lineStart) + newLine + text.slice(lineEnd);
-  const offsetInLine = cursorPos - lineStart;
-  const newOffset = mapLineOffset(offsetInLine, oldPrefixLen, newPrefix.length);
-  const newPos = lineStart + newOffset;
-
-  return { text: newText, selectionStart: newPos, selectionEnd: newPos };
-}
-
-interface LineTransformResult {
-  newLine: string;
-  oldPrefixLen: number;
-  newPrefixLen: number;
-}
-
-/** Aplica `transform` em cada linha tocada pela seleção [start, end]
- *  (linha inteira, mesmo que a seleção pegue só um pedaço dela) e remapeia
- *  a seleção pro texto novo. Cada `transform` só pode mexer no PREFIXO da
- *  linha (inserir/remover texto no início) -- é o que `mapLineOffset`
- *  assume. Usado pelo dropdown "Inserir" (lista/lista numerada/citação). */
-function transformLines(
-  text: string,
-  start: number,
-  end: number,
-  transform: (line: string, lineIndex: number) => LineTransformResult,
-): SelectionResult {
-  const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-  let lineEnd = text.indexOf('\n', end);
-  if (lineEnd === -1) lineEnd = text.length;
-
-  const chunk = text.slice(lineStart, lineEnd);
-  const lines = chunk.split('\n');
-
-  const relStart = start - lineStart;
-  const relEnd = end - lineStart;
-
-  let oldCursor = 0;
-  let newCursor = 0;
-  let mappedStart: number | null = null;
-  let mappedEnd: number | null = null;
-  const newLines: string[] = [];
-
-  lines.forEach((line, index) => {
-    const oldLineStart = oldCursor;
-    const oldLineEnd = oldLineStart + line.length;
-    const { newLine, oldPrefixLen, newPrefixLen } = transform(line, index);
-
-    if (mappedStart === null && relStart >= oldLineStart && relStart <= oldLineEnd) {
-      mappedStart = newCursor + mapLineOffset(relStart - oldLineStart, oldPrefixLen, newPrefixLen);
-    }
-    if (mappedEnd === null && relEnd >= oldLineStart && relEnd <= oldLineEnd) {
-      mappedEnd = newCursor + mapLineOffset(relEnd - oldLineStart, oldPrefixLen, newPrefixLen);
-    }
-
-    newLines.push(newLine);
-    oldCursor = oldLineEnd + 1;
-    newCursor += newLine.length + 1;
-  });
-
-  const newChunk = newLines.join('\n');
-  const newText = text.slice(0, lineStart) + newChunk + text.slice(lineEnd);
-
-  return {
-    text: newText,
-    selectionStart: lineStart + (mappedStart ?? 0),
-    selectionEnd: lineStart + (mappedEnd ?? newChunk.length),
-  };
-}
-
-export type InsertKind = 'bullet' | 'numbered' | 'quote';
-
-/** Dropdown "Inserir": prefixa cada linha selecionada (ou só a linha do
- *  cursor, sem seleção) com `- `, `1. `/`2. `/... ou `> `. */
-export function applyLinePrefix(text: string, start: number, end: number, kind: InsertKind): SelectionResult {
-  let counter = 1;
-  return transformLines(text, start, end, (line) => {
-    const marker = kind === 'bullet' ? '- ' : kind === 'quote' ? '> ' : `${counter++}. `;
-    return { newLine: marker + line, oldPrefixLen: 0, newPrefixLen: marker.length };
-  });
+  return `https://${rawUrl}`;
 }
 
 export type DestaqueType = 'dica' | 'atencao' | 'importante';
 
 // Keyword em maiúsculo/sem acento que vai dentro de `[!...]` -- mesma
 // convenção travada pelo Jurandir (`remark-destaque.mjs`, lado do site) e
-// espelhada em `markdownPreview.ts` (admin). Ver documentação completa da
-// sintaxe no topo de `remark-destaque.mjs`.
+// reconhecida de volta pelo parser markdown ao recarregar o post (ver
+// `remark-destaque.mjs` pra documentação completa da sintaxe).
 const DESTAQUE_MARKER_KEYWORDS: Record<DestaqueType, string> = {
   dica: 'DICA',
   atencao: 'ATENCAO',
   importante: 'IMPORTANTE',
 };
 
-/** Monta a sintaxe `> [!TIPO]\n> linha1\n> linha2...` que `markdownPreview.ts`
- *  (admin) e `remark-destaque.mjs` (site publicado) reconhecem como caixa
- *  "Destaque". Cada linha do corpo (inclusive uma linha vazia entre dois
- *  parágrafos, se o usuário digitou múltiplos) ganha o prefixo `> `, MESMO
- *  padrão que `applyLinePrefix`/`transformLines` já usa pra citação/lista
- *  -- não reinventa uma regra de prefixo diferente só pra este caso. */
+/** Monta a sintaxe `> [!TIPO]\n> linha1\n> linha2...` que `remark-destaque.mjs`
+ *  (site publicado) reconhece como caixa "Destaque". Cada linha do corpo
+ *  (inclusive uma linha vazia entre dois parágrafos, se o usuário digitou
+ *  múltiplos) ganha o prefixo `> `. Resultado é markdown puro, pronto pra
+ *  passar por `editor.storage.markdown.parser.parse(...)` e ser inserido no
+ *  documento do editor (ver `MarkdownToolbar.tsx`, `handleDestaqueConfirm`). */
 export function buildDestaqueMarkdown(type: DestaqueType, body: string): string {
   const markerLine = `[!${DESTAQUE_MARKER_KEYWORDS[type]}]`;
   const lines = [markerLine, ...body.split('\n')];
   return lines.map((line) => `> ${line}`).join('\n');
-}
-
-/** Confirmação do modal "Inserir destaque" (`DestaqueDialog`): monta o
- *  blockquote marcado (via `buildDestaqueMarkdown`) e substitui o intervalo
- *  [start, end] -- a posição do cursor/seleção capturada no momento em que
- *  o item "Destaque" do dropdown Inserir foi escolhido, ANTES do modal abrir
- *  (mesmo padrão de `insertLinkMarkdown`/`LinkDialog`). Cursor fica
- *  colapsado no fim do bloco inserido. */
-export function insertDestaqueMarkdown(
-  text: string,
-  start: number,
-  end: number,
-  type: DestaqueType,
-  body: string,
-): SelectionResult {
-  const before = text.slice(0, start);
-  const after = text.slice(end);
-  const markdown = buildDestaqueMarkdown(type, body);
-  const pos = start + markdown.length;
-  return { text: before + markdown + after, selectionStart: pos, selectionEnd: pos };
 }
