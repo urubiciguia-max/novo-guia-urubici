@@ -2,13 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitHubPostsClient } from '../src/github-client.js';
 import {
   GitHubApiError,
+  PageNotFoundError,
+  PageShaConflictError,
   PostAlreadyExistsError,
   PostNotFoundError,
   RateLimitError,
   ShaConflictError,
   ValidationError,
 } from '../src/errors.js';
-import type { PostFrontmatter } from '../src/types.js';
+import type { PageFrontmatter, PostFrontmatter } from '../src/types.js';
 
 function utf8ToBase64(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -464,6 +466,149 @@ describe('GitHubPostsClient', () => {
         ShaConflictError
       );
     });
+  });
+
+  // -- pages (sobre-nos, contato, politica-de-privacidade, termos-de-uso) --
+
+  const VALID_PAGE_FRONTMATTER: PageFrontmatter = {
+    title: 'Sobre o Guia Urubici',
+    description: 'Conheça o Guia Urubici.',
+  };
+
+  const PAGE_MD = `---
+title: "Sobre o Guia Urubici"
+description: "Conheça o Guia Urubici."
+---
+
+Corpo da página.
+`;
+
+  describe('listPages', () => {
+    it('faz UMA única requisição (GraphQL) e lista as páginas válidas', async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          data: {
+            repository: {
+              object: {
+                entries: [{ name: 'sobre-nos.md', type: 'blob', object: { text: PAGE_MD, oid: 'page-sha-1', isBinary: false } }],
+              },
+            },
+          },
+        })
+      );
+
+      const items = await makeClient().listPages();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, init] = fetchMock.mock.calls[0];
+      const sentBody = JSON.parse(init.body as string);
+      expect(sentBody.variables.expr).toBe('main:src/content/pages');
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        slug: 'sobre-nos',
+        title: 'Sobre o Guia Urubici',
+        description: 'Conheça o Guia Urubici.',
+        sha: 'page-sha-1',
+        valid: true,
+      });
+    });
+
+    it('página com frontmatter inválido entra com valid: false em vez de quebrar a listagem', async () => {
+      const brokenMd = `---\ntitle: ""\ndescription: "x"\n---\n\nCorpo.\n`;
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          data: {
+            repository: {
+              object: { entries: [{ name: 'contato.md', type: 'blob', object: { text: brokenMd, oid: 'sha-2', isBinary: false } }] },
+            },
+          },
+        })
+      );
+
+      const items = await makeClient().listPages();
+      expect(items).toHaveLength(1);
+      expect(items[0].valid).toBe(false);
+      expect(items[0].validationErrors?.length).toBeGreaterThan(0);
+    });
+
+    it('pasta vazia (repository.object null) devolve lista vazia sem erro', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ data: { repository: { object: null } } }));
+      expect(await makeClient().listPages()).toEqual([]);
+    });
+  });
+
+  describe('getPage', () => {
+    it('busca a página, decodifica base64 e devolve frontmatter + body + sha', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ content: utf8ToBase64(PAGE_MD), encoding: 'base64', sha: 'page-blob-sha' }));
+
+      const page = await makeClient().getPage('sobre-nos');
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain('/repos/urubiciguia-max/novo-guia-urubici/contents/src/content/pages/sobre-nos.md');
+
+      expect(page.sha).toBe('page-blob-sha');
+      expect(page.valid).toBe(true);
+      expect(page.frontmatter.title).toBe('Sobre o Guia Urubici');
+      expect(page.body.trim()).toBe('Corpo da página.');
+    });
+
+    it('404 lança PageNotFoundError', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }));
+      await expect(makeClient().getPage('nao-existe')).rejects.toBeInstanceOf(PageNotFoundError);
+    });
+
+    it.each(['../../.github/workflows/evil', '../secrets', 'a/b', '', '  '])(
+      'getPage(%j) lança ValidationError sem chamar fetch',
+      async (slug) => {
+        await expect(makeClient().getPage(slug)).rejects.toBeInstanceOf(ValidationError);
+        expect(fetchMock).not.toHaveBeenCalled();
+      }
+    );
+  });
+
+  describe('updatePage', () => {
+    it('atualiza com sucesso enviando o sha recebido', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ content: { sha: 'sha-novo' }, commit: { sha: 'commit-sha-page' } }));
+
+      const result = await makeClient().updatePage('sobre-nos', VALID_PAGE_FRONTMATTER, 'Corpo editado.', 'sha-antigo');
+      expect(result).toEqual({ sha: 'sha-novo', commitSha: 'commit-sha-page' });
+
+      const [, init] = fetchMock.mock.calls[0];
+      const sentBody = JSON.parse(init.body as string);
+      expect(sentBody.sha).toBe('sha-antigo');
+      expect(sentBody.message).toBe('content: atualiza página "sobre-nos"');
+    });
+
+    it('conflito de sha (409) lança PageShaConflictError', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'does not match' }), { status: 409 }));
+      await expect(
+        makeClient().updatePage('sobre-nos', VALID_PAGE_FRONTMATTER, 'x', 'sha-desatualizado')
+      ).rejects.toBeInstanceOf(PageShaConflictError);
+    });
+
+    it('página não existe (404) lança PageNotFoundError', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }));
+      await expect(makeClient().updatePage('removida', VALID_PAGE_FRONTMATTER, 'x', 'sha')).rejects.toBeInstanceOf(
+        PageNotFoundError
+      );
+    });
+
+    it('frontmatter inválido (title vazio) lança ValidationError sem chamar fetch', async () => {
+      const invalid = { ...VALID_PAGE_FRONTMATTER, title: '' };
+      await expect(makeClient().updatePage('sobre-nos', invalid, 'corpo', 'sha')).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(['../../.github/workflows/evil', '../secrets', 'a/b', '', '  '])(
+      'updatePage(%j) lança ValidationError sem chamar fetch',
+      async (slug) => {
+        await expect(makeClient().updatePage(slug, VALID_PAGE_FRONTMATTER, 'corpo', 'sha')).rejects.toBeInstanceOf(
+          ValidationError
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+      }
+    );
   });
 
   // -- token nunca aparece em lugar nenhum da requisição exceto o header --

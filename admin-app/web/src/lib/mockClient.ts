@@ -1,14 +1,26 @@
 import {
+  PageNotFoundError,
+  PageShaConflictError,
   PostAlreadyExistsError,
   PostNotFoundError,
   ShaConflictError,
+  pageFrontmatterSchema,
   postFrontmatterSchema,
   ValidationError,
 } from '@admin-data/index.js';
-import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from '@admin-data/index.js';
+import type {
+  PageFrontmatter,
+  PageListItem,
+  PageRecord,
+  PostFrontmatter,
+  PostListItem,
+  PostRecord,
+  WriteResult,
+} from '@admin-data/index.js';
 // `zodIssuesToErrors` não é exportado pelo barrel (`index.ts`) -- só por `schema.ts` direto.
 import { zodIssuesToErrors } from '@admin-data/schema.js';
 import type { PostsClient, UploadCoverImageFile, UploadCoverImageResult } from './postsClient';
+import type { PagesClient } from './pagesClient';
 
 /**
  * Client mock, SÓ pra dev local (ver `postsClient.ts` -- `USE_MOCK` é
@@ -190,6 +202,113 @@ export function createMockPostsClient(): PostsClient {
         sha: `sha-cover-${Date.now()}`,
         commitSha: `commit-${Date.now()}`,
       });
+    },
+  };
+}
+
+// -- Mock de PagesClient ----------------------------------------------------
+
+interface MockPage {
+  slug: string;
+  frontmatter: PageFrontmatter;
+  body: string;
+  sha: string;
+  valid: boolean;
+  validationErrors?: string[];
+}
+
+/**
+ * Seed com as 4 páginas institucionais reais (mesmo título/descrição dos
+ * arquivos em `src/content/pages/*.md`), lista fechada -- sem
+ * create/delete aqui, igual o client real (`GitHubPostsClient.listPages`
+ * só lê o que existe na pasta `pages`).
+ */
+function seedPages(): MockPage[] {
+  return [
+    {
+      slug: 'sobre-nos',
+      sha: 'sha-1',
+      valid: true,
+      body: 'O Guia Urubici nasceu da vontade de reunir, num lugar só, tudo que a gente gostaria de ter sabido antes da primeira viagem pra Serra Catarinense...\n\n## Como escrevemos\n\nCada roteiro parte de visita e experiência própria na região.',
+      frontmatter: {
+        title: 'Sobre o Guia Urubici',
+        description:
+          'Conheça o Guia Urubici: quem escreve, como escolhemos o que recomendar e por que confiar no nosso guia de viagem sobre Urubici-SC.',
+      },
+    },
+    {
+      slug: 'contato',
+      sha: 'sha-1',
+      valid: true,
+      body: 'Prefira o canal que for mais fácil pra você — respondemos o quanto antes.\n\n## E-mail\n\nDúvidas gerais: [contato@guiaurubici.com.br](mailto:contato@guiaurubici.com.br)',
+      frontmatter: {
+        title: 'Contato',
+        description: 'Fale com o Guia Urubici: dúvidas, sugestões de pauta ou parceria com negócios locais da Serra Catarinense.',
+      },
+    },
+    {
+      slug: 'politica-de-privacidade',
+      sha: 'sha-1',
+      valid: true,
+      body: '_Texto institucional de exemplo._\n\n## 1. Quais dados coletamos\n\nDados de navegação básicos.',
+      frontmatter: {
+        title: 'Política de Privacidade',
+        description:
+          'Política de privacidade do Guia Urubici: quais dados coletamos, como usamos cookies e links de afiliados, e seus direitos como titular.',
+      },
+    },
+    {
+      slug: 'termos-de-uso',
+      sha: 'sha-1',
+      valid: true,
+      body: '_Texto institucional de exemplo._\n\n## 1. Aceitação dos termos\n\nAo acessar e usar o Guia Urubici, você concorda com estes termos de uso.',
+      frontmatter: {
+        title: 'Termos de Uso',
+        description: 'Termos de uso do site Guia Urubici: regras de uso do conteúdo, propriedade intelectual e limitação de responsabilidade.',
+      },
+    },
+  ];
+}
+
+export function createMockPagesClient(): PagesClient {
+  const pages = seedPages();
+
+  return {
+    async listPages(): Promise<PageListItem[]> {
+      return delay(
+        pages.map((p) => ({
+          slug: p.slug,
+          title: p.frontmatter.title,
+          description: p.frontmatter.description,
+          sha: p.sha,
+          valid: p.valid,
+          validationErrors: p.validationErrors,
+        }))
+      );
+    },
+
+    async getPage(slug: string): Promise<PageRecord> {
+      const found = pages.find((p) => p.slug === slug);
+      if (!found) throw new PageNotFoundError(slug);
+      return delay({
+        slug: found.slug,
+        frontmatter: found.frontmatter,
+        body: found.body,
+        sha: found.sha,
+        valid: found.valid,
+        validationErrors: found.validationErrors,
+      });
+    },
+
+    async updatePage(slug: string, frontmatter: PageFrontmatter, body: string, sha: string): Promise<WriteResult> {
+      const idx = pages.findIndex((p) => p.slug === slug);
+      if (idx === -1) throw new PageNotFoundError(slug);
+      if (pages[idx].sha !== sha) throw new PageShaConflictError(slug);
+      const parsed = pageFrontmatterSchema.safeParse(frontmatter);
+      if (!parsed.success) throw new ValidationError(zodIssuesToErrors(parsed.error.issues));
+      const newSha = nextSha(sha);
+      pages[idx] = { slug, frontmatter: parsed.data, body, sha: newSha, valid: true };
+      return delay({ sha: newSha, commitSha: `commit-${Date.now()}` });
     },
   };
 }

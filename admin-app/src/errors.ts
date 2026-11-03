@@ -59,6 +59,26 @@ export class ValidationError extends GitHubClientError {
   }
 }
 
+/** Página não existe (404 da API -- `getPage`, `updatePage`). Lista é fechada (4 arquivos), não existe `createPage`. */
+export class PageNotFoundError extends GitHubClientError {
+  constructor(public readonly slug: string) {
+    super(`Página "${slug}" não encontrada no repositório.`);
+  }
+}
+
+/**
+ * SHA enviado não bate com o SHA atual do arquivo da página no GitHub (409)
+ * -- mesma lógica de `ShaConflictError`, mensagem própria pra não confundir
+ * "post" com "página" na UI.
+ */
+export class PageShaConflictError extends GitHubClientError {
+  constructor(public readonly slug: string) {
+    super(
+      `A página "${slug}" foi modificada por outra pessoa (ou outra aba) depois que você abriu pra editar. Recarregue antes de salvar.`
+    );
+  }
+}
+
 /** Qualquer outro erro da API do GitHub (rede, 500, 401 token inválido/expirado, etc). */
 export class GitHubApiError extends GitHubClientError {
   constructor(

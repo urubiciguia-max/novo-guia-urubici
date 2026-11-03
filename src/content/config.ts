@@ -58,4 +58,25 @@ const posts = defineCollection({
     }),
 });
 
-export const collections = { posts };
+/**
+ * Collection das 4 paginas institucionais do site (sobre-nos, contato,
+ * politica-de-privacidade, termos-de-uso) — ver spec do Carlito. Schema
+ * minimo de proposito: so `title` (vira <title> da aba E o <h1> da pagina,
+ * unificado por decisao do dono do site — nao existe mais `heading`
+ * separado) + `description` (meta description). SEM pubDate/tags/category/
+ * author/faq/affiliates/legacySlug — nao se aplicam a pagina institucional
+ * (lista fechada, sem publicacao/categoria/SEO de blog).
+ *
+ * `links.astro` e as hub pages de categoria (guia-pratico, o-que-fazer,
+ * onde-comer-urubici, onde-ficar) NAO entram aqui — fora de escopo desta
+ * feature (ver spec).
+ */
+const pages = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string().max(90),
+    description: z.string().max(160),
+  }),
+});
+
+export const collections = { posts, pages };

@@ -110,3 +110,30 @@ export function serializePostFile(frontmatter: Record<string, unknown>, body: st
   const trimmedBody = body.replace(/\s+$/, '');
   return `---\n${yamlBlock}---\n\n${trimmedBody}\n`;
 }
+
+/**
+ * `parsePostFile` nao tem nenhuma logica especifica de post (so le o bloco
+ * `---...---` e devolve frontmatter+body crus) -- reaproveitado direto pra
+ * paginas, so com nome que combina com o resto da API de pages.
+ */
+export const parsePageFile = parsePostFile;
+
+/** Ordem fixa dos campos no YAML de saida de uma pagina -- so os 2 campos do schema (`title`, `description`), sempre ambos obrigatorios. */
+const PAGE_FIELD_ORDER = ['title', 'description'] as const;
+
+/**
+ * Serializa frontmatter+body de uma pagina institucional. Funcao propria
+ * (nao reaproveita `serializePostFile`) porque `FIELD_ORDER`/`pruneEmpty`
+ * de post sao especificos dos campos de post (tags/draft/category/etc) --
+ * pagina so tem `title`+`description`, ambos sempre obrigatorios, sem campo
+ * opcional pra podar.
+ */
+export function serializePageFile(frontmatter: Record<string, unknown>, body: string): string {
+  const out: Record<string, unknown> = {};
+  for (const key of PAGE_FIELD_ORDER) {
+    if (key in frontmatter) out[key] = frontmatter[key];
+  }
+  const yamlBlock = yaml.dump(out, { lineWidth: -1 });
+  const trimmedBody = body.replace(/\s+$/, '');
+  return `---\n${yamlBlock}---\n\n${trimmedBody}\n`;
+}
