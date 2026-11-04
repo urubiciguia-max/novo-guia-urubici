@@ -56,7 +56,7 @@ export function LinkDialog({ open, initialText, onConfirm, onCancel }: LinkDialo
 
   if (!open) return null;
 
-  const canSubmit = url.trim() !== '' && text.trim() !== '';
+  const canSubmit = url.trim() !== '';
 
   function handleConfirm() {
     if (!canSubmit) return;

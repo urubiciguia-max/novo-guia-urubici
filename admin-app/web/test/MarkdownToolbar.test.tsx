@@ -224,6 +224,24 @@ describe('MarkdownToolbar', () => {
     expect(markdown(getEditor)).toBe('a[cachoeira](https://example.com)b');
   });
 
+  it('Link só com URL (Texto vazio): "Inserir" fica habilitado e usa a própria URL como texto visível', async () => {
+    const user = userEvent.setup();
+    const getEditor = renderHarness('ab');
+    selectRange(getEditor, 2, 2); // cursor entre "a" e "b"
+
+    await user.click(screen.getByRole('button', { name: 'Link' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Texto')).toHaveValue('');
+    expect(within(dialog).getByRole('button', { name: 'Inserir' })).toBeDisabled();
+
+    await user.type(within(dialog).getByLabelText('URL'), 'guiaurubici.com.br/cachoeira');
+    expect(within(dialog).getByRole('button', { name: 'Inserir' })).not.toBeDisabled();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+
+    expect(markdown(getEditor)).toBe('a[guiaurubici.com.br/cachoeira](https://guiaurubici.com.br/cachoeira)b');
+  });
+
   it('Destaque (SHOULD, não MUST): monta a sintaxe `> [!TIPO]` e insere como citação no editor', async () => {
     const user = userEvent.setup();
     const getEditor = renderHarness('ab');
