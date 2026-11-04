@@ -19,8 +19,19 @@ import type {
 } from '@admin-data/index.js';
 // `zodIssuesToErrors` não é exportado pelo barrel (`index.ts`) -- só por `schema.ts` direto.
 import { zodIssuesToErrors } from '@admin-data/schema.js';
-import type { PostsClient, UploadCoverImageFile, UploadCoverImageResult } from './postsClient';
+import type {
+  PostsClient,
+  UploadContentImageFile,
+  UploadContentImageResult,
+  UploadCoverImageFile,
+  UploadCoverImageResult,
+} from './postsClient';
 import type { PagesClient } from './pagesClient';
+
+/** Extensão plausível pro mock de upload de imagem de conteúdo -- mesmo critério de `uploadCoverImage` real (jpg/png por padrão, webp só se declarado). */
+function mockImageExt(mimeType: string): string {
+  return mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+}
 
 /**
  * Client mock, SÓ pra dev local (ver `postsClient.ts` -- `USE_MOCK` é
@@ -196,10 +207,23 @@ export function createMockPostsClient(): PostsClient {
     // GitHub. Mesmo formato de path que o client real promete:
     // `./<legacySlug>-capa.<ext>`.
     async uploadCoverImage(legacySlug: string, file: UploadCoverImageFile): Promise<UploadCoverImageResult> {
-      const ext = file.mimeType === 'image/png' ? 'png' : file.mimeType === 'image/webp' ? 'webp' : 'jpg';
+      const ext = mockImageExt(file.mimeType);
       return delay({
         path: `./${legacySlug}-capa.${ext}`,
         sha: `sha-cover-${Date.now()}`,
+        commitSha: `commit-${Date.now()}`,
+      });
+    },
+
+    // Mock de `GitHubPostsClient.uploadContentImage()` -- não commita nada
+    // de verdade, só devolve um path/sha plausíveis com nome único (igual o
+    // client real, SEM upsert), pra exercitar o fluxo de inserir imagem no
+    // corpo do post sem token real do GitHub.
+    async uploadContentImage(slug: string, file: UploadContentImageFile): Promise<UploadContentImageResult> {
+      const ext = mockImageExt(file.mimeType);
+      return delay({
+        path: `./${slug}-img-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`,
+        sha: `sha-content-${Date.now()}`,
         commitSha: `commit-${Date.now()}`,
       });
     },
@@ -309,6 +333,17 @@ export function createMockPagesClient(): PagesClient {
       const newSha = nextSha(sha);
       pages[idx] = { slug, frontmatter: parsed.data, body, sha: newSha, valid: true };
       return delay({ sha: newSha, commitSha: `commit-${Date.now()}` });
+    },
+
+    // Mock de `GitHubPostsClient.uploadPageContentImage()` -- mesmo padrão
+    // do mock de `uploadContentImage` em `createMockPostsClient`.
+    async uploadPageContentImage(slug: string, file: UploadContentImageFile): Promise<UploadContentImageResult> {
+      const ext = mockImageExt(file.mimeType);
+      return delay({
+        path: `./${slug}-img-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`,
+        sha: `sha-content-${Date.now()}`,
+        commitSha: `commit-${Date.now()}`,
+      });
     },
   };
 }

@@ -1272,6 +1272,15 @@ a {
   color: var(--purple-dark);
 }
 
+.md-toolbar__menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.md-toolbar__menu-item:disabled:hover {
+  background: transparent;
+}
+
 /* Menu flutuante de seleção (ver components/MarkdownToolbar.tsx) -- aparece
    acima (ou, sem espaço na viewport, abaixo) de um trecho selecionado no
    editor rich-text, estilo Medium/Notion. `position: fixed` porque o
@@ -1448,6 +1457,16 @@ a {
   padding: 2px 16px;
   border-left: 3px solid var(--line);
   color: var(--body-text);
+}
+
+/* Imagem inserida no corpo ("Inserir imagem", ver `MarkdownToolbar.tsx`) --
+   sempre bloco próprio (`Image.configure({ inline: false })`), nunca
+   estoura a largura do editor. */
+.post-form__body img {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--radius-input);
+  margin: 0 0 0.8em;
 }
 
 /* Texto fantasma quando o corpo está vazio (`@tiptap/extension-placeholder`
@@ -1719,4 +1738,57 @@ a {
   gap: 10px;
   margin-top: 8px;
   flex-wrap: wrap;
+}
+
+/* Textarea do `HtmlBlockDialog` -- monoespaçado, igual qualquer editor de
+   código, pra HTML cru ficar legível (alinhamento de tags/indentação). */
+.html-block-dialog__textarea {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace !important;
+  font-size: 0.82rem !important;
+}
+
+/* ==========================================================================
+   Bloco de HTML cru (NodeView do node `rawHtmlBlock`, ver
+   `lib/rawHtmlNode.tsx`) -- prévia dentro do editor rich-text. NUNCA
+   renderiza o HTML de verdade (sempre `<pre>` com texto plano), então o
+   visual aqui é deliberadamente "card de aviso", não uma preview de
+   conteúdo real.
+   ========================================================================== */
+
+.raw-html-block {
+  margin: 0 0 0.8em;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-input);
+  background: var(--neutral-bg);
+}
+
+.raw-html-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.raw-html-block__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--body-text);
+}
+
+.raw-html-block__preview {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--body-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
 }

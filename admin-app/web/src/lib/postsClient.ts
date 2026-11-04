@@ -21,6 +21,19 @@ export interface UploadCoverImageResult {
   commitSha: string;
 }
 
+/** Arquivo de imagem de CONTEÚDO (corpo do post/página, toolbar do editor) -- mesmo shape de `UploadCoverImageFile`, tipo próprio pra não confundir os dois fluxos na assinatura dos métodos. */
+export interface UploadContentImageFile {
+  name: string;
+  mimeType: string;
+  base64Content: string;
+}
+
+export interface UploadContentImageResult {
+  path: string;
+  sha: string;
+  commitSha: string;
+}
+
 export interface PostsClient {
   listPosts(): Promise<PostListItem[]>;
   getPost(slug: string): Promise<PostRecord>;
@@ -37,6 +50,14 @@ export interface PostsClient {
    * `cover` do form.
    */
   uploadCoverImage(legacySlug: string, file: UploadCoverImageFile): Promise<UploadCoverImageResult>;
+  /**
+   * Commita o binário já validado/comprimido direto no corpo do post
+   * (toolbar do editor) -- SEM upsert, diferente de `uploadCoverImage`:
+   * cada upload é um arquivo novo (nome único gerado pelo
+   * `GitHubPostsClient`, não existe "substituir imagem de conteúdo X").
+   * Contrato combinado com o Jurandir: `GitHubPostsClient.uploadContentImage()`.
+   */
+  uploadContentImage(slug: string, file: UploadContentImageFile): Promise<UploadContentImageResult>;
 }
 
 /**
