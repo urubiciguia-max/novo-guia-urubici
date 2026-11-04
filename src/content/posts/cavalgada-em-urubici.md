@@ -6,7 +6,7 @@ updatedDate: '2026-11-02'
 tags: []
 cover: ./cavalgada-em-urubici-capa.jpg
 coverAlt: Cavaleiro guiando cavalo por trilha de campo com araucárias na paisagem de Urubici na Serra Catarinense
-draft: false
+draft: true
 author: Equipe Guia de Urubici
 category: Geral
 legacySlug: cavalgada-em-urubici
