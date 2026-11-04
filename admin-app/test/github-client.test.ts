@@ -468,6 +468,129 @@ describe('GitHubPostsClient', () => {
     });
   });
 
+  // -- uploadContentImage / uploadPageContentImage ---------------------------
+
+  describe('uploadContentImage', () => {
+    const VALID_FILE = { name: 'foto.jpg', mimeType: 'image/jpeg', base64Content: '/9j/4AAAAAAAAAAA' };
+
+    it('upload bem-sucedido: UMA única requisição PUT, sem GET prévio e sem sha, nome de arquivo único', async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ content: { sha: 'img-sha-1' }, commit: { sha: 'commit-sha-img-1' } })
+      );
+
+      const result = await makeClient().uploadContentImage('cachoeiras-secretas-urubici', VALID_FILE);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toContain('/repos/urubiciguia-max/novo-guia-urubici/contents/src/content/posts/');
+      expect(init.method).toBe('PUT');
+      const sentBody = JSON.parse(init.body as string);
+      expect(sentBody.sha).toBeUndefined();
+      expect(sentBody.content).toBe(VALID_FILE.base64Content);
+      expect(sentBody.message).toBe('content: adiciona imagem no corpo de "cachoeiras-secretas-urubici"');
+
+      // Nome único: `${slug}-img-<timestamp36>-<random>.<ext>` -- nunca
+      // colide com o padrão `-capa.` da imagem de capa.
+      expect(result.path).toMatch(/^\.\/cachoeiras-secretas-urubici-img-[0-9a-z]+-[0-9a-z]+\.jpg$/);
+      expect(result.sha).toBe('img-sha-1');
+      expect(result.commitSha).toBe('commit-sha-img-1');
+    });
+
+    it('duas chamadas seguidas pro mesmo slug geram paths diferentes (sem contador/estado)', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'img-sha-1' }, commit: { sha: 'commit-1' } }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'img-sha-2' }, commit: { sha: 'commit-2' } }));
+
+      const client = makeClient();
+      const first = await client.uploadContentImage('cachoeiras-secretas-urubici', VALID_FILE);
+      const second = await client.uploadContentImage('cachoeiras-secretas-urubici', VALID_FILE);
+
+      expect(first.path).not.toBe(second.path);
+    });
+
+    it('rejeita mimeType fora da allowlist (SVG) ANTES de qualquer chamada de rede', async () => {
+      const svgFile = { ...VALID_FILE, name: 'icone.svg', mimeType: 'image/svg+xml' };
+      await expect(makeClient().uploadContentImage('cachoeiras-secretas-urubici', svgFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita quando o mimeType declarado não bate com os bytes reais (forjado via DevTools/console)', async () => {
+      const forgedFile = {
+        name: 'foto.jpg',
+        mimeType: 'image/jpeg',
+        base64Content: Buffer.from('<script>alert(1)</script>').toString('base64'),
+      };
+      await expect(
+        makeClient().uploadContentImage('cachoeiras-secretas-urubici', forgedFile)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita base64Content acima do limite de tamanho ANTES de qualquer chamada de rede', async () => {
+      const bigFile = { ...VALID_FILE, base64Content: 'A'.repeat(1_400_001) };
+      await expect(makeClient().uploadContentImage('cachoeiras-secretas-urubici', bigFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(['../../.github/workflows/evil', '../secrets', 'a/b', '', '  ', 'Capitais-Invalidas'])(
+      'uploadContentImage(%j) lança ValidationError sem chamar fetch',
+      async (slug) => {
+        await expect(makeClient().uploadContentImage(slug, VALID_FILE)).rejects.toBeInstanceOf(ValidationError);
+        expect(fetchMock).not.toHaveBeenCalled();
+      }
+    );
+  });
+
+  describe('uploadPageContentImage', () => {
+    const VALID_FILE = { name: 'foto.png', mimeType: 'image/png', base64Content: 'iVBORw0KGgoAAAAA' };
+
+    it('upload bem-sucedido: grava em pagesPath (não postsPath), sem GET prévio e sem sha', async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ content: { sha: 'img-sha-1' }, commit: { sha: 'commit-sha-img-1' } })
+      );
+
+      const result = await makeClient().uploadPageContentImage('sobre-nos', VALID_FILE);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toContain('/repos/urubiciguia-max/novo-guia-urubici/contents/src/content/pages/');
+      expect(init.method).toBe('PUT');
+      const sentBody = JSON.parse(init.body as string);
+      expect(sentBody.sha).toBeUndefined();
+      expect(sentBody.message).toBe('content: adiciona imagem no corpo de "sobre-nos"');
+
+      expect(result.path).toMatch(/^\.\/sobre-nos-img-[0-9a-z]+-[0-9a-z]+\.png$/);
+    });
+
+    it('rejeita mimeType fora da allowlist (PDF disfarçado de imagem) ANTES de qualquer chamada de rede', async () => {
+      const fakeFile = { ...VALID_FILE, name: 'documento.pdf', mimeType: 'application/pdf' };
+      await expect(makeClient().uploadPageContentImage('sobre-nos', fakeFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita quando os bytes são de um tipo real porém diferente do mimeType declarado (JPEG disfarçado de PNG)', async () => {
+      const mismatchedFile = { name: 'foto.png', mimeType: 'image/png', base64Content: '/9j/4AAAAAAAAAAA' };
+      await expect(
+        makeClient().uploadPageContentImage('sobre-nos', mismatchedFile)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejeita base64Content acima do limite de tamanho ANTES de qualquer chamada de rede', async () => {
+      const bigFile = { ...VALID_FILE, base64Content: 'A'.repeat(1_400_001) };
+      await expect(makeClient().uploadPageContentImage('sobre-nos', bigFile)).rejects.toBeInstanceOf(
+        ValidationError
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
   // -- pages (sobre-nos, contato, politica-de-privacidade, termos-de-uso) --
 
   const VALID_PAGE_FRONTMATTER: PageFrontmatter = {

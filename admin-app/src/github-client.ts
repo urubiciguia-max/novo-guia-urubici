@@ -177,6 +177,22 @@ function detectCoverImageMimeType(base64: string): string | null {
  */
 const MAX_COVER_BASE64_LENGTH = 1_400_000;
 
+/**
+ * Sufixo único pro nome de arquivo de imagem de CONTEÚDO (corpo do
+ * post/página, ver `uploadContentImage`/`uploadPageContentImage`) -- sem
+ * upsert, cada upload precisa de um nome que nunca colida com outro
+ * upload do mesmo slug (pode ter várias imagens no mesmo post), e sem
+ * contador/estado (o client não guarda nada entre chamadas). `Date.now()`
+ * em base36 + alguns bytes aleatórios (também base36) resolve isso na
+ * prática -- não precisa ser criptograficamente forte, só não colidir
+ * entre uploads feitos em sequência rápida pelo mesmo usuário.
+ */
+function uniqueContentImageSuffix(): string {
+  const timestampBase36 = Date.now().toString(36);
+  const randomSuffix = Math.random().toString(36).slice(2, 8);
+  return `${timestampBase36}-${randomSuffix}`;
+}
+
 interface GraphQlTreeResponse {
   data?: {
     repository?: {
@@ -565,6 +581,108 @@ export class GitHubPostsClient {
 
     const data = await this.parseJsonOrThrow<ContentsPutResponse>(res);
     return { path: `./${filename}`, sha: data.content.sha, commitSha: data.commit.sha };
+  }
+
+  // -- uploadContentImage / uploadPageContentImage ----------------------------
+
+  /**
+   * Núcleo compartilhado de `uploadContentImage` (posts) e
+   * `uploadPageContentImage` (pages) -- valida o arquivo (mesma allowlist +
+   * confirmação de magic bytes reais de `uploadCoverImage`), monta um nome
+   * de arquivo único e faz o PUT.
+   *
+   * SEM upsert de propósito, diferente de `uploadCoverImage`: imagem de
+   * CAPA tem um slot fixo por post (`${legacySlug}-capa.${ext}`), então
+   * "subir de novo" é sempre "substituir". Imagem de CONTEÚDO não tem esse
+   * conceito -- o post pode ter zero, uma ou várias imagens no corpo, e
+   * cada upload da toolbar é sempre um arquivo NOVO. Por isso: nome único
+   * por chamada (`${slug}-img-<timestamp36>-<random>.<ext>`, nunca colide
+   * com o padrão `-capa.` da capa) e PUT direto, sem GET prévio nem `sha`.
+   */
+  private async uploadContentImageToFolder(
+    folderPath: string,
+    slug: string,
+    file: { name: string; mimeType: string; base64Content: string }
+  ): Promise<{ path: string; sha: string; commitSha: string }> {
+    this.assertValidSlug(slug);
+
+    const ext = ALLOWED_COVER_MIME_TYPES[file.mimeType];
+    if (!ext) {
+      throw new ValidationError([
+        {
+          path: 'mimeType',
+          message: `Tipo de imagem não suportado: "${file.mimeType}". Use JPEG, PNG ou WebP.`,
+        },
+      ]);
+    }
+
+    // Mesma defesa em profundidade de `uploadCoverImage` -- confere que o
+    // CONTEÚDO real bate com o `mimeType` DECLARADO (ver
+    // `detectCoverImageMimeType` pro raciocínio completo).
+    const detectedMimeType = detectCoverImageMimeType(file.base64Content);
+    if (detectedMimeType === null || detectedMimeType !== file.mimeType) {
+      throw new ValidationError([
+        {
+          path: 'base64Content',
+          message:
+            'O conteúdo do arquivo não corresponde a uma imagem JPEG, PNG ou WebP válida (os bytes reais não batem com o tipo declarado).',
+        },
+      ]);
+    }
+
+    if (file.base64Content.length > MAX_COVER_BASE64_LENGTH) {
+      throw new ValidationError([
+        {
+          path: 'base64Content',
+          message: 'Imagem muito grande mesmo após compressão (limite da Contents API é ~1MB).',
+        },
+      ]);
+    }
+
+    const filename = `${slug}-img-${uniqueContentImageSuffix()}.${ext}`;
+    const path = `${folderPath}/${filename}`;
+
+    const res = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${path}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: `content: adiciona imagem no corpo de "${slug}"`,
+        content: file.base64Content,
+        branch: this.branch,
+        // Sem `sha` de propósito -- arquivo novo sempre (ver doc acima).
+      }),
+    });
+
+    const data = await this.parseJsonOrThrow<ContentsPutResponse>(res);
+    return { path: `./${filename}`, sha: data.content.sha, commitSha: data.commit.sha };
+  }
+
+  /**
+   * Commita uma imagem inserida no CORPO de um post (toolbar do editor --
+   * trabalho do Francisgleydisson em cima deste contrato), gravando na
+   * mesma pasta do markdown (`postsPath`). Ver `uploadContentImageToFolder`
+   * pro comportamento completo (validação + nome único + sem upsert).
+   */
+  async uploadContentImage(
+    slug: string,
+    file: { name: string; mimeType: string; base64Content: string }
+  ): Promise<{ path: string; sha: string; commitSha: string }> {
+    return this.uploadContentImageToFolder(this.postsPath, slug, file);
+  }
+
+  /**
+   * Equivalente de `uploadContentImage`, mas grava em `pagesPath` -- pras 4
+   * páginas institucionais. Nome de método separado (em vez de reusar
+   * `uploadContentImage`) porque esta mesma classe implementa `PostsClient`
+   * e `PagesClient` ao mesmo tempo (ver `web/src/lib/postsClient.ts` e
+   * `web/src/lib/pagesClient.ts`) -- cada interface precisa apontar pra um
+   * método que escreve na pasta certa, então os dois nomes não podem
+   * colidir na mesma instância.
+   */
+  async uploadPageContentImage(
+    slug: string,
+    file: { name: string; mimeType: string; base64Content: string }
+  ): Promise<{ path: string; sha: string; commitSha: string }> {
+    return this.uploadContentImageToFolder(this.pagesPath, slug, file);
   }
 
   // -- listPages ---------------------------------------------------------

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { PageFrontmatter, PageListItem, PageRecord, WriteResult } from '@admin-data/index.js';
 import { useAuth } from '../auth/AuthContext';
 import { isUnauthorized } from '../lib/errorMessage';
+import type { UploadContentImageFile, UploadContentImageResult } from '../lib/postsClient';
 
 interface PagesState {
   items: PageListItem[];
@@ -10,6 +11,8 @@ interface PagesState {
   refresh: () => Promise<void>;
   getPage: (slug: string) => Promise<PageRecord>;
   updatePage: (slug: string, frontmatter: PageFrontmatter, body: string, sha: string) => Promise<WriteResult>;
+  /** Upload de imagem inserida no CORPO da página (toolbar) -- ver `PagesClient.uploadPageContentImage`. */
+  uploadContentImage: (slug: string, file: UploadContentImageFile) => Promise<UploadContentImageResult>;
 }
 
 const PagesContext = createContext<PagesState | null>(null);
@@ -80,9 +83,17 @@ export function PagesProvider({ children }: { children: ReactNode }) {
     [client, wrap]
   );
 
+  const uploadContentImage = useCallback(
+    (slug: string, file: UploadContentImageFile) => {
+      if (!client) throw new Error('Sem sessão ativa.');
+      return wrap(client.uploadPageContentImage.bind(client))(slug, file);
+    },
+    [client, wrap]
+  );
+
   const value = useMemo<PagesState>(
-    () => ({ items, loading, error, refresh, getPage, updatePage }),
-    [items, loading, error, refresh, getPage, updatePage]
+    () => ({ items, loading, error, refresh, getPage, updatePage, uploadContentImage }),
+    [items, loading, error, refresh, getPage, updatePage, uploadContentImage]
   );
 
   return <PagesContext.Provider value={value}>{children}</PagesContext.Provider>;

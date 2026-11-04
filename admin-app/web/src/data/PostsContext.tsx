@@ -2,7 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from '@admin-data/index.js';
 import { useAuth } from '../auth/AuthContext';
 import { isUnauthorized } from '../lib/errorMessage';
-import type { UploadCoverImageFile, UploadCoverImageResult } from '../lib/postsClient';
+import type {
+  UploadContentImageFile,
+  UploadContentImageResult,
+  UploadCoverImageFile,
+  UploadCoverImageResult,
+} from '../lib/postsClient';
 
 interface PostsState {
   items: PostListItem[];
@@ -14,6 +19,8 @@ interface PostsState {
   updatePost: (slug: string, frontmatter: PostFrontmatter, body: string, sha: string) => Promise<WriteResult>;
   deletePost: (slug: string, sha: string) => Promise<void>;
   uploadCoverImage: (legacySlug: string, file: UploadCoverImageFile) => Promise<UploadCoverImageResult>;
+  /** Upload de imagem inserida no CORPO do post (toolbar) -- ver `PostsClient.uploadContentImage`. */
+  uploadContentImage: (slug: string, file: UploadContentImageFile) => Promise<UploadContentImageResult>;
 }
 
 const PostsContext = createContext<PostsState | null>(null);
@@ -107,9 +114,28 @@ export function PostsProvider({ children }: { children: ReactNode }) {
     [client, wrap]
   );
 
+  const uploadContentImage = useCallback(
+    (slug: string, file: UploadContentImageFile) => {
+      if (!client) throw new Error('Sem sessão ativa.');
+      return wrap(client.uploadContentImage.bind(client))(slug, file);
+    },
+    [client, wrap]
+  );
+
   const value = useMemo<PostsState>(
-    () => ({ items, loading, error, refresh, getPost, createPost, updatePost, deletePost, uploadCoverImage }),
-    [items, loading, error, refresh, getPost, createPost, updatePost, deletePost, uploadCoverImage]
+    () => ({
+      items,
+      loading,
+      error,
+      refresh,
+      getPost,
+      createPost,
+      updatePost,
+      deletePost,
+      uploadCoverImage,
+      uploadContentImage,
+    }),
+    [items, loading, error, refresh, getPost, createPost, updatePost, deletePost, uploadCoverImage, uploadContentImage]
   );
 
   return <PostsContext.Provider value={value}>{children}</PostsContext.Provider>;

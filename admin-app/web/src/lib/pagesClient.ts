@@ -2,6 +2,7 @@ import { GitHubPostsClient } from '@admin-data/index.js';
 import type { PageFrontmatter, PageListItem, PageRecord, WriteResult } from '@admin-data/index.js';
 import { GH_BRANCH, GH_OWNER, GH_REPO, USE_MOCK } from './env';
 import { createMockPagesClient } from './mockClient';
+import type { UploadContentImageFile, UploadContentImageResult } from './postsClient';
 
 /**
  * Equivalente de `PostsClient` (ver `postsClient.ts`) pra páginas
@@ -14,6 +15,15 @@ export interface PagesClient {
   listPages(): Promise<PageListItem[]>;
   getPage(slug: string): Promise<PageRecord>;
   updatePage(slug: string, frontmatter: PageFrontmatter, body: string, sha: string): Promise<WriteResult>;
+  /**
+   * Equivalente de `PostsClient.uploadContentImage` pra páginas -- mesmo
+   * comportamento (sem upsert, nome único por upload), gravando em
+   * `pagesPath`. Nome de método distinto (`uploadPageContentImage`, não
+   * `uploadContentImage`) porque `GitHubPostsClient` implementa as duas
+   * interfaces na mesma classe -- ver `uploadPageContentImage` em
+   * `github-client.ts`.
+   */
+  uploadPageContentImage(slug: string, file: UploadContentImageFile): Promise<UploadContentImageResult>;
 }
 
 /**
