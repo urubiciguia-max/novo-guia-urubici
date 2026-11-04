@@ -65,11 +65,58 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Image from '@tiptap/extension-image';
 import { Markdown } from 'tiptap-markdown';
+import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { defaultMarkdownSerializer } from 'prosemirror-markdown';
 import type { AnyExtension } from '@tiptap/core';
 import { RawHtmlBlock } from './rawHtmlNode';
 
 export const HEADING_LEVELS = [2, 3, 4] as const;
 export type AllowedHeadingLevel = (typeof HEADING_LEVELS)[number];
+
+/**
+ * `serialize` próprio pro node `image`, substituindo o que o
+ * `tiptap-markdown` registra por nome
+ * (`node_modules/tiptap-markdown/src/extensions/nodes/image.js`, que usa
+ * `defaultMarkdownSerializer.nodes.image` direto, sem `closeBlock`).
+ *
+ * BUG REAL encontrado via `test/markdownRoundtrip.test.ts` contra
+ * `src/content/posts/o-que-fazer.md`: esse serializer padrão vem do schema
+ * BASIC do `prosemirror-markdown`, onde `image` é um node INLINE -- ali a
+ * separação de linha em branco pro bloco seguinte é responsabilidade do
+ * parágrafo PAI que contém a imagem, por isso o serializer original não
+ * chama `state.closeBlock(node)`. Mas aqui a imagem é configurada como
+ * BLOCO PRÓPRIO (`inline: false`, ver `Image.configure` abaixo) -- vira
+ * irmã direta de outros blocos (heading, parágrafo), e sem o
+ * `closeBlock` o markdown gerado emenda a imagem direto no bloco
+ * seguinte, sem a linha em branco que o Markdown exige pra reconhecer um
+ * `###` logo depois como heading (abrir um post real no editor e salvar
+ * sem alterar nada corrompia o arquivo: o heading virava texto).
+ *
+ * Reusa o serializer padrão pro texto (`![alt](src "title")`, byte a byte
+ * igual ao original) e só ADICIONA o `closeBlock(node)` que falta -- mesmo
+ * padrão idiomático que `rawHtmlNode.tsx` e outros nodes de bloco do
+ * próprio `tiptap-markdown` (ex.: `horizontal-rule.js`) já usam.
+ */
+const imageMarkdownSpec: MarkdownNodeSpec = {
+  serialize(state, node, parent, index) {
+    defaultMarkdownSerializer.nodes.image(state, node, parent, index);
+    state.closeBlock(node);
+  },
+  parse: {
+    // handled by markdown-it, igual ao serializer original do tiptap-markdown
+  },
+};
+
+/** Mesmo `@tiptap/extension-image`, só com o `markdown.serialize` corrigido
+ *  (ver `imageMarkdownSpec` acima) -- `addStorage` sobrescreve o que o
+ *  `tiptap-markdown` registraria por nome pro node `image`. */
+const BlockImage = Image.extend({
+  addStorage() {
+    return {
+      markdown: imageMarkdownSpec,
+    };
+  },
+});
 
 export function createMarkdownEditorExtensions(placeholder: string): AnyExtension[] {
   return [
@@ -100,12 +147,14 @@ export function createMarkdownEditorExtensions(placeholder: string): AnyExtensio
     // Imagem inserida no CORPO (toolbar, "Inserir imagem") -- sempre bloco
     // próprio, nunca dentro de um parágrafo (`inline: false`, bate com o
     // uso real dos posts: a imagem de capa já é um campo separado, uma
-    // imagem de corpo nunca aparece "no meio de uma frase"). `tiptap-markdown`
-    // já tem suporte nativo de markdown pro node `image` POR NOME
-    // (`node_modules/tiptap-markdown/src/extensions/nodes/image.js`) --
-    // serialize/parse funcionam sozinhos, não precisa de nenhum `addStorage`
-    // próprio aqui.
-    Image.configure({ inline: false }),
+    // imagem de corpo nunca aparece "no meio de uma frase"). Usa
+    // `BlockImage` (acima) em vez do `Image` puro -- o `markdown.serialize`
+    // padrão que o `tiptap-markdown` registra por nome pro node `image` não
+    // chama `state.closeBlock(node)` (faz sentido só no cenário INLINE
+    // original do `prosemirror-markdown`), e sem isso falta a linha em
+    // branco entre a imagem e o bloco seguinte -- ver comentário grande em
+    // `imageMarkdownSpec` pro bug real que isso causava.
+    BlockImage.configure({ inline: false }),
     // Bloco de HTML cru colado pelo usuário ("Inserir HTML") -- ver
     // comentário grande acima (opção `html: true` do `Markdown.configure`
     // abaixo) e o arquivo do node pro design completo de segurança.

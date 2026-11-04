@@ -209,3 +209,38 @@ describe('casos de borda documentados (limitações conhecidas, não regressões
     expect(markdownToMarkdown('')).toBe('');
   });
 });
+
+describe('node de imagem (bloco próprio): regressão do bug de linha em branco faltando', () => {
+  // Bug real encontrado em `src/content/posts/o-que-fazer.md`: a imagem de
+  // corpo é um node de BLOCO PRÓPRIO (`inline: false`, ver
+  // `markdownEditorExtensions.ts`), mas o `serialize` padrão que o
+  // `tiptap-markdown` registra por nome pro node `image` vem do schema
+  // INLINE original do `prosemirror-markdown` e não chama
+  // `state.closeBlock(node)` -- resultado: abrir um post com imagem seguida
+  // de heading e salvar sem alterar nada colava os dois num parágrafo só
+  // (`![alt](src)### Heading`), fazendo o heading sumir. `BlockImage`
+  // (`markdownEditorExtensions.ts`) corrige isso com um `markdown.serialize`
+  // próprio que adiciona o `closeBlock` faltante.
+
+  it('imagem de bloco seguida de heading precisa de linha em branco entre os dois', () => {
+    const original =
+      '![Cavaleiro guiando cavalo por trilha de campo](./cavalgada.jpg)\n\n### Vale a pena fazer cavalgada em Urubici?';
+    const result = markdownToMarkdown(original);
+    expect(result).toBe(original);
+    // trava explícita do bug: o `###` nunca pode colar direto na imagem
+    expect(result).not.toContain(')###');
+  });
+
+  it('imagem de bloco seguida de parágrafo normal precisa de linha em branco entre os dois', () => {
+    const original = '![Trilha na serra](./trilha.jpg)\n\nVale, principalmente para quem busca imersão na natureza.';
+    const result = markdownToMarkdown(original);
+    expect(result).toBe(original);
+    expect(result).not.toContain(')Vale');
+  });
+
+  it('duas imagens de bloco em sequência mantêm linha em branco entre elas', () => {
+    const original = '![Primeira imagem](./a.jpg)\n\n![Segunda imagem](./b.jpg)';
+    const result = markdownToMarkdown(original);
+    expect(result).toBe(original);
+  });
+});

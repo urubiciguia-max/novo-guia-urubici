@@ -182,20 +182,22 @@ describe('round-trip com post real (regressão do bug de perda de dados)', () =>
     expect(reparsed.frontmatter.tags).toEqual(parsed.frontmatter.tags);
   });
 
-  it('editar cachoeiras-secretas-urubici.md (tem faq + affiliates + relatedSlugs) sem tocar nesses campos preserva todos', () => {
-    const path = resolve(__dirname, '../../../src/content/posts/cachoeiras-secretas-urubici.md');
+  it('editar o-que-fazer.md (tem faq + affiliates + relatedSlugs) sem tocar nesses campos preserva todos', () => {
+    // Era `cachoeiras-secretas-urubici.md` -- renomeado pro slug `o-que-fazer`
+    // via a própria feature de rename de slug do admin.
+    const path = resolve(__dirname, '../../../src/content/posts/o-que-fazer.md');
     const raw = readFileSync(path, 'utf-8');
     const parsed = parsePostFile(raw);
 
     const record: PostRecord = {
-      slug: 'cachoeiras-secretas-urubici',
+      slug: 'o-que-fazer',
       frontmatter: parsed.frontmatter as never,
       body: parsed.body,
       sha: 'fake-sha',
       valid: true,
     };
 
-    const form = recordToFormState(record, 'cachoeiras-secretas-urubici');
+    const form = recordToFormState(record, 'o-que-fazer');
     const frontmatterOut = formStateToFrontmatter(form);
     const savedFile = serializePostFile(frontmatterOut as never, form.body);
     const reparsed = parsePostFile(savedFile);
