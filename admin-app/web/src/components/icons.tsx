@@ -257,6 +257,33 @@ export function ParagraphStyleIcon({ className }: IconProps) {
   );
 }
 
+/** Item "Inserir imagem" do dropdown Inserir -- moldura com um "sol" e uma
+ *  "montanha", pictograma clássico de imagem (igual `UploadIcon` acima,
+ *  mas esse é especificamente upload de CAPA -- este é o genérico de
+ *  "imagem" usado pra inserir no CORPO). */
+export function ImageIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M21 16l-5.5-5.5a1.5 1.5 0 0 0-2.1 0L5 19" />
+    </svg>
+  );
+}
+
+/** Item "Inserir HTML" do dropdown Inserir -- chevrons `< >` (ícone
+ *  universal de código/markup), diferente do `InlineCodeIcon` (que usa a
+ *  mesma forma pra código INLINE -- aqui o contexto no dropdown já deixa
+ *  claro que é outra coisa: um BLOCO de HTML cru). */
+export function CodeBlockIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M9 8l-4 4 4 4" />
+      <path d="M15 8l4 4-4 4" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ className }: IconProps) {
   return (
     <svg {...base} width={14} height={14} className={className} aria-hidden="true">

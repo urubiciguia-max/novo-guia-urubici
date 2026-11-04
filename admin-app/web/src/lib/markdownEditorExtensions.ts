@@ -15,9 +15,34 @@
  * têm 2 diffs cosméticos conhecidos, documentados lá.
  *
  * Opções do `Markdown` escolhidas (e por quê):
- * - `html: false` -- fecha o schema (sem nó de HTML cru); nenhum conteúdo
- *   real do projeto depende de HTML embutido no corpo, e um schema aberto
- *   pra isso é superfície de risco que não precisamos aqui.
+ * - `html: true` -- EXCEÇÃO deliberada, contida (ver `lib/rawHtmlNode.tsx`
+ *   pro design completo). Até a entrega "Inserir HTML no corpo"
+ *   (`.agents/inbox/francisgleydisson.md`, 2026-11-04), isto era
+ *   `html: false` DE PROPÓSITO -- schema fechado, zero nó de HTML cru,
+ *   porque ligar `html:true` ingenuamente tem dois riscos: (1) qualquer
+ *   HTML que o `markdown-it` reconheça via `html_block`/`html_inline` mas
+ *   que NENHUM node do schema aceite via `parseDOM` (ex.: `<iframe>`, `<div
+ *   class="x">`) seria DESCARTADO SILENCIOSAMENTE ao carregar um post
+ *   existente -- perda de conteúdo; (2) o node `markdownHTMLNode` que o
+ *   `tiptap-markdown` já embute serializa via `getHTMLFromFragment`
+ *   (re-renderiza pelo schema), não devolve o texto original literal --
+ *   não preserva o HTML byte a byte.
+ *
+ *   A exceção é CONTIDA inteiramente dentro do node `rawHtmlBlock`
+ *   (`lib/rawHtmlNode.tsx`): o `addStorage().markdown.parse.setup(md)`
+ *   dele SOBRESCREVE `md.renderer.rules.html_block`/`html_inline` pra
+ *   NUNCA deixar HTML cru virar DOM real -- `html_block` (o caso real de
+ *   uso: um bloco isolado, "colar um embed de mapa/iframe/widget") vira um
+ *   `<div data-raw-html="...">` vazio que só o `rawHtmlBlock` sabe
+ *   decodificar; `html_inline` (HTML cru em meio a um parágrafo, sem node
+ *   dedicado) vira TEXTO VISÍVEL escapado -- mesmo resultado prático que
+ *   `html:false` já dava, sem nenhum caminho novo de risco. Com essa
+ *   sobrescrita em vigor, `html:true` fica seguro pro resto do schema: a
+ *   opção `html` do markdown-it só ativa/desativa as regras
+ *   `html_block`/`html_inline`, nenhuma outra (heading/lista/link/
+ *   imagem/código) depende dela. Confirmado na prática: os 5 posts + 4
+ *   páginas reais (nenhum tem HTML cru) continuam round-tripando
+ *   idêntico (ver `test/markdownRoundtrip.test.ts`).
  * - `linkify: false` -- não autolinka URL solta digitada/colada; nenhum
  *   conteúdo real tem URL crua no corpo (afiliados ficam no frontmatter, não
  *   no corpo), e autolink mudaria conteúdo existente sem o usuário pedir.
@@ -38,8 +63,10 @@
  */
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
 import { Markdown } from 'tiptap-markdown';
 import type { AnyExtension } from '@tiptap/core';
+import { RawHtmlBlock } from './rawHtmlNode';
 
 export const HEADING_LEVELS = [2, 3, 4] as const;
 export type AllowedHeadingLevel = (typeof HEADING_LEVELS)[number];
@@ -70,8 +97,21 @@ export function createMarkdownEditorExtensions(placeholder: string): AnyExtensio
       strike: false,
     }),
     Placeholder.configure({ placeholder }),
+    // Imagem inserida no CORPO (toolbar, "Inserir imagem") -- sempre bloco
+    // próprio, nunca dentro de um parágrafo (`inline: false`, bate com o
+    // uso real dos posts: a imagem de capa já é um campo separado, uma
+    // imagem de corpo nunca aparece "no meio de uma frase"). `tiptap-markdown`
+    // já tem suporte nativo de markdown pro node `image` POR NOME
+    // (`node_modules/tiptap-markdown/src/extensions/nodes/image.js`) --
+    // serialize/parse funcionam sozinhos, não precisa de nenhum `addStorage`
+    // próprio aqui.
+    Image.configure({ inline: false }),
+    // Bloco de HTML cru colado pelo usuário ("Inserir HTML") -- ver
+    // comentário grande acima (opção `html: true` do `Markdown.configure`
+    // abaixo) e o arquivo do node pro design completo de segurança.
+    RawHtmlBlock,
     Markdown.configure({
-      html: false,
+      html: true,
       linkify: false,
       breaks: false,
       tightLists: true,

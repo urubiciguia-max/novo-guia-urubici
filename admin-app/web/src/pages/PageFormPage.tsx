@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { PageFrontmatter } from '@admin-data/index.js';
 import { PageNotFoundError, PageShaConflictError, ValidationError, pageFrontmatterSchema } from '@admin-data/index.js';
@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
 import { recordToPageFormState, pageFormStateToFrontmatter, type PageFormState } from '../lib/pageForm';
 import { createMarkdownEditorExtensions } from '../lib/markdownEditorExtensions';
+import { createContentImageUploader } from '../lib/contentImageUpload';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
@@ -43,7 +44,7 @@ function charCountHintClass(length: number, max: number): string {
  * comportamento (ver comentário em `PostFormPage.tsx`).
  */
 export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
-  const { getPage, updatePage, refresh } = usePages();
+  const { getPage, updatePage, refresh, uploadContentImage } = usePages();
   const toast = useToast();
 
   const [form, setForm] = useState<PageFormState>(EMPTY_FORM);
@@ -112,6 +113,15 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
   function updateField<K extends keyof PageFormState>(key: K, value: PageFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  // Prop `imageUpload` da `MarkdownToolbar` -- `ready: true` sempre
+  // (diferente de `PostFormPage.tsx`): página nunca é criada por aqui, só
+  // editada (`slug` vem fixo da rota), então sempre tem um slug válido pra
+  // decidir o nome do arquivo de imagem de corpo.
+  const imageUpload = useMemo(
+    () => ({ ready: true, upload: createContentImageUploader(uploadContentImage, slug) }),
+    [slug, uploadContentImage],
+  );
 
   async function submit(frontmatter: PageFrontmatter, opts?: { forceSha?: string }) {
     setSubmitting(true);
@@ -260,7 +270,7 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
             <div className="post-form__body-header">
               <span id="page-body-label">Corpo</span>
             </div>
-            <MarkdownToolbar editor={editor} />
+            <MarkdownToolbar editor={editor} imageUpload={imageUpload} />
             <EditorContent editor={editor} />
           </div>
         </div>

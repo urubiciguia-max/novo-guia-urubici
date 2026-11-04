@@ -5,11 +5,15 @@ import { HEADING_LEVELS, type AllowedHeadingLevel } from '../lib/markdownEditorE
 import { computeSelectionMenuPosition, type FloatingMenuPosition } from '../lib/selectionMenuPosition';
 import { DestaqueDialog } from './DestaqueDialog';
 import { LinkDialog } from './LinkDialog';
+import { ImageDialog } from './ImageDialog';
+import { HtmlBlockDialog } from './HtmlBlockDialog';
 import {
   BoldIcon,
   BulletListIcon,
   CalloutIcon,
   ChevronDownIcon,
+  CodeBlockIcon,
+  ImageIcon,
   InlineCodeIcon,
   ItalicIcon,
   LinkIcon,
@@ -19,18 +23,39 @@ import {
   QuoteIcon,
 } from './icons';
 
+export interface MarkdownToolbarImageUpload {
+  /** `false` enquanto não há slug válido ainda pra decidir o nome do
+   *  arquivo (post NOVO sem slug salvo) -- ver `PostFormPage.tsx`
+   *  (`CoverImageUpload` usa o mesmo gate). `PageFormPage.tsx` passa sempre
+   *  `true` (página é só edição, nunca criação, sempre tem slug). */
+  ready: boolean;
+  /** Já amarrado ao slug certo pelo chamador (`createContentImageUploader`,
+   *  ver `lib/contentImageUpload.ts`) -- faz validação de magic bytes +
+   *  compressão + upload (`uploadContentImage` de `usePosts()`/`usePages()`)
+   *  e devolve o `path` pronto pra inserir no corpo. */
+  upload: (file: File) => Promise<{ path: string }>;
+}
+
 export interface MarkdownToolbarProps {
   /** Instância do editor TipTap (`PostFormPage`/`PageFormPage` criam via
    *  `useEditor`) -- `null` só no instante inicial antes do editor montar
    *  (ver `immediatelyRender`/ciclo de vida do `useEditor`), a toolbar
    *  renderiza os botões desabilitados nesse meio tempo. */
   editor: Editor | null;
+  /** Opcional -- item "Inserir imagem" do dropdown "Inserir" fica
+   *  desabilitado (`ready: false`) sem esta prop, nunca quebra. Ver
+   *  `MarkdownToolbarImageUpload`. */
+  imageUpload?: MarkdownToolbarImageUpload | null;
 }
 
 interface DropdownItem {
   label: string;
   icon?: ReactNode;
   onSelect: () => void;
+  disabled?: boolean;
+  /** `title` (tooltip nativo) mostrado quando `disabled` -- explica o
+   *  motivo em vez de só desabilitar sem contexto. */
+  disabledReason?: string;
 }
 
 /**
@@ -43,7 +68,7 @@ interface DropdownItem {
  * (ícones, posição dos botões, menu flutuante, atalho Alt+Enter) sobrevive
  * quase 1:1, só a implementação por trás de cada botão mudou.
  */
-export function MarkdownToolbar({ editor }: MarkdownToolbarProps) {
+export function MarkdownToolbar({ editor, imageUpload }: MarkdownToolbarProps) {
   // `useEditor` (nos componentes pai) não força re-render deste componente a
   // cada transação por padrão -- sem isso, `editor.isActive(...)` (estado
   // dos botões toggle) e a detecção de seleção pro menu flutuante ficariam
@@ -140,6 +165,58 @@ export function MarkdownToolbar({ editor }: MarkdownToolbarProps) {
     // (`test/MarkdownToolbar.test.tsx`, "Destaque (SHOULD, não MUST)").
     editor.chain().focus().insertContentAt({ from, to }, markdown).run();
     setDestaqueDialogOpen(false);
+  }
+
+  // Item "Inserir imagem" do dropdown Inserir -- abre o `ImageDialog`
+  // (seleciona arquivo -> valida/comprime -> sobe via `imageUpload.upload`
+  // -> pede alt obrigatório) e só insere o node `image` de verdade no
+  // CONFIRM, na posição [from, to] capturada no momento do clique -- mesmo
+  // padrão de captura de range do Link/Destaque (o editor perde o foco pro
+  // modal nesse meio tempo). Passamos o OBJETO do node (não uma string
+  // markdown) pro `insertContentAt`: `tiptap-markdown` só chama
+  // `parser.parse()` quando o conteúdo é string (ver `Markdown.js`,
+  // `addCommands`) -- um objeto passa direto pro comando nativo do
+  // ProseMirror, sem risco do bug de parse duplicado que o comentário do
+  // Destaque documenta acima.
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const imageRangeRef = useRef({ from: 0, to: 0 });
+
+  function openImageDialog() {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    imageRangeRef.current = { from, to };
+    setImageDialogOpen(true);
+  }
+
+  function handleImageConfirm({ path, alt }: { path: string; alt: string }) {
+    if (!editor) return;
+    const { from, to } = imageRangeRef.current;
+    editor.chain().focus().insertContentAt({ from, to }, { type: 'image', attrs: { src: path, alt } }).run();
+    setImageDialogOpen(false);
+  }
+
+  // Item "Inserir HTML" do dropdown Inserir -- mesma lógica de range do
+  // Link/Destaque/Imagem acima, mas insere o node `rawHtmlBlock` (ver
+  // `lib/rawHtmlNode.tsx` pro design completo de segurança). Também passa o
+  // OBJETO do node direto, nunca o HTML como string markdown -- isso NÃO
+  // deve passar pelo parser de markdown (que só entra em jogo pra
+  // CARREGAR um post que já tem este bloco salvo, ver comentário grande em
+  // `markdownEditorExtensions.ts`).
+  const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
+  const htmlRangeRef = useRef({ from: 0, to: 0 });
+
+  function openHtmlDialog() {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    htmlRangeRef.current = { from, to };
+    setHtmlDialogOpen(true);
+  }
+
+  function handleHtmlConfirm(html: string) {
+    if (!editor) return;
+    const { from, to } = htmlRangeRef.current;
+    editor.chain().focus().insertContentAt({ from, to }, { type: 'rawHtmlBlock', attrs: { html } }).run();
+    setHtmlDialogOpen(false);
   }
 
   // Menu flutuante de seleção (estilo Medium/Notion): aparece acima de um
@@ -376,6 +453,18 @@ export function MarkdownToolbar({ editor }: MarkdownToolbarProps) {
               icon: <CalloutIcon />,
               onSelect: openDestaqueDialog,
             },
+            {
+              label: 'Inserir imagem',
+              icon: <ImageIcon />,
+              onSelect: openImageDialog,
+              disabled: !imageUpload?.ready,
+              disabledReason: 'Preencha o slug antes de enviar uma imagem no corpo.',
+            },
+            {
+              label: 'Inserir HTML',
+              icon: <CodeBlockIcon />,
+              onSelect: openHtmlDialog,
+            },
           ]}
         />
       </div>
@@ -442,6 +531,24 @@ export function MarkdownToolbar({ editor }: MarkdownToolbarProps) {
         returnFocusRef={insertTriggerRef}
         onConfirm={handleDestaqueConfirm}
         onCancel={() => setDestaqueDialogOpen(false)}
+      />
+
+      {imageUpload && (
+        <ImageDialog
+          open={imageDialogOpen}
+          returnFocusRef={insertTriggerRef}
+          upload={imageUpload.upload}
+          onConfirm={handleImageConfirm}
+          onCancel={() => setImageDialogOpen(false)}
+        />
+      )}
+
+      <HtmlBlockDialog
+        open={htmlDialogOpen}
+        initialHtml=""
+        returnFocusRef={insertTriggerRef}
+        onConfirm={handleHtmlConfirm}
+        onCancel={() => setHtmlDialogOpen(false)}
       />
     </>
   );
@@ -533,7 +640,10 @@ function ToolbarDropdown({
               key={item.label}
               type="button"
               className="md-toolbar__menu-item"
+              disabled={item.disabled}
+              title={item.disabled ? item.disabledReason : undefined}
               onClick={() => {
+                if (item.disabled) return;
                 item.onSelect();
                 setOpen(false);
               }}

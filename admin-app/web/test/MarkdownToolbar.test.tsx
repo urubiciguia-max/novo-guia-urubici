@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
-import { MarkdownToolbar } from '../src/components/MarkdownToolbar';
+import { MarkdownToolbar, type MarkdownToolbarImageUpload } from '../src/components/MarkdownToolbar';
 import { createMarkdownEditorExtensions } from '../src/lib/markdownEditorExtensions';
 
 /**
@@ -16,7 +16,15 @@ import { createMarkdownEditorExtensions } from '../src/lib/markdownEditorExtensi
  * (`editor.commands.setTextSelection`), já que jsdom não simula arrasto de
  * mouse em contenteditable de forma confiável.
  */
-function Harness({ initialMarkdown = '', onEditor }: { initialMarkdown?: string; onEditor?: (e: Editor) => void }) {
+function Harness({
+  initialMarkdown = '',
+  onEditor,
+  imageUpload,
+}: {
+  initialMarkdown?: string;
+  onEditor?: (e: Editor) => void;
+  imageUpload?: MarkdownToolbarImageUpload | null;
+}) {
   const [ready, setReady] = useState(false);
   const editor = useEditor({
     extensions: createMarkdownEditorExtensions('Escreva aqui...'),
@@ -33,15 +41,15 @@ function Harness({ initialMarkdown = '', onEditor }: { initialMarkdown?: string;
 
   return (
     <div>
-      <MarkdownToolbar editor={editor} />
+      <MarkdownToolbar editor={editor} imageUpload={imageUpload} />
       <EditorContent editor={editor} />
     </div>
   );
 }
 
-function renderHarness(initialMarkdown = '') {
+function renderHarness(initialMarkdown = '', imageUpload?: MarkdownToolbarImageUpload | null) {
   let editor: Editor = null as unknown as Editor;
-  render(<Harness initialMarkdown={initialMarkdown} onEditor={(e) => (editor = e)} />);
+  render(<Harness initialMarkdown={initialMarkdown} onEditor={(e) => (editor = e)} imageUpload={imageUpload} />);
   return () => editor;
 }
 
@@ -239,6 +247,50 @@ describe('MarkdownToolbar', () => {
     // comportamento do DestaqueDialog, já coberto em DestaqueDialog.test.tsx
     // isoladamente -- aqui só confirmamos que a fiação não quebrou).
     await waitFor(() => expect(screen.getByRole('button', { name: 'Inserir elemento' })).toHaveFocus());
+  });
+
+  it('Inserir imagem: desabilitado (com motivo) quando a prop `imageUpload` não é passada', async () => {
+    const user = userEvent.setup();
+    renderHarness('x');
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    const item = screen.getByRole('button', { name: 'Inserir imagem' });
+    expect(item).toBeDisabled();
+    expect(item).toHaveAttribute('title', expect.stringMatching(/slug/i));
+  });
+
+  it('Inserir imagem: desabilitado quando `imageUpload.ready` é false (post novo sem slug)', async () => {
+    const user = userEvent.setup();
+    renderHarness('x', { ready: false, upload: vi.fn() });
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    expect(screen.getByRole('button', { name: 'Inserir imagem' })).toBeDisabled();
+  });
+
+  it('Inserir imagem: habilitado com `imageUpload.ready: true` -- clicar abre o ImageDialog', async () => {
+    const user = userEvent.setup();
+    renderHarness('x', { ready: true, upload: vi.fn() });
+    await user.click(screen.getByRole('button', { name: 'Inserir elemento' }));
+    const item = screen.getByRole('button', { name: 'Inserir imagem' });
+    expect(item).not.toBeDisabled();
+
+    await user.click(item);
+    expect(screen.getByRole('dialog', { name: 'Inserir imagem' })).toBeInTheDocument();
+  });
+
+  it('Inserir HTML: insere o node rawHtmlBlock na posição do cursor e devolve o foco pro gatilho', async () => {
+    const user = userEvent.setup();
+    const getEditor = renderHarness('ab');
+    selectRange(getEditor, 2, 2);
+
+    const trigger = screen.getByRole('button', { name: 'Inserir elemento' });
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Inserir HTML' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('HTML'), '<iframe src="https://mapa.example.com"></iframe>');
+    await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
+
+    expect(markdown(getEditor)).toContain('<iframe src="https://mapa.example.com"></iframe>');
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('menu flutuante aparece com seleção não vazia e some sem seleção', () => {

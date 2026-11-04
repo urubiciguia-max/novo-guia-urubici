@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { PostFrontmatter } from '@admin-data/index.js';
 import {
@@ -15,6 +15,7 @@ import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
 import { emptyFormState, formStateToFrontmatter, recordToFormState, type PostFormState } from '../lib/postForm';
 import { createMarkdownEditorExtensions } from '../lib/markdownEditorExtensions';
+import { createContentImageUploader } from '../lib/contentImageUpload';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Spinner } from '../components/Spinner';
 import { ErrorBanner } from '../components/ErrorBanner';
@@ -32,7 +33,7 @@ export interface PostFormPageProps {
 
 export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
   const isEdit = slug !== null;
-  const { getPost, createPost, updatePost, deletePost, refresh } = usePosts();
+  const { getPost, createPost, updatePost, deletePost, refresh, uploadContentImage } = usePosts();
   const toast = useToast();
 
   const [form, setForm] = useState<PostFormState>(emptyFormState);
@@ -118,6 +119,18 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
   function updateField<K extends keyof PostFormState>(key: K, value: PostFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  // Prop `imageUpload` da `MarkdownToolbar` (item "Inserir imagem") -- mesmo
+  // gate do `CoverImageUpload` (`legacySlug.trim() !== ''`): post NOVO sem
+  // slug ainda não tem como decidir o nome do arquivo de imagem de corpo
+  // (`uploadContentImage` exige um slug válido, ver handoff do Jurandir).
+  const imageUpload = useMemo(
+    () => ({
+      ready: form.legacySlug.trim() !== '',
+      upload: createContentImageUploader(uploadContentImage, form.legacySlug),
+    }),
+    [form.legacySlug, uploadContentImage],
+  );
 
   function addFaqItem() {
     setForm((f) => ({ ...f, faq: [...f.faq, { question: '', answer: '' }] }));
@@ -321,8 +334,7 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
               />
               {isEdit ? (
                 <span className="field-hint">
-                  Travado em edição -- mudar isso sem renomear o arquivo quebraria a URL/SEO. O nome do arquivo é{' '}
-                  <code>{slug}.md</code>.
+                  Mudar isso sem renomear o arquivo quebraria a URL/SEO. O nome do arquivo é <code>{slug}.md</code>.
                 </span>
               ) : (
                 <span className="field-hint">
@@ -414,7 +426,7 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
             <div className="post-form__body-header">
               <span id="post-body-label">Corpo</span>
             </div>
-            <MarkdownToolbar editor={editor} />
+            <MarkdownToolbar editor={editor} imageUpload={imageUpload} />
             <EditorContent editor={editor} />
           </div>
         </div>
