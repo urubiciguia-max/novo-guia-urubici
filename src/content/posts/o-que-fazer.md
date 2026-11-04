@@ -6,6 +6,8 @@ updatedDate: '2026-02-14'
 tags:
   - cachoeiras
   - trilhas
+cover: ./cavalgada-em-urubici-capa.jpg
+coverAlt: Cavaleiro guiando cavalo por trilha de campo com araucárias na paisagem de Urubici na Serra Catarinense
 draft: false
 author: Equipe Guia de Urubici
 category: O Que Fazer
@@ -40,8 +42,6 @@ Não dá para dizer que conheceu Urubici sem passar por estes três lugares:
 ## Cavalgada: conheça Urubici a cavalo
 
 Enquanto a maioria dos visitantes corre de carro entre um mirante e outro — perdendo o sinal na subida da serra, pegando neblina que fecha a visibilidade do nada —, quem troca o carro pelo cavalo vê uma Urubici que o turismo tradicional raramente alcança. O baque cadenciado do casco na terra úmida, o vento gelado de altitude no rosto e o silêncio dos vales cercados por araucárias mudam a forma de conhecer a serra.
-
-![Cavaleiro guiando cavalo por trilha de campo com araucárias na paisagem de Urubici na Serra Catarinense](./cavalgada-em-urubici-capa.jpg)
 
 ### Vale a pena fazer cavalgada em Urubici?
 
