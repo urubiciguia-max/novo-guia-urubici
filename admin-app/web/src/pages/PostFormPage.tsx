@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import type { PostFrontmatter } from '@admin-data/index.js';
+import type { PostFrontmatter, RenamePostResult } from '@admin-data/index.js';
 import {
   PostAlreadyExistsError,
   PostNotFoundError,
@@ -13,7 +13,13 @@ import { zodIssuesToErrors } from '@admin-data/schema.js';
 import { usePosts } from '../data/PostsContext';
 import { useToast } from '../components/Toast';
 import { describeError } from '../lib/errorMessage';
-import { emptyFormState, formStateToFrontmatter, recordToFormState, type PostFormState } from '../lib/postForm';
+import {
+  emptyFormState,
+  formStateToFrontmatter,
+  isSlugRename,
+  recordToFormState,
+  type PostFormState,
+} from '../lib/postForm';
 import { createMarkdownEditorExtensions } from '../lib/markdownEditorExtensions';
 import { createContentImageUploader } from '../lib/contentImageUpload';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -33,7 +39,7 @@ export interface PostFormPageProps {
 
 export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
   const isEdit = slug !== null;
-  const { getPost, createPost, updatePost, deletePost, refresh, uploadContentImage } = usePosts();
+  const { getPost, createPost, updatePost, renamePost, deletePost, refresh, uploadContentImage } = usePosts();
   const toast = useToast();
 
   const [form, setForm] = useState<PostFormState>(emptyFormState);
@@ -49,9 +55,17 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
   const [shaConflictOpen, setShaConflictOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Confirmação explícita antes de salvar um rename de slug (muda a URL
+  // pública) -- ver handoff "rename-post-slug". Só abre quando o usuário
+  // mudou `legacySlug` em relação ao slug original da rota.
+  const [renameConfirmOpen, setRenameConfirmOpen] = useState(false);
 
   // Guarda o último frontmatter validado que tentou salvar -- usado pra
-  // "Sobrescrever" depois de um 409 (ver `resolveShaConflict`).
+  // "Sobrescrever" depois de um 409 (ver `resolveShaConflict`) e pro
+  // confirm de rename. `submit()` decide update-vs-rename sozinho a partir
+  // de `isSlugRename(frontmatter, slug)`, então não precisa de um ref extra
+  // só pra lembrar "era rename" -- o próprio frontmatter guardado já contém
+  // o `legacySlug` tentado.
   const lastAttemptRef = useRef<PostFrontmatter | null>(null);
 
   // Editor rich-text do corpo (ver spec "Editor WYSIWYG no corpo do artigo/
@@ -160,9 +174,25 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
       if (isEdit) {
         const currentSha = opts?.forceSha ?? sha;
         if (!currentSha) throw new Error('Post sem SHA carregado -- recarregue a página.');
-        const result = await updatePost(slug!, frontmatter, form.body, currentSha);
+        const renaming = isSlugRename(frontmatter, slug);
+        const result = renaming
+          ? await renamePost(slug!, frontmatter.legacySlug, frontmatter, form.body, currentSha)
+          : await updatePost(slug!, frontmatter, form.body, currentSha);
         setSha(result.sha);
-        toast.push('Post atualizado.', 'success');
+        // Só vem preenchido quando a capa seguia a convenção `${oldSlug}-capa.<ext>`
+        // e foi copiada pro nome novo (ver `GitHubPostsClient.renamePost`) --
+        // sem isso o form continuaria apontando pro caminho de capa antigo.
+        // `renaming` (não `'coverPath' in result`) decide o narrowing aqui --
+        // só `renamePost` devolve `RenamePostResult`, `updatePost` nunca tem
+        // essa propriedade.
+        const coverPath = renaming ? (result as RenamePostResult).coverPath : undefined;
+        if (coverPath) {
+          updateField('cover', coverPath);
+        }
+        toast.push(
+          renaming ? `Post renomeado para "${frontmatter.legacySlug}" e atualizado.` : 'Post atualizado.',
+          'success'
+        );
         await refresh();
         onNavigate('/posts');
       } else {
@@ -203,7 +233,19 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
     }
     setFieldErrors({});
     lastAttemptRef.current = parsed.data;
+    if (isSlugRename(parsed.data, slug)) {
+      // Muda a URL pública -- pede confirmação explícita ANTES de chamar
+      // `renamePost` (ver `ConfirmDialog` de rename mais abaixo no JSX).
+      setRenameConfirmOpen(true);
+      return;
+    }
     void submit(parsed.data);
+  }
+
+  function confirmRename() {
+    setRenameConfirmOpen(false);
+    if (!lastAttemptRef.current) return;
+    void submit(lastAttemptRef.current);
   }
 
   async function resolveShaConflictReload() {
@@ -328,14 +370,25 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
                 value={form.legacySlug}
                 onChange={(e) => updateField('legacySlug', e.target.value)}
                 placeholder="ex.: nome-do-artigo-aqui"
-                disabled={isEdit}
                 required
                 pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
               />
               {isEdit ? (
-                <span className="field-hint">
-                  Mudar isso sem renomear o arquivo quebraria a URL/SEO. O nome do arquivo é <code>{slug}.md</code>.
-                </span>
+                // Comparação direta com `form.legacySlug` (não `formStateToFrontmatter`
+                // inteiro) -- é o mesmo valor 1:1, sem transformação nenhuma
+                // entre form e frontmatter nesse campo (ver `formStateToFrontmatter`).
+                form.legacySlug !== slug ? (
+                  <span className="field-hint field-hint--near-limit">
+                    Ao salvar, a URL pública deste post muda de <code>/{slug}</code> para{' '}
+                    <code>/{form.legacySlug}</code>. Um redirecionamento 301 automático garante que links antigos
+                    continuem funcionando.
+                  </span>
+                ) : (
+                  <span className="field-hint">
+                    Mudar isso muda a URL pública deste post -- um redirecionamento é criado automaticamente, mas
+                    evite trocar sem necessidade.
+                  </span>
+                )
               ) : (
                 <span className="field-hint">
                   Vira o nome do arquivo: <code>src/content/posts/{form.legacySlug || '<slug>'}.md</code>. Só minúsculas,
@@ -484,6 +537,17 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={renameConfirmOpen}
+        title="Mudar a URL pública deste post?"
+        description={`A URL vai mudar de "/${slug}" para "/${form.legacySlug}". Um redirecionamento 301 automático é criado -- links e compartilhamentos antigos continuam funcionando -- mas é uma ação que muda algo já publicado.`}
+        confirmLabel="Mudar URL e salvar"
+        cancelLabel="Cancelar"
+        destructive={false}
+        onConfirm={confirmRename}
+        onCancel={() => setRenameConfirmOpen(false)}
+      />
 
       <ConfirmDialog
         open={shaConflictOpen}

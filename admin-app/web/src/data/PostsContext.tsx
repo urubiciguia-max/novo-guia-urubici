@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from '@admin-data/index.js';
+import type { PostFrontmatter, PostListItem, PostRecord, RenamePostResult, WriteResult } from '@admin-data/index.js';
 import { useAuth } from '../auth/AuthContext';
 import { isUnauthorized } from '../lib/errorMessage';
 import type {
@@ -18,6 +18,14 @@ interface PostsState {
   createPost: (slug: string, frontmatter: PostFrontmatter, body: string) => Promise<WriteResult>;
   updatePost: (slug: string, frontmatter: PostFrontmatter, body: string, sha: string) => Promise<WriteResult>;
   deletePost: (slug: string, sha: string) => Promise<void>;
+  /** Renomeia o slug de um post publicado (move o arquivo + redirect 301) -- ver `PostsClient.renamePost`. */
+  renamePost: (
+    oldSlug: string,
+    newSlug: string,
+    frontmatter: PostFrontmatter,
+    body: string,
+    sha: string
+  ) => Promise<RenamePostResult>;
   uploadCoverImage: (legacySlug: string, file: UploadCoverImageFile) => Promise<UploadCoverImageResult>;
   /** Upload de imagem inserida no CORPO do post (toolbar) -- ver `PostsClient.uploadContentImage`. */
   uploadContentImage: (slug: string, file: UploadContentImageFile) => Promise<UploadContentImageResult>;
@@ -106,6 +114,14 @@ export function PostsProvider({ children }: { children: ReactNode }) {
     [client, wrap]
   );
 
+  const renamePost = useCallback(
+    (oldSlug: string, newSlug: string, frontmatter: PostFrontmatter, body: string, sha: string) => {
+      if (!client) throw new Error('Sem sessão ativa.');
+      return wrap(client.renamePost.bind(client))(oldSlug, newSlug, frontmatter, body, sha);
+    },
+    [client, wrap]
+  );
+
   const uploadCoverImage = useCallback(
     (legacySlug: string, file: UploadCoverImageFile) => {
       if (!client) throw new Error('Sem sessão ativa.');
@@ -132,10 +148,23 @@ export function PostsProvider({ children }: { children: ReactNode }) {
       createPost,
       updatePost,
       deletePost,
+      renamePost,
       uploadCoverImage,
       uploadContentImage,
     }),
-    [items, loading, error, refresh, getPost, createPost, updatePost, deletePost, uploadCoverImage, uploadContentImage]
+    [
+      items,
+      loading,
+      error,
+      refresh,
+      getPost,
+      createPost,
+      updatePost,
+      deletePost,
+      renamePost,
+      uploadCoverImage,
+      uploadContentImage,
+    ]
   );
 
   return <PostsContext.Provider value={value}>{children}</PostsContext.Provider>;

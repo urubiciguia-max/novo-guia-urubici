@@ -133,6 +133,20 @@ export function recordToFormState(record: PostRecord, routeSlug: string): PostFo
   };
 }
 
+/**
+ * Decide se salvar este frontmatter é um RENAME (slug mudou em relação ao
+ * arquivo atual) ou um update normal -- usado por `PostFormPage.submit()`
+ * pra escolher entre `renamePost`/`updatePost`, e pelo fluxo de confirmação
+ * antes de salvar (ver handoff "rename-post-slug").
+ *
+ * `originalSlug` é o slug da ROTA (`useHashRoute`, imutável durante a vida
+ * do componente) -- nunca o que porventura esteja em `frontmatter.legacySlug`
+ * antes de decidir. `null` = post novo (criar nunca é rename).
+ */
+export function isSlugRename(frontmatter: PostFrontmatter, originalSlug: string | null): boolean {
+  return originalSlug !== null && frontmatter.legacySlug !== originalSlug;
+}
+
 /** Shape pro client -- a validação de verdade é `postFrontmatterSchema.safeParse` antes do submit, isto é só a conversão de forma. */
 export function formStateToFrontmatter(form: PostFormState): PostFrontmatter {
   const relatedSlugs = form.relatedSlugsText

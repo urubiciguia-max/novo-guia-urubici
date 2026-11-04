@@ -15,6 +15,7 @@ import type {
   PostFrontmatter,
   PostListItem,
   PostRecord,
+  RenamePostResult,
   WriteResult,
 } from '@admin-data/index.js';
 // `zodIssuesToErrors` não é exportado pelo barrel (`index.ts`) -- só por `schema.ts` direto.
@@ -31,6 +32,21 @@ import type { PagesClient } from './pagesClient';
 /** Extensão plausível pro mock de upload de imagem de conteúdo -- mesmo critério de `uploadCoverImage` real (jpg/png por padrão, webp só se declarado). */
 function mockImageExt(mimeType: string): string {
   return mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+}
+
+/**
+ * Mesma checagem de convenção de nome de capa que `GitHubPostsClient`
+ * (`legacyCoverExt`, em `admin-app/src/github-client.ts`) usa em
+ * `renamePost` -- reimplementada aqui (não importada) porque não é
+ * exportada pelo barrel, e o mock não precisa de mais que isso pra simular
+ * o mesmo comportamento.
+ */
+function mockLegacyCoverExt(cover: string | undefined, slug: string): string | null {
+  if (!cover) return null;
+  for (const ext of ['jpg', 'png', 'webp']) {
+    if (cover === `./${slug}-capa.${ext}`) return ext;
+  }
+  return null;
 }
 
 /**
@@ -226,6 +242,50 @@ export function createMockPostsClient(): PostsClient {
         sha: `sha-content-${Date.now()}`,
         commitSha: `commit-${Date.now()}`,
       });
+    },
+
+    // Mock de `GitHubPostsClient.renamePost()` -- simula mover o post pro
+    // slug novo (sem _redirects de verdade, não há arquivo pra escrever no
+    // mock) e renomear a capa se ela seguir a convenção de nome, mesmo
+    // comportamento de erro do client real (`PostNotFoundError`/
+    // `ShaConflictError`/`PostAlreadyExistsError`/`ValidationError`).
+    async renamePost(
+      oldSlug: string,
+      newSlug: string,
+      frontmatter: PostFrontmatter,
+      body: string,
+      sha: string
+    ): Promise<RenamePostResult> {
+      const idx = posts.findIndex((p) => p.slug === oldSlug);
+      if (idx === -1) throw new PostNotFoundError(oldSlug);
+      if (posts[idx].sha !== sha) throw new ShaConflictError(oldSlug);
+
+      if (newSlug === oldSlug) {
+        const parsed = postFrontmatterSchema.safeParse(frontmatter);
+        if (!parsed.success) throw new ValidationError(zodIssuesToErrors(parsed.error.issues));
+        const newSha = nextSha(sha);
+        posts[idx] = { slug: oldSlug, frontmatter: parsed.data, body, sha: newSha, valid: true };
+        return delay({ sha: newSha, commitSha: `commit-${Date.now()}` });
+      }
+
+      if (posts.some((p) => p.slug === newSlug)) throw new PostAlreadyExistsError(newSlug);
+
+      const parsed = postFrontmatterSchema.safeParse(frontmatter);
+      if (!parsed.success) throw new ValidationError(zodIssuesToErrors(parsed.error.issues));
+
+      const updated: PostFrontmatter = { ...parsed.data };
+      let coverPath: string | undefined;
+      const ext = mockLegacyCoverExt(updated.cover, oldSlug);
+      if (ext) {
+        coverPath = `./${newSlug}-capa.${ext}`;
+        updated.cover = coverPath;
+      }
+
+      const newSha = 'sha-1';
+      posts.splice(idx, 1);
+      posts.push({ slug: newSlug, frontmatter: updated, body, sha: newSha, valid: true });
+
+      return delay({ sha: newSha, commitSha: `commit-${Date.now()}`, ...(coverPath ? { coverPath } : {}) });
     },
   };
 }

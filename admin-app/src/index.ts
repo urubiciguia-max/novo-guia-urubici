@@ -28,6 +28,7 @@ export type {
   PostListItem,
   PostRecord,
   WriteResult,
+  RenamePostResult,
   PageFrontmatter,
   PageListItem,
   PageRecord,
