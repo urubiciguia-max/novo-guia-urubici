@@ -24,7 +24,7 @@ affiliates:
 relatedSlugs:
   - guia-pratico-quando-ir-urubici
   - pousadas-perto-das-trilhas-urubici
-legacySlug: cachoeiras-secretas-urubici
+legacySlug: o-que-fazer
 ---
 
 > Post de **exemplo** criado na Fase 1 (templates) pra validar o schema completo da collection e o template de post. Conteúdo real desta pauta entra na Fase 4, com extração cuidadosa do texto original do WordPres
