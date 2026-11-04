@@ -7,12 +7,20 @@ import Footer from '../components/Footer.astro';
 import Breadcrumb from '../components/Breadcrumb.astro';
 import BreadcrumbList from '../components/schema/BreadcrumbList.astro';
 import PostCard from '../components/PostCard.astro';
+import PostArticle from '../components/PostArticle.astro';
 
 /**
  * "Onde ficar" NAO e uma categoria real do WP (as 4 categorias reais sao
  * Geral/Guia Pratico/O Que Fazer/Onde Comer) — e so pagina institucional no
  * site antigo. Por isso filtramos por TAG "onde-ficar" em vez de `category`
  * (ver decisao na spec do Carlito / nota em src/content/config.ts).
+ *
+ * Por decisao de produto, cada silo de categoria tem exatamente 1 post
+ * publicado -- quando isso acontece, a URL do silo renderiza o ARTIGO
+ * INTEIRO direto (via `PostArticle`), sem listagem/card no meio. O slug
+ * deste arquivo (`onde-ficar`) esta em `RESERVED_HUB_SLUGS`
+ * (src/lib/reservedHubSlugs.ts) -- `[...slug].astro` nunca gera uma rota
+ * concorrente pra essa URL.
  */
 const TAG = 'onde-ficar';
 const allPosts = await getCollection('posts', ({ data }) => !data.draft && data.tags.includes(TAG));
@@ -24,53 +32,57 @@ const breadcrumbItems = [
 ];
 ---
 
-<Layout
-  title="Onde Ficar em Urubici"
-  description="Pousadas, chalés e hotéis fazenda em Urubici: onde se hospedar na Serra Catarinense conforme seu roteiro."
->
-  <BreadcrumbList slot="schema" items={breadcrumbItems} />
+{posts.length === 1 ? (
+  <PostArticle post={posts[0]} breadcrumbItems={breadcrumbItems} />
+) : (
+  <Layout
+    title="Onde Ficar em Urubici"
+    description="Pousadas, chalés e hotéis fazenda em Urubici: onde se hospedar na Serra Catarinense conforme seu roteiro."
+  >
+    <BreadcrumbList slot="schema" items={breadcrumbItems} />
 
-  <DisclosureStrip />
-  <Header />
+    <DisclosureStrip />
+    <Header />
 
-  <main id="conteudo-principal">
-    <div class="container">
-      <Breadcrumb items={breadcrumbItems} />
-    </div>
-
-    <section class="section hub-section" aria-labelledby="hub-heading">
+    <main id="conteudo-principal">
       <div class="container">
-        <p class="eyebrow">Onde Ficar</p>
-        <h1 id="hub-heading" class="hub-title">Onde se hospedar em Urubici</h1>
-        <p class="hub-description">
-          Pousada no centro ou chalé perto das trilhas? Comparamos
-          localização, preço médio e facilidade de acesso às principais
-          atrações da região.
-        </p>
-
-        {posts.length > 0 ? (
-          <div class="posts-grid">
-            {posts.map((post) => (
-              <PostCard
-                href={`/${post.slug}`}
-                title={post.data.title}
-                excerpt={post.data.description}
-                tag={post.data.category}
-              />
-            ))}
-          </div>
-        ) : (
-          <p class="hub-empty">
-            Ainda não publicamos posts com essa tag — volte em breve ou dá
-            uma olhada no <a href="/guia-pratico" class="link-under">Guia Prático</a>.
-          </p>
-        )}
+        <Breadcrumb items={breadcrumbItems} />
       </div>
-    </section>
-  </main>
 
-  <Footer />
-</Layout>
+      <section class="section hub-section" aria-labelledby="hub-heading">
+        <div class="container">
+          <p class="eyebrow">Onde Ficar</p>
+          <h1 id="hub-heading" class="hub-title">Onde se hospedar em Urubici</h1>
+          <p class="hub-description">
+            Pousada no centro ou chalé perto das trilhas? Comparamos
+            localização, preço médio e facilidade de acesso às principais
+            atrações da região.
+          </p>
+
+          {posts.length > 1 ? (
+            <div class="posts-grid">
+              {posts.map((post) => (
+                <PostCard
+                  href={`/${post.slug}`}
+                  title={post.data.title}
+                  excerpt={post.data.description}
+                  tag={post.data.category}
+                />
+              ))}
+            </div>
+          ) : (
+            <p class="hub-empty">
+              Ainda não publicamos posts com essa tag — volte em breve ou dá
+              uma olhada no <a href="/guia-pratico" class="link-under">Guia Prático</a>.
+            </p>
+          )}
+        </div>
+      </section>
+    </main>
+
+    <Footer />
+  </Layout>
+)}
 
 <style>
   .hub-section {

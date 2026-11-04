@@ -7,10 +7,18 @@ import Footer from '../components/Footer.astro';
 import Breadcrumb from '../components/Breadcrumb.astro';
 import BreadcrumbList from '../components/schema/BreadcrumbList.astro';
 import PostCard from '../components/PostCard.astro';
+import PostArticle from '../components/PostArticle.astro';
 
 /**
  * Hub page da categoria real do WP "O Que Fazer". Mesma nota de paginacao
  * de src/pages/guia-pratico.astro se aplica aqui.
+ *
+ * Por decisao de produto, cada silo de categoria tem exatamente 1 post
+ * publicado -- quando isso acontece, a URL do silo renderiza o ARTIGO
+ * INTEIRO direto (via `PostArticle`), sem listagem/card no meio. O slug
+ * deste arquivo (`o-que-fazer`) esta em `RESERVED_HUB_SLUGS`
+ * (src/lib/reservedHubSlugs.ts) -- `[...slug].astro` nunca gera uma rota
+ * concorrente pra essa URL.
  */
 const allPosts = await getCollection('posts', ({ data }) => !data.draft && data.category === 'O Que Fazer');
 const posts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -21,53 +29,57 @@ const breadcrumbItems = [
 ];
 ---
 
-<Layout
-  title="O Que Fazer"
-  description="Cachoeiras, trilhas e passeios em Urubici: roteiros prontos pra aproveitar a Serra Catarinense sem perder tempo."
->
-  <BreadcrumbList slot="schema" items={breadcrumbItems} />
+{posts.length === 1 ? (
+  <PostArticle post={posts[0]} breadcrumbItems={breadcrumbItems} />
+) : (
+  <Layout
+    title="O Que Fazer"
+    description="Cachoeiras, trilhas e passeios em Urubici: roteiros prontos pra aproveitar a Serra Catarinense sem perder tempo."
+  >
+    <BreadcrumbList slot="schema" items={breadcrumbItems} />
 
-  <DisclosureStrip />
-  <Header />
+    <DisclosureStrip />
+    <Header />
 
-  <main id="conteudo-principal">
-    <div class="container">
-      <Breadcrumb items={breadcrumbItems} />
-    </div>
-
-    <section class="section hub-section" aria-labelledby="hub-heading">
+    <main id="conteudo-principal">
       <div class="container">
-        <p class="eyebrow">O Que Fazer</p>
-        <h1 id="hub-heading" class="hub-title">Cachoeiras, trilhas e passeios em Urubici</h1>
-        <p class="hub-description">
-          Roteiros testados pra aproveitar a Serra Catarinense: ordem certa
-          pra visitar as cachoeiras, trilhas de fácil e difícil acesso e
-          mirantes que valem o frio.
-        </p>
-
-        {posts.length > 0 ? (
-          <div class="posts-grid">
-            {posts.map((post) => (
-              <PostCard
-                href={`/${post.slug}`}
-                title={post.data.title}
-                excerpt={post.data.description}
-                tag={post.data.category}
-              />
-            ))}
-          </div>
-        ) : (
-          <p class="hub-empty">
-            Ainda não publicamos posts nesta categoria — volte em breve ou dá
-            uma olhada no <a href="/guia-pratico" class="link-under">Guia Prático</a>.
-          </p>
-        )}
+        <Breadcrumb items={breadcrumbItems} />
       </div>
-    </section>
-  </main>
 
-  <Footer />
-</Layout>
+      <section class="section hub-section" aria-labelledby="hub-heading">
+        <div class="container">
+          <p class="eyebrow">O Que Fazer</p>
+          <h1 id="hub-heading" class="hub-title">Cachoeiras, trilhas e passeios em Urubici</h1>
+          <p class="hub-description">
+            Roteiros testados pra aproveitar a Serra Catarinense: ordem certa
+            pra visitar as cachoeiras, trilhas de fácil e difícil acesso e
+            mirantes que valem o frio.
+          </p>
+
+          {posts.length > 1 ? (
+            <div class="posts-grid">
+              {posts.map((post) => (
+                <PostCard
+                  href={`/${post.slug}`}
+                  title={post.data.title}
+                  excerpt={post.data.description}
+                  tag={post.data.category}
+                />
+              ))}
+            </div>
+          ) : (
+            <p class="hub-empty">
+              Ainda não publicamos posts nesta categoria — volte em breve ou dá
+              uma olhada no <a href="/guia-pratico" class="link-under">Guia Prático</a>.
+            </p>
+          )}
+        </div>
+      </section>
+    </main>
+
+    <Footer />
+  </Layout>
+)}
 
 <style>
   .hub-section {
