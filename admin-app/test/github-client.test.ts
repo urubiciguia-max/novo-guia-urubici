@@ -320,6 +320,215 @@ describe('GitHubPostsClient', () => {
     });
   });
 
+  // -- renamePost ------------------------------------------------------------
+
+  describe('renamePost', () => {
+    const OLD_SLUG = 'cachoeiras-secretas-urubici';
+    const NEW_SLUG = 'cachoeiras-secretas-da-serra-catarinense';
+
+    function noCoverFrontmatter(): PostFrontmatter {
+      return { ...VALID_FRONTMATTER };
+    }
+
+    it('newSlug === oldSlug delega pra updatePost (sem checar colisão nem gravar redirect)', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ content: { sha: 'sha-upd' }, commit: { sha: 'commit-upd' } }));
+
+      const result = await makeClient().renamePost(OLD_SLUG, OLD_SLUG, noCoverFrontmatter(), 'corpo editado', 'sha-atual');
+
+      expect(result).toEqual({ sha: 'sha-upd', commitSha: 'commit-upd' });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toContain(`contents/src/content/posts/${OLD_SLUG}.md`);
+      expect(init.method).toBe('PUT');
+      const body = JSON.parse(init.body as string);
+      expect(body.sha).toBe('sha-atual');
+    });
+
+    it('rename simples sem capa: cria no path novo, apaga o antigo e grava o redirect 301 (arquivo _redirects já existe)', async () => {
+      const existingRedirects = '# Cloudflare Pages — redirects.\n# comentário qualquer\n';
+
+      fetchMock
+        // 1. confere que o path novo não existe
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        // 2. cria o post no path novo
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'novo-sha' }, commit: { sha: 'commit-novo' } }))
+        // 3. apaga o post antigo
+        .mockResolvedValueOnce(new Response(null, { status: 200 }))
+        // 4. lê o _redirects atual
+        .mockResolvedValueOnce(
+          jsonResponse({ content: utf8ToBase64(existingRedirects), encoding: 'base64', sha: 'redirects-sha-1' })
+        )
+        // 5. grava o _redirects atualizado
+        .mockResolvedValueOnce(
+          jsonResponse({ content: { sha: 'redirects-sha-2' }, commit: { sha: 'commit-redirects' } })
+        );
+
+      const result = await makeClient().renamePost(
+        OLD_SLUG,
+        NEW_SLUG,
+        noCoverFrontmatter(),
+        'Corpo do post.',
+        'sha-antigo'
+      );
+
+      expect(result).toEqual({ sha: 'novo-sha', commitSha: 'commit-novo' });
+      expect(fetchMock).toHaveBeenCalledTimes(5);
+
+      const [newPathUrl, newPathInit] = fetchMock.mock.calls[0];
+      expect(newPathUrl).toContain(`contents/src/content/posts/${NEW_SLUG}.md`);
+      expect(newPathInit.method).toBe('GET');
+
+      const [createUrl, createInit] = fetchMock.mock.calls[1];
+      expect(createUrl).toContain(`contents/src/content/posts/${NEW_SLUG}.md`);
+      expect(createInit.method).toBe('PUT');
+      const createBody = JSON.parse(createInit.body as string);
+      expect(createBody.sha).toBeUndefined();
+
+      const [deleteUrl, deleteInit] = fetchMock.mock.calls[2];
+      expect(deleteUrl).toContain(`contents/src/content/posts/${OLD_SLUG}.md`);
+      expect(deleteInit.method).toBe('DELETE');
+      const deleteBody = JSON.parse(deleteInit.body as string);
+      expect(deleteBody.sha).toBe('sha-antigo');
+
+      const [redirectsGetUrl, redirectsGetInit] = fetchMock.mock.calls[3];
+      expect(redirectsGetUrl).toContain('contents/public/_redirects');
+      expect(redirectsGetInit.method).toBe('GET');
+
+      const [, redirectsPutInit] = fetchMock.mock.calls[4];
+      expect(redirectsPutInit.method).toBe('PUT');
+      const redirectsBody = JSON.parse(redirectsPutInit.body as string);
+      expect(redirectsBody.sha).toBe('redirects-sha-1');
+      const newRedirectsText = Buffer.from(redirectsBody.content, 'base64').toString('utf-8');
+      expect(newRedirectsText).toContain(`/${OLD_SLUG}   /${NEW_SLUG}   301`);
+      expect(newRedirectsText).toContain('# comentário qualquer');
+    });
+
+    it('rename com capa: copia a capa pro slug novo, apaga a antiga e atualiza frontmatter.cover (arquivo _redirects não existe ainda)', async () => {
+      const withCover: PostFrontmatter = { ...VALID_FRONTMATTER, cover: `./${OLD_SLUG}-capa.jpg` };
+      const NEW_SLUG_2 = 'nova-slug-pra-essa-cachoeira';
+
+      fetchMock
+        // 1. confere que o path novo não existe
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        // 2. lê a capa antiga (conteúdo + sha)
+        .mockResolvedValueOnce(
+          jsonResponse({ content: 'conteudo-base64-da-capa', encoding: 'base64', sha: 'cover-sha-antigo' })
+        )
+        // 3. copia a capa pro path novo (arquivo novo, sem sha)
+        .mockResolvedValueOnce(new Response(null, { status: 201 }))
+        // 4. cria o post no path novo
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'novo-sha-2' }, commit: { sha: 'commit-novo-2' } }))
+        // 5. apaga o post antigo
+        .mockResolvedValueOnce(new Response(null, { status: 200 }))
+        // 6. apaga a capa antiga
+        .mockResolvedValueOnce(new Response(null, { status: 200 }))
+        // 7. _redirects não existe ainda
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        // 8. cria o _redirects do zero
+        .mockResolvedValueOnce(
+          jsonResponse({ content: { sha: 'redirects-sha-novo' }, commit: { sha: 'commit-redirects-2' } })
+        );
+
+      const result = await makeClient().renamePost(OLD_SLUG, NEW_SLUG_2, withCover, 'Corpo.', 'sha-antigo-2');
+
+      expect(result).toEqual({
+        sha: 'novo-sha-2',
+        commitSha: 'commit-novo-2',
+        coverPath: `./${NEW_SLUG_2}-capa.jpg`,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(8);
+
+      const [coverGetUrl] = fetchMock.mock.calls[1];
+      expect(coverGetUrl).toContain(`contents/src/content/posts/${OLD_SLUG}-capa.jpg`);
+
+      const [coverPutUrl, coverPutInit] = fetchMock.mock.calls[2];
+      expect(coverPutUrl).toContain(`contents/src/content/posts/${NEW_SLUG_2}-capa.jpg`);
+      expect(coverPutInit.method).toBe('PUT');
+      const coverPutBody = JSON.parse(coverPutInit.body as string);
+      expect(coverPutBody.sha).toBeUndefined();
+      expect(coverPutBody.content).toBe('conteudo-base64-da-capa');
+
+      const [, createInit] = fetchMock.mock.calls[3];
+      const createBody = JSON.parse(createInit.body as string);
+      const createdText = Buffer.from(createBody.content, 'base64').toString('utf-8');
+      expect(createdText).toContain(`${NEW_SLUG_2}-capa.jpg`);
+      expect(createdText).not.toContain(`${OLD_SLUG}-capa.jpg`);
+
+      const [coverDeleteUrl, coverDeleteInit] = fetchMock.mock.calls[5];
+      expect(coverDeleteUrl).toContain(`contents/src/content/posts/${OLD_SLUG}-capa.jpg`);
+      expect(coverDeleteInit.method).toBe('DELETE');
+      const coverDeleteBody = JSON.parse(coverDeleteInit.body as string);
+      expect(coverDeleteBody.sha).toBe('cover-sha-antigo');
+
+      const [redirectsGetUrl] = fetchMock.mock.calls[6];
+      expect(redirectsGetUrl).toContain('contents/public/_redirects');
+
+      const [, redirectsPutInit] = fetchMock.mock.calls[7];
+      const redirectsBody = JSON.parse(redirectsPutInit.body as string);
+      expect(redirectsBody.sha).toBeUndefined();
+      const newRedirectsText = Buffer.from(redirectsBody.content, 'base64').toString('utf-8');
+      expect(newRedirectsText).toContain(`/${OLD_SLUG}   /${NEW_SLUG_2}   301`);
+      expect(newRedirectsText).toContain('# Cloudflare Pages');
+    });
+
+    it('path novo já existe (slug colidindo) lança PostAlreadyExistsError sem tocar em mais nada', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ content: 'x', encoding: 'base64', sha: 'ja-existe-sha' }));
+
+      await expect(
+        makeClient().renamePost(OLD_SLUG, 'ja-existe', noCoverFrontmatter(), 'corpo', 'sha-antigo')
+      ).rejects.toBeInstanceOf(PostAlreadyExistsError);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('sha desatualizado ao apagar o post antigo (409) lança ShaConflictError -- post novo já foi criado', async () => {
+      fetchMock
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'novo-sha-3' }, commit: { sha: 'commit-novo-3' } }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'does not match' }), { status: 409 }));
+
+      await expect(
+        makeClient().renamePost(OLD_SLUG, 'outro-slug-novo', noCoverFrontmatter(), 'corpo', 'sha-desatualizado')
+      ).rejects.toBeInstanceOf(ShaConflictError);
+
+      // o post NOVO já foi criado (passo 4) antes do passo 5 falhar --
+      // duplicata visível é aceitável aqui (ver doc do método), mas não deve
+      // tentar escrever o redirect depois de uma falha no passo de apagar o
+      // antigo (encadeamento: nada depois dele roda).
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('_redirects já tem uma regra pro MESMO oldSlug -- substitui a linha em vez de duplicar', async () => {
+      const existingRedirects = [
+        '# Cloudflare Pages — redirects.',
+        `/${OLD_SLUG}   /slug-antigo-de-um-rename-anterior   301`,
+        '/outro-post-qualquer   /outro-post-novo   301',
+        '',
+      ].join('\n');
+
+      fetchMock
+        .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }))
+        .mockResolvedValueOnce(jsonResponse({ content: { sha: 'novo-sha-4' }, commit: { sha: 'commit-novo-4' } }))
+        .mockResolvedValueOnce(new Response(null, { status: 200 }))
+        .mockResolvedValueOnce(
+          jsonResponse({ content: utf8ToBase64(existingRedirects), encoding: 'base64', sha: 'redirects-sha-x' })
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ content: { sha: 'redirects-sha-y' }, commit: { sha: 'commit-redirects-y' } })
+        );
+
+      await makeClient().renamePost(OLD_SLUG, NEW_SLUG, noCoverFrontmatter(), 'corpo', 'sha-antigo-4');
+
+      const [, redirectsPutInit] = fetchMock.mock.calls[4];
+      const redirectsBody = JSON.parse(redirectsPutInit.body as string);
+      const newRedirectsText = Buffer.from(redirectsBody.content, 'base64').toString('utf-8');
+
+      const matchingLines = newRedirectsText.split('\n').filter((line) => line.startsWith(`/${OLD_SLUG}   `));
+      expect(matchingLines).toEqual([`/${OLD_SLUG}   /${NEW_SLUG}   301`]);
+      expect(newRedirectsText).toContain('/outro-post-qualquer   /outro-post-novo   301');
+    });
+  });
+
   // -- uploadCoverImage ----------------------------------------------------
 
   describe('uploadCoverImage', () => {

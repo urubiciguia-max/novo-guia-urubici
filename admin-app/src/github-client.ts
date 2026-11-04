@@ -17,6 +17,7 @@ import type {
   PostFrontmatter,
   PostListItem,
   PostRecord,
+  RenamePostResult,
   WriteResult,
 } from './types.js';
 
@@ -192,6 +193,50 @@ function uniqueContentImageSuffix(): string {
   const randomSuffix = Math.random().toString(36).slice(2, 8);
   return `${timestampBase36}-${randomSuffix}`;
 }
+
+/**
+ * Confere se `cover` aponta pro padrão de nome que `uploadCoverImage` usa
+ * pra ESTE slug (`./${slug}-capa.<ext>`, uma das 3 extensões aceitas pela
+ * allowlist de MIME -- `ALLOWED_COVER_MIME_TYPES`). `renamePost` só
+ * copia/renomeia a capa quando bate exatamente esse padrão -- um `cover`
+ * com path diferente (upload manual, nome antigo/migração, path alheio)
+ * fica como está, não é tocado (decisão explícita da spec do Genilson,
+ * 2026-11-04, pra não arriscar mexer em algo fora da convenção conhecida).
+ */
+function legacyCoverExt(cover: string | undefined, slug: string): string | null {
+  if (!cover) return null;
+  for (const ext of Object.values(ALLOWED_COVER_MIME_TYPES)) {
+    if (cover === `./${slug}-capa.${ext}`) return ext;
+  }
+  return null;
+}
+
+/** Escapa caracteres especiais de regex -- usado só pra montar o padrão de linha existente em `upsertRedirect`. */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * `public/_redirects` fica na RAIZ do repo -- NÃO dentro de `postsPath`
+ * (confirmado lendo o arquivo real do projeto antes de codar, spec do
+ * Genilson 2026-11-04). Sintaxe Cloudflare Pages: `/antigo   /novo   301`,
+ * uma regra por linha.
+ */
+const REDIRECTS_PATH = 'public/_redirects';
+
+/**
+ * Cabeçalho explicativo -- mesmo texto que já existe hoje em
+ * `public/_redirects` (ver arquivo real no repo), SEM o trecho "ainda sem
+ * regras reais" + exemplo comentado do arquivo original: usado só no caso
+ * (hipotético, hoje o arquivo já existe no repo) de `upsertRedirect`
+ * precisar criar o arquivo do zero -- nesse momento já existe pelo menos
+ * uma regra real sendo gravada, então "ainda sem regras" ficaria falso.
+ */
+const REDIRECTS_HEADER = [
+  '# Cloudflare Pages — redirects.',
+  '# Astro copia este arquivo de public/ pra dist/ automaticamente no build.',
+  '# Docs: https://developers.cloudflare.com/pages/configuration/redirects/',
+].join('\n');
 
 interface GraphQlTreeResponse {
   data?: {
@@ -480,6 +525,265 @@ export class GitHubPostsClient {
     if (!res.ok) {
       const errBody = await this.safeJson<GitHubErrorBody>(res);
       throw new GitHubApiError(res.status, errBody?.message ?? `Erro ao remover o post "${slug}".`);
+    }
+  }
+
+  // -- renamePost --------------------------------------------------------
+
+  /**
+   * Renomeia o slug de um post JÁ PUBLICADO. Diferente de `updatePost`
+   * (só reescreve o conteúdo no MESMO path), isso move o ARQUIVO -- o nome
+   * do arquivo é a URL final (`src/pages/[...slug].astro` roteia por
+   * filename), então renomear sem redirecionar quebraria a URL antiga pra
+   * quem já tem ela indexada/salva. Por isso o passo final grava um
+   * redirect 301 em `public/_redirects` -- regra inegociável de SEO
+   * técnico deste projeto (ver CLAUDE.md), não é opcional.
+   *
+   * ORDEM pensada pra minimizar perda de dados se algo falhar no meio
+   * (spec do Genilson, 2026-11-04): é melhor sobrar DUPLICATA visível
+   * (post/capa antigos ainda no repo) do que FALTAR o post inteiro.
+   *   1. valida os dois slugs + o frontmatter (tudo sem rede)
+   *   2. confere que o NOVO path não existe ainda (evita sobrescrever
+   *      outro post por acidente) -- `PostAlreadyExistsError`
+   *   3. copia a capa pro nome novo, SE ela seguir a convenção de nome
+   *      `./${oldSlug}-capa.<ext>` -- atualiza `frontmatter.cover` ANTES
+   *      de criar o arquivo novo
+   *   4. cria o post no path NOVO (sem sha -- arquivo novo)
+   *   5. só então apaga o post no path ANTIGO, usando o `sha` recebido
+   *      (mesma lógica de conflito de `updatePost`/`deletePost`:
+   *      `PostNotFoundError`/`ShaConflictError`)
+   *   6. apaga a capa ANTIGA, se copiou uma nova em 3 -- falha AQUI não
+   *      bloqueia o resto (é cosmético: sobra uma imagem órfã/duplicada,
+   *      não um post perdido)
+   *   7. upsert da linha de redirect 301 em `public/_redirects`
+   *
+   * Cada passo de 2 a 5 lança um erro específico e INTERROMPE a cadeia
+   * (nada depois dele roda) -- o passo 6 é a única exceção de propósito,
+   * pra não deixar uma falha cosmética impedir o passo 7 (o inegociável).
+   *
+   * `newSlug === oldSlug` não é rename de fato -- delega pra `updatePost`
+   * (mesmo slug, só conteúdo mudou) em vez de gastar as requisições extras
+   * deste método.
+   */
+  async renamePost(
+    oldSlug: string,
+    newSlug: string,
+    frontmatter: PostFrontmatter,
+    body: string,
+    sha: string
+  ): Promise<RenamePostResult> {
+    this.assertValidSlug(oldSlug);
+    this.assertValidSlug(newSlug);
+
+    if (newSlug === oldSlug) {
+      return this.updatePost(oldSlug, frontmatter, body, sha);
+    }
+
+    const validated = this.validateOrThrow(frontmatter);
+
+    // -- Passo 2: o NOVO path não pode já existir -----------------------------
+    const newPath = `${this.postsPath}/${newSlug}.md`;
+    const newPathCheckRes = await this.restRequest(
+      `/repos/${this.owner}/${this.repo}/contents/${newPath}?ref=${this.branch}`,
+      { method: 'GET' }
+    );
+    if (newPathCheckRes.status === 200) {
+      throw new PostAlreadyExistsError(newSlug);
+    }
+    if (newPathCheckRes.status !== 404) {
+      const errBody = await this.safeJson<GitHubErrorBody>(newPathCheckRes);
+      throw new GitHubApiError(
+        newPathCheckRes.status,
+        errBody?.message ?? `Erro ao verificar se já existe um post em "${newSlug}". Nada foi alterado.`
+      );
+    }
+
+    // -- Passo 3: copia a capa, SE seguir a convenção de nome -----------------
+    let coverPath: string | undefined;
+    let oldCoverToDelete: { path: string; sha: string } | undefined;
+
+    const coverExt = legacyCoverExt(validated.cover as string | undefined, oldSlug);
+    if (coverExt) {
+      const oldCoverPath = `${this.postsPath}/${oldSlug}-capa.${coverExt}`;
+      const coverGetRes = await this.restRequest(
+        `/repos/${this.owner}/${this.repo}/contents/${oldCoverPath}?ref=${this.branch}`,
+        { method: 'GET' }
+      );
+      if (coverGetRes.status === 200) {
+        const coverData = await this.parseJsonOrThrow<ContentsGetResponse>(coverGetRes);
+        const newCoverPath = `${this.postsPath}/${newSlug}-capa.${coverExt}`;
+        const coverPutRes = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${newCoverPath}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            message: `content: copia capa de "${oldSlug}" pra "${newSlug}" (rename)`,
+            content: coverData.content,
+            branch: this.branch,
+            // Sem `sha` de propósito -- path novo, arquivo sempre inexistente
+            // nesse ponto (senão o post em si já teria colidido no passo 2,
+            // já que capa e post do mesmo slug nascem/morrem juntos).
+          }),
+        });
+        if (!coverPutRes.ok) {
+          const errBody = await this.safeJson<GitHubErrorBody>(coverPutRes);
+          throw new GitHubApiError(
+            coverPutRes.status,
+            `Não consegui copiar a capa de "${oldSlug}" pra "${newSlug}" -- nada foi alterado, tenta de novo (${errBody?.message ?? 'erro desconhecido'}).`
+          );
+        }
+        coverPath = `./${newSlug}-capa.${coverExt}`;
+        validated.cover = coverPath;
+        oldCoverToDelete = { path: oldCoverPath, sha: coverData.sha };
+      } else if (coverGetRes.status !== 404) {
+        const errBody = await this.safeJson<GitHubErrorBody>(coverGetRes);
+        throw new GitHubApiError(
+          coverGetRes.status,
+          `Erro ao ler a capa atual de "${oldSlug}" -- nada foi alterado (${errBody?.message ?? 'erro desconhecido'}).`
+        );
+      }
+      // 404: o frontmatter aponta pra capa nesse path, mas ela já não existe
+      // no repo -- segue o rename sem copiar/renomear nada relacionado a capa.
+    }
+
+    // -- Passo 4: cria o post no path NOVO -------------------------------------
+    const content = serializePostFile(validated, body);
+    const createRes = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${newPath}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: `content: renomeia post "${oldSlug}" -> "${newSlug}"`,
+        content: utf8ToBase64(content),
+        branch: this.branch,
+        // Sem `sha` de propósito -- mesma regra de `createPost` (arquivo novo).
+      }),
+    });
+
+    if (createRes.status === 422) {
+      const errBody = await this.safeJson<GitHubErrorBody>(createRes);
+      if (errBody?.message?.toLowerCase().includes('sha')) {
+        throw new PostAlreadyExistsError(newSlug);
+      }
+      throw new GitHubApiError(
+        422,
+        errBody?.message ?? `Requisição inválida ao criar o post em "${newSlug}". O post antigo "${oldSlug}" não foi tocado.`
+      );
+    }
+    const createData = await this.parseJsonOrThrow<ContentsPutResponse>(createRes);
+
+    // -- Passo 5: apaga o post no path ANTIGO ----------------------------------
+    // A partir daqui o post NOVO já existe e está completo -- qualquer falha
+    // dos passos 5/6/7 deixa, no máximo, duplicata visível (post e/ou capa
+    // antigos ainda no repo), nunca o post inteiro faltando.
+    const oldPath = `${this.postsPath}/${oldSlug}.md`;
+    const deleteRes = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${oldPath}`, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        message: `content: remove post antigo "${oldSlug}" (renomeado pra "${newSlug}")`,
+        branch: this.branch,
+        sha,
+      }),
+    });
+
+    if (deleteRes.status === 404) throw new PostNotFoundError(oldSlug);
+    if (deleteRes.status === 409) throw new ShaConflictError(oldSlug);
+    if (!deleteRes.ok) {
+      const errBody = await this.safeJson<GitHubErrorBody>(deleteRes);
+      throw new GitHubApiError(
+        deleteRes.status,
+        `Post criado em "${newSlug}" com sucesso, mas não consegui apagar o antigo "${oldSlug}" (${errBody?.message ?? 'erro desconhecido'}) -- verifique e apague manualmente se necessário.`
+      );
+    }
+
+    // -- Passo 6: apaga a capa ANTIGA, se copiou uma nova no passo 3 ----------
+    // De propósito NÃO lança em caso de falha aqui (409/404/outro) -- o post
+    // já está consistente e completo no path novo; a pior consequência
+    // possível é uma imagem órfã/duplicada sobrando no repo, não um post
+    // perdido. Bloquear o passo 7 (redirect, o inegociável) por causa disso
+    // seria pior do que o problema que previne.
+    if (oldCoverToDelete) {
+      await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${oldCoverToDelete.path}`, {
+        method: 'DELETE',
+        body: JSON.stringify({
+          message: `content: remove capa antiga de "${oldSlug}" (renomeado pra "${newSlug}")`,
+          branch: this.branch,
+          sha: oldCoverToDelete.sha,
+        }),
+      });
+    }
+
+    // -- Passo 7: grava (upsert) o redirect 301 --------------------------------
+    await this.upsertRedirect(oldSlug, newSlug);
+
+    return {
+      sha: createData.content.sha,
+      commitSha: createData.commit.sha,
+      ...(coverPath ? { coverPath } : {}),
+    };
+  }
+
+  /**
+   * Upsert de UMA linha de redirect 301 em `public/_redirects` (raiz do
+   * repo, ver `REDIRECTS_PATH`) -- helper interno de `renamePost`. Nunca
+   * duplica uma linha pro MESMO `oldSlug`: se já existir uma regra
+   * redirecionando esse slug (ex.: o post já foi renomeado antes), ela é
+   * SUBSTITUÍDA em vez de uma segunda linha ser acumulada.
+   */
+  private async upsertRedirect(oldSlug: string, newSlug: string): Promise<void> {
+    const getRes = await this.restRequest(
+      `/repos/${this.owner}/${this.repo}/contents/${REDIRECTS_PATH}?ref=${this.branch}`,
+      { method: 'GET' }
+    );
+
+    let currentSha: string | undefined;
+    let lines: string[];
+    if (getRes.status === 200) {
+      const data = await this.parseJsonOrThrow<ContentsGetResponse>(getRes);
+      currentSha = data.sha;
+      const text = base64ToUtf8(data.content).replace(/\r\n/g, '\n');
+      lines = text.length > 0 ? text.split('\n') : [];
+    } else if (getRes.status === 404) {
+      lines = REDIRECTS_HEADER.split('\n');
+    } else {
+      const errBody = await this.safeJson<GitHubErrorBody>(getRes);
+      throw new GitHubApiError(
+        getRes.status,
+        `Post renomeado com sucesso, mas não consegui ler "${REDIRECTS_PATH}" pra gravar o redirecionamento 301 -- adiciona manualmente a linha "/${oldSlug}   /${newSlug}   301" (${errBody?.message ?? 'erro desconhecido'}).`
+      );
+    }
+
+    const newLine = `/${oldSlug}   /${newSlug}   301`;
+    const existingLineRe = new RegExp(`^\\s*/${escapeRegExp(oldSlug)}\\s+`);
+    let replaced = false;
+    const updatedLines = lines.map((line) => {
+      if (!replaced && existingLineRe.test(line)) {
+        replaced = true;
+        return newLine;
+      }
+      return line;
+    });
+    if (!replaced) {
+      while (updatedLines.length > 0 && updatedLines[updatedLines.length - 1] === '') {
+        updatedLines.pop();
+      }
+      updatedLines.push(newLine);
+    }
+
+    const newText = `${updatedLines.join('\n').replace(/\n+$/, '')}\n`;
+
+    const putRes = await this.restRequest(`/repos/${this.owner}/${this.repo}/contents/${REDIRECTS_PATH}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: `content: adiciona redirect 301 "${oldSlug}" -> "${newSlug}"`,
+        content: utf8ToBase64(newText),
+        branch: this.branch,
+        ...(currentSha ? { sha: currentSha } : {}),
+      }),
+    });
+
+    if (!putRes.ok) {
+      const errBody = await this.safeJson<GitHubErrorBody>(putRes);
+      throw new GitHubApiError(
+        putRes.status,
+        `Post renomeado com sucesso, mas não consegui gravar o redirecionamento 301 em "${REDIRECTS_PATH}" -- adiciona manualmente a linha "/${oldSlug}   /${newSlug}   301" (${errBody?.message ?? 'erro desconhecido'}).`
+      );
     }
   }
 

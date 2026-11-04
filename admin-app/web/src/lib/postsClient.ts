@@ -1,5 +1,5 @@
 import { GitHubPostsClient } from '@admin-data/index.js';
-import type { PostFrontmatter, PostListItem, PostRecord, WriteResult } from '@admin-data/index.js';
+import type { PostFrontmatter, PostListItem, PostRecord, RenamePostResult, WriteResult } from '@admin-data/index.js';
 import { GH_BRANCH, GH_OWNER, GH_REPO, USE_MOCK } from './env';
 import { createMockPostsClient } from './mockClient';
 
@@ -58,6 +58,23 @@ export interface PostsClient {
    * Contrato combinado com o Jurandir: `GitHubPostsClient.uploadContentImage()`.
    */
   uploadContentImage(slug: string, file: UploadContentImageFile): Promise<UploadContentImageResult>;
+  /**
+   * Renomeia o slug de um post JÁ PUBLICADO -- move o arquivo pro path do
+   * `newSlug`, copia a capa junto (se seguir a convenção de nome) e grava
+   * um redirect 301 de `oldSlug` pra `newSlug` em `public/_redirects`
+   * (regra inegociável de SEO técnico, ver CLAUDE.md). `newSlug === oldSlug`
+   * é tratado como um `updatePost` normal pelo `GitHubPostsClient`. Exige o
+   * `sha` atual do post ANTIGO (mesma otimistic-lock de `updatePost`/
+   * `deletePost`). Contrato combinado com o Jurandir (spec do Genilson,
+   * 2026-11-04): `GitHubPostsClient.renamePost()`.
+   */
+  renamePost(
+    oldSlug: string,
+    newSlug: string,
+    frontmatter: PostFrontmatter,
+    body: string,
+    sha: string
+  ): Promise<RenamePostResult>;
 }
 
 /**

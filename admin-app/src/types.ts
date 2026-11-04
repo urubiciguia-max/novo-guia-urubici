@@ -107,6 +107,18 @@ export interface WriteResult {
 }
 
 /**
+ * Retorno de `renamePost()` -- igual `WriteResult` (sha/commitSha do post no
+ * path NOVO), mais `coverPath` quando a capa foi copiada/renomeada junto
+ * (ver `GitHubPostsClient.renamePost`). A UI usa `coverPath` pra atualizar o
+ * campo `cover` do form sem precisar recarregar o post inteiro. Ausente
+ * (`undefined`) quando o post não tinha capa ou a capa não seguia a
+ * convenção de nome esperada (nesse caso ela não foi tocada).
+ */
+export interface RenamePostResult extends WriteResult {
+  coverPath?: string;
+}
+
+/**
  * Tipos da collection `pages`, espelhando o bloco `pages` em
  * `src/content/config.ts` (fonte de verdade do schema).
  *
