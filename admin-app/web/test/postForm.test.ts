@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { PostRecord } from '@admin-data/index.js';
+import type { PostFrontmatter, PostRecord } from '@admin-data/index.js';
 import { parsePostFile, serializePostFile } from '@admin-data/index.js';
-import { emptyFormState, formStateToFrontmatter, recordToFormState } from '../src/lib/postForm';
+import { emptyFormState, formStateToFrontmatter, isSlugRename, recordToFormState } from '../src/lib/postForm';
 
 describe('recordToFormState', () => {
   it('converte um PostRecord válido pro form, forçando legacySlug = slug da rota', () => {
@@ -123,6 +123,33 @@ describe('formStateToFrontmatter', () => {
     expect(fm.faq).toEqual([{ question: 'Pergunta?', answer: 'Resposta.' }]);
     expect(fm.affiliates).toEqual([{ label: 'Reserve', url: 'https://booking.com', provider: 'booking' }]);
     expect(fm.relatedSlugs).toEqual(['post-a', 'post-b']);
+  });
+});
+
+describe('isSlugRename -- decisão update vs. rename (ver handoff "rename-post-slug")', () => {
+  function frontmatterWithSlug(legacySlug: string): PostFrontmatter {
+    return {
+      title: 'Título',
+      description: 'Descrição',
+      pubDate: '2026-01-01',
+      tags: [],
+      draft: false,
+      author: 'Equipe',
+      category: 'Geral',
+      legacySlug,
+    };
+  }
+
+  it('post novo (originalSlug null) nunca é rename, mesmo com legacySlug preenchido', () => {
+    expect(isSlugRename(frontmatterWithSlug('post-novo'), null)).toBe(false);
+  });
+
+  it('edição sem mudar o slug não é rename', () => {
+    expect(isSlugRename(frontmatterWithSlug('post-existente'), 'post-existente')).toBe(false);
+  });
+
+  it('edição mudando o slug É rename', () => {
+    expect(isSlugRename(frontmatterWithSlug('post-novo-nome'), 'post-existente')).toBe(true);
   });
 });
 
