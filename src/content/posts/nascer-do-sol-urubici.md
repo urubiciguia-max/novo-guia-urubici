@@ -19,3 +19,20 @@ Se você está organizando a viagem e quer saber exatamente para onde ir, a que 
 ## Por Que o Amanhecer em Urubici é Diferente
 
 A explicação é basicamente física. Urubici está entre os municípios de maior altitude média do Brasil, e nas madrugadas mais frias — principalmente entre maio e setembro — o ar quente que fica perto do solo nos vales encontra o ar gelado que desce da serra. Esse encontro cria a inversão térmica que forma o chamado mar de nuvens: um tapete branco e denso cobrindo os vales, enquanto os mirantes mais altos ficam acima dele, já banhados de sol. É esse contraste — você no sol, o vale lá embaixo sumindo debaixo de nuvens — que me faz acordar às 5h da manhã em pleno período de férias sem reclamar.
+
+```affiliate-card
+{
+  "layout": "vertical",
+  "image": "./nascer-do-sol-urubici-img-mw5fybbr-fuk6zg.jpg",
+  "imageAlt": "Alugue o seu SUV para desfrutar da sua viagem para Urubici",
+  "badgeIcon": "carro",
+  "badgeText": "Recomendo alugar um SUV direto no aeroporto de Floripa para subir a serra com estabilidade e conforto",
+  "title": "Aluguel de SUV 4x4",
+  "button1Text": "Ver Preços",
+  "button1Url": "https://guiadeurubici.com.br/rentcars",
+  "button1Color": "green",
+  "button2Text": "Modelos",
+  "button2Url": "https://guiadeurubici.com.br/rentcars",
+  "tip": ""
+}
+```
