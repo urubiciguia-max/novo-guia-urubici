@@ -444,6 +444,9 @@ export function AffiliateCardDialog({
 
         <div className="form-field">
           <span>Botão 2 (secundário, opcional)</span>
+          <span className="field-hint">
+            Não use link de afiliado aqui -- só o Botão 1 (acima) sai com rel=sponsored.
+          </span>
         </div>
         <label className="form-field">
           <span>Texto do botão 2</span>
