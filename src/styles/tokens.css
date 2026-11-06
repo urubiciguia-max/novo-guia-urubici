@@ -350,7 +350,7 @@ button {
 .affiliate-card__media {
   flex: 0 0 auto;
   aspect-ratio: 4 / 3;
-  background: var(--bg-soft);
+  background: #fff;
   overflow: hidden;
 }
 
@@ -373,7 +373,9 @@ button {
 /* Layout horizontal (ex. aluguel de carro): a foto costuma vir como "product
    shot" isolado (fundo claro/transparente), não uma cena de paisagem --
    `cover` cortava rodas/para-choque. `contain` com respiro deixa o carro
-   inteiro visível, flutuando sobre o fundo --bg-soft, igual à referência. */
+   inteiro visível, flutuando sobre #fff -- o mesmo branco do upload (que
+   preenche transparência com branco puro) e do fundo do card, sem emenda
+   visível. */
 @media (min-width: 560px) {
   .affiliate-card--horizontal .affiliate-card__media img {
     object-fit: contain;
