@@ -1740,30 +1740,149 @@ a {
   flex-wrap: wrap;
 }
 
-/* Textarea do `HtmlBlockDialog` -- monoespaçado, igual qualquer editor de
-   código, pra HTML cru ficar legível (alinhamento de tags/indentação). */
-.html-block-dialog__textarea {
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace !important;
-  font-size: 0.82rem !important;
+/* `.dialog` base é 420px (bom pra 2-3 campos) -- `AffiliateCardDialog` tem
+   bem mais campos (imagem, selo, título, 2 botões, dica) + a prévia ao
+   vivo, respiro extra sem reescrever a base (usada por LinkDialog/
+   DestaqueDialog/ImageDialog, não pode mudar pra todo mundo). */
+.dialog--wide {
+  max-width: 560px;
 }
 
 /* ==========================================================================
-   Bloco de HTML cru (NodeView do node `rawHtmlBlock`, ver
-   `lib/rawHtmlNode.tsx`) -- prévia dentro do editor rich-text. NUNCA
-   renderiza o HTML de verdade (sempre `<pre>` com texto plano), então o
-   visual aqui é deliberadamente "card de aviso", não uma preview de
-   conteúdo real.
+   AffiliateCardDialog -- layout (toggle), ícone do selo (grid) e cor do
+   botão 1 (swatches), ver components/AffiliateCardDialog.tsx
    ========================================================================== */
 
-.raw-html-block {
+.layout-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .layout-toggle {
+    flex-direction: row;
+    gap: 16px;
+  }
+}
+
+.layout-toggle__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.layout-toggle__option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+  flex-shrink: 0;
+}
+
+.badge-icon-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .badge-icon-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.badge-icon-grid__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.badge-icon-grid__option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+  flex-shrink: 0;
+}
+
+.color-swatch-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.color-swatch-group__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.color-swatch-group__option input[type='radio'] {
+  /* Esconde o rádio nativo -- a própria bolinha de cor (`__swatch` abaixo)
+     já comunica a seleção via `box-shadow` no `:checked`, texto do label
+     continua navegável/clicável normal (clique no texto ainda marca o
+     rádio, só o círculo padrão do input some). */
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.color-swatch-group__option input[type='radio']:focus-visible + .color-swatch-group__swatch {
+  outline: 3px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.color-swatch-group__swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--line);
+  flex-shrink: 0;
+}
+
+.color-swatch-group__option input[type='radio']:checked + .color-swatch-group__swatch {
+  border-color: var(--surface);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+/* Prévia compacta dentro do próprio diálogo (ver `AffiliateCardDialog`) --
+   mesmo componente `AffiliateCardPreview` usado no NodeView, só com uma
+   moldura própria pra se diferenciar visualmente dos campos de formulário
+   ao redor. */
+.affiliate-card-dialog__preview {
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-input);
+  background: var(--bg);
+}
+
+/* ==========================================================================
+   NodeView do node `affiliateCard` (ver lib/affiliateCardNode.tsx) --
+   moldura ao redor da prévia ao vivo dentro do editor rich-text.
+   ========================================================================== */
+
+.affiliate-card-nodeview {
   margin: 0 0 0.8em;
-  padding: 12px 14px;
+  padding: 10px;
   border: 1px dashed var(--line);
   border-radius: var(--radius-input);
   background: var(--neutral-bg);
 }
 
-.raw-html-block__header {
+.affiliate-card-nodeview__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1771,24 +1890,135 @@ a {
   margin-bottom: 8px;
 }
 
-.raw-html-block__label {
+.affiliate-card-nodeview__label {
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--body-text);
 }
 
-.raw-html-block__preview {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 6px;
+/* ==========================================================================
+   AffiliateCardPreview -- prévia visual fiel aos prints do card de afiliado
+   (ver components/AffiliateCardPreview.tsx). Cores REAIS do site publicado
+   hardcoded inline no componente (ver comentário no topo do .tsx) -- aqui só
+   o LAYOUT (grid/flex/spacing), mobile-first.
+   ========================================================================== */
+
+.affiliate-card-preview {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
   background: var(--surface);
   border: 1px solid var(--line);
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  color: var(--body-text);
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 120px;
-  overflow-y: auto;
+  overflow: hidden;
+  max-width: 320px;
 }
+
+@media (min-width: 480px) {
+  .affiliate-card-preview--horizontal {
+    flex-direction: row;
+  }
+}
+
+.affiliate-card-preview__media {
+  flex: 0 0 auto;
+  aspect-ratio: 16 / 9;
+  background: var(--neutral-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+@media (min-width: 480px) {
+  .affiliate-card-preview--horizontal .affiliate-card-preview__media {
+    width: 40%;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+.affiliate-card-preview__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.affiliate-card-preview__media-placeholder {
+  font-size: 2rem;
+}
+
+.affiliate-card-preview__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  text-align: center;
+}
+
+.affiliate-card-preview--horizontal .affiliate-card-preview__body {
+  text-align: left;
+}
+
+.affiliate-card-preview__badge {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #353b3e;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.affiliate-card-preview--horizontal .affiliate-card-preview__badge {
+  align-self: flex-start;
+}
+
+.affiliate-card-preview__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.affiliate-card-preview__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.affiliate-card-preview__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.affiliate-card-preview__btn--primary {
+  color: #fff;
+}
+
+.affiliate-card-preview__btn--secondary {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.affiliate-card-preview__tip {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--body-text);
+}
+

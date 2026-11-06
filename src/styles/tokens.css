@@ -17,6 +17,16 @@
   --charcoal: #353b3e;
   --line: rgba(26, 26, 26, 0.1);
 
+  /* cores extras pro picker de cor do botão do Card de Afiliado
+     (AffiliateButton.astro variants `blue-dark`/`orange`, ver
+     admin-app/web/src/lib/affiliateCardShared.ts) -- "verde"/"vermelho"
+     reusam --green/--red acima, estas duas faltavam no sistema. Contraste
+     calculado contra texto branco (botão sempre tem `color: #fff`):
+     branco sobre --blue-dark 12.4:1, branco sobre --orange 5.2:1 -- os dois
+     acima do mínimo AA (4.5:1) pra texto normal. */
+  --blue-dark: #1d3557;
+  --orange: #c2410c;
+
   /* cores de parceiros/afiliados (usar so no contexto do CTA deles) */
   --booking-blue: #003580;
   --amazon-orange: #ff9900;
@@ -293,4 +303,139 @@ button {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--green);
+}
+
+/* ==========================================================================
+   Card de Afiliado -- GLOBAL (não escopado) de propósito: estas regras
+   precisam valer tanto pro uso direto de `AffiliateCard.astro` quanto pro
+   markup CRU que `src/lib/remark-affiliate-card.mjs` emite dentro do corpo
+   de um post (bloco inserido via admin, ver
+   `admin-app/web/src/lib/affiliateCardNode.tsx`) -- o remark roda na
+   camada mdast/hast, não dá pra instanciar um componente `.astro` lá
+   dentro, então as duas rotas convergem pro MESMO visual compartilhando
+   estas classes como fonte única de verdade (nenhuma delas duplicada em
+   `<style>` escopado de componente). Mobile-first: vertical e horizontal
+   nascem empilhados (imagem em cima, corpo embaixo) e o horizontal só
+   vira lado a lado a partir do breakpoint.
+   ========================================================================== */
+
+.affiliate-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-card);
+  background: #fff;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  margin: 28px 0;
+}
+
+@media (min-width: 560px) {
+  .affiliate-card--horizontal {
+    flex-direction: row;
+  }
+}
+
+.affiliate-card__media {
+  flex: 0 0 auto;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+@media (min-width: 560px) {
+  .affiliate-card--horizontal .affiliate-card__media {
+    width: 38%;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+.affiliate-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0;
+  margin: 0;
+}
+
+.affiliate-card__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px;
+  text-align: center;
+}
+
+@media (min-width: 560px) {
+  .affiliate-card--horizontal .affiliate-card__body {
+    text-align: left;
+  }
+}
+
+.affiliate-card__badge {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--charcoal);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (min-width: 560px) {
+  .affiliate-card--horizontal .affiliate-card__badge {
+    align-self: flex-start;
+  }
+}
+
+.affiliate-card__title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.affiliate-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.affiliate-card__actions--single {
+  grid-template-columns: 1fr;
+}
+
+.affiliate-card__btn {
+  font-size: 0.88rem;
+  text-align: center;
+  justify-content: center;
+}
+
+.affiliate-card__btn--secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  transition: background-color var(--ease);
+}
+
+.affiliate-card__btn--secondary:hover {
+  background: var(--bg-soft);
+}
+
+.affiliate-card__tip {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  color: var(--body-text);
 }

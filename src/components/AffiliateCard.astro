@@ -1,0 +1,100 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+import AffiliateButton from './AffiliateButton.astro';
+
+/**
+ * Card de afiliado com imagem + selo + título + até 2 botões de CTA + dica,
+ * nos layouts "vertical" (imagem em cima, ex. hospedagem) e "horizontal"
+ * (imagem do lado, ex. aluguel de carro) -- ver handoff do Genilson
+ * (2026-11-06) pros prints de referência.
+ *
+ * Uso DIRETO deste componente (`.astro`, ex. uma hub page que monta um card
+ * fixo fora do corpo de um post) x uso VIA MARKDOWN (bloco "Card de
+ * Afiliado" inserido no editor do admin, ver
+ * `admin-app/web/src/lib/affiliateCardNode.tsx`): o segundo NÃO instancia
+ * este componente -- remark roda na camada mdast/hast, não dá pra invocar
+ * um `.astro` lá dentro. `src/lib/remark-affiliate-card.mjs` emite markup
+ * CRU com as MESMAS classes que este componente usa (`.affiliate-card`,
+ * `.affiliate-card__*`, ver `src/styles/tokens.css`) -- as duas rotas
+ * convergem pro mesmo visual porque o CSS é GLOBAL (não escopado) e a
+ * fonte de verdade das REGRAS fica só em `tokens.css`, nunca duplicada
+ * aqui. Isso é por que este componente não tem `<style>` próprio.
+ *
+ * `button1Color` usa as mesmas 4 chaves de `AffiliateButton`'s `Variant`
+ * que fazem sentido pro CTA primário (green/blue-dark/orange/red) --
+ * nenhuma tradução entre admin e site.
+ */
+type Button1Color = 'green' | 'blue-dark' | 'orange' | 'red';
+
+interface Props {
+  layout: 'vertical' | 'horizontal';
+  /** `ImageMetadata` (campo `image()` de uma Content Collection) pro uso
+   *  direto em `.astro` com otimização automática via `astro:assets`, OU
+   *  uma URL/path já resolvido (string) -- o segundo caso é o único usado
+   *  pelo plugin remark seria redundante (ele nunca invoca este
+   *  componente), existe só pra flexibilidade de um futuro chamador direto
+   *  que não tenha a imagem como `image()` de collection. */
+  image: ImageMetadata | string;
+  imageAlt: string;
+  /** Emoji do selo (ver `BADGE_ICON_OPTIONS` no admin) -- string livre aqui
+   *  de propósito, a restrição a uma lista fechada é regra do FORMULÁRIO do
+   *  admin, não deste componente de apresentação. */
+  badgeIcon: string;
+  badgeText: string;
+  title: string;
+  button1Text: string;
+  button1Url: string;
+  button1Color?: Button1Color;
+  button2Text?: string;
+  button2Url?: string;
+  tip?: string;
+}
+
+const {
+  layout,
+  image,
+  imageAlt,
+  badgeIcon,
+  badgeText,
+  title,
+  button1Text,
+  button1Url,
+  button1Color = 'green',
+  button2Text,
+  button2Url,
+  tip,
+} = Astro.props;
+
+const isLocalImage = typeof image !== 'string';
+const hasButton2 = Boolean(button2Text && button2Url);
+---
+
+<div class={`affiliate-card affiliate-card--${layout}`}>
+  <div class="affiliate-card__media">
+    {isLocalImage ? (
+      <Image src={image as ImageMetadata} alt={imageAlt} loading="lazy" decoding="async" />
+    ) : (
+      <img src={image as string} alt={imageAlt} loading="lazy" decoding="async" />
+    )}
+  </div>
+  <div class="affiliate-card__body">
+    <span class="affiliate-card__badge">
+      <span aria-hidden="true">{badgeIcon}</span> {badgeText}
+    </span>
+    <h3 class="affiliate-card__title">{title}</h3>
+    <div class={`affiliate-card__actions ${hasButton2 ? '' : 'affiliate-card__actions--single'}`}>
+      <AffiliateButton href={button1Url} variant={button1Color} class="affiliate-card__btn affiliate-card__btn--primary">
+        {button1Text}
+      </AffiliateButton>
+      {hasButton2 && (
+        <a href={button2Url} class="affiliate-card__btn affiliate-card__btn--secondary" rel="noopener noreferrer" target="_blank">
+          {button2Text}
+        </a>
+      )}
+    </div>
+    {tip && (
+      <p class="affiliate-card__tip"><strong>Dica:</strong> {tip}</p>
+    )}
+  </div>
+</div>

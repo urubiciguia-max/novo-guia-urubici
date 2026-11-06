@@ -271,15 +271,19 @@ export function ImageIcon({ className }: IconProps) {
   );
 }
 
-/** Item "Inserir HTML" do dropdown Inserir -- chevrons `< >` (ícone
- *  universal de código/markup), diferente do `InlineCodeIcon` (que usa a
- *  mesma forma pra código INLINE -- aqui o contexto no dropdown já deixa
- *  claro que é outra coisa: um BLOCO de HTML cru). */
-export function CodeBlockIcon({ className }: IconProps) {
+/** Botão top-level "Card de Afiliado" da `MarkdownToolbar` -- cartão (moldura
+ *  arredondada) com uma "foto" no topo (ponto = sol, traço = horizonte,
+ *  mesma gramática visual do `ImageIcon`) e duas linhas abaixo representando
+ *  os dois botões de CTA do card, pra diferenciar de `ImageIcon` (imagem
+ *  solta) mesmo em 20px. */
+export function AffiliateCardIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">
-      <path d="M9 8l-4 4 4 4" />
-      <path d="M15 8l4 4-4 4" />
+      <rect x="3" y="3" width="18" height="18" rx="2.5" />
+      <path d="M7 7.5h10v6H7z" />
+      <circle cx="9" cy="9.2" r="0.9" fill="currentColor" stroke="none" />
+      <path d="M17 13.5l-3-3-2.5 2.5" />
+      <path d="M7 17h4M13 17h4" />
     </svg>
   );
 }

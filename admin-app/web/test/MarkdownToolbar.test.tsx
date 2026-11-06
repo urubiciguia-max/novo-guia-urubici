@@ -294,21 +294,26 @@ describe('MarkdownToolbar', () => {
     expect(screen.getByRole('dialog', { name: 'Inserir imagem' })).toBeInTheDocument();
   });
 
-  it('Inserir HTML: insere o node rawHtmlBlock na posição do cursor e devolve o foco pro gatilho', async () => {
+  it('Card de Afiliado: botão TOP-LEVEL (fora do dropdown "Inserir"), desabilitado (com motivo) quando a prop `imageUpload` não é passada', () => {
+    renderHarness('x');
+    const btn = screen.getByRole('button', { name: /card de afiliado/i });
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', expect.stringMatching(/slug/i));
+  });
+
+  it('Card de Afiliado: desabilitado quando `imageUpload.ready` é false (post novo sem slug)', () => {
+    renderHarness('x', { ready: false, upload: vi.fn() });
+    expect(screen.getByRole('button', { name: /card de afiliado/i })).toBeDisabled();
+  });
+
+  it('Card de Afiliado: habilitado com `imageUpload.ready: true` -- clicar abre o AffiliateCardDialog', async () => {
     const user = userEvent.setup();
-    const getEditor = renderHarness('ab');
-    selectRange(getEditor, 2, 2);
+    renderHarness('x', { ready: true, upload: vi.fn() });
+    const btn = screen.getByRole('button', { name: /card de afiliado/i });
+    expect(btn).not.toBeDisabled();
 
-    const trigger = screen.getByRole('button', { name: 'Inserir elemento' });
-    await user.click(trigger);
-    await user.click(screen.getByRole('button', { name: 'Inserir HTML' }));
-
-    const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText('HTML'), '<iframe src="https://mapa.example.com"></iframe>');
-    await user.click(within(dialog).getByRole('button', { name: 'Inserir' }));
-
-    expect(markdown(getEditor)).toContain('<iframe src="https://mapa.example.com"></iframe>');
-    await waitFor(() => expect(trigger).toHaveFocus());
+    await user.click(btn);
+    expect(screen.getByRole('dialog', { name: /inserir card de afiliado/i })).toBeInTheDocument();
   });
 
   it('menu flutuante aparece com seleção não vazia e some sem seleção', () => {

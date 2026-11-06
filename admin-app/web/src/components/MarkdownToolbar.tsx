@@ -6,13 +6,14 @@ import { computeSelectionMenuPosition, type FloatingMenuPosition } from '../lib/
 import { DestaqueDialog } from './DestaqueDialog';
 import { LinkDialog } from './LinkDialog';
 import { ImageDialog } from './ImageDialog';
-import { HtmlBlockDialog } from './HtmlBlockDialog';
+import { AffiliateCardDialog, type AffiliateCardFormValue } from './AffiliateCardDialog';
+import { DEFAULT_AFFILIATE_CARD_VALUE } from '../lib/affiliateCardShared';
 import {
+  AffiliateCardIcon,
   BoldIcon,
   BulletListIcon,
   CalloutIcon,
   ChevronDownIcon,
-  CodeBlockIcon,
   ImageIcon,
   InlineCodeIcon,
   ItalicIcon,
@@ -195,28 +196,35 @@ export function MarkdownToolbar({ editor, imageUpload }: MarkdownToolbarProps) {
     setImageDialogOpen(false);
   }
 
-  // Item "Inserir HTML" do dropdown Inserir -- mesma lógica de range do
-  // Link/Destaque/Imagem acima, mas insere o node `rawHtmlBlock` (ver
-  // `lib/rawHtmlNode.tsx` pro design completo de segurança). Também passa o
-  // OBJETO do node direto, nunca o HTML como string markdown -- isso NÃO
-  // deve passar pelo parser de markdown (que só entra em jogo pra
-  // CARREGAR um post que já tem este bloco salvo, ver comentário grande em
-  // `markdownEditorExtensions.ts`).
-  const [htmlDialogOpen, setHtmlDialogOpen] = useState(false);
-  const htmlRangeRef = useRef({ from: 0, to: 0 });
+  // Botão TOP-LEVEL "Card de Afiliado" (fora do dropdown "Inserir" de
+  // propósito -- cards de afiliado são conteúdo central pra monetização
+  // deste site, não um item secundário enterrado num menu). Mesma lógica de
+  // captura de range do Link/Destaque/Imagem acima: a posição [from, to] é
+  // lida no momento do CLIQUE, porque o diálogo (`AffiliateCardDialog`) rouba
+  // o foco do editor enquanto está aberto. Insere o OBJETO do node
+  // `affiliateCard` direto (nunca como string markdown) -- ver
+  // `lib/affiliateCardNode.tsx` pro raciocínio completo (mesmo motivo do
+  // Image acima: não deve passar pelo parser de markdown, que só entra em
+  // jogo pra CARREGAR um post que já tem este bloco salvo). EDITAR um card
+  // já inserido é um fluxo separado, vivo dentro do próprio NodeView
+  // (`AffiliateCardView`, ver `lib/affiliateCardNode.tsx`) -- mesmo padrão
+  // do extinto `RawHtmlBlockView`: este botão aqui só cobre INSERIR.
+  const [affiliateCardDialogOpen, setAffiliateCardDialogOpen] = useState(false);
+  const affiliateCardRangeRef = useRef({ from: 0, to: 0 });
+  const affiliateCardTriggerRef = useRef<HTMLButtonElement>(null);
 
-  function openHtmlDialog() {
+  function openAffiliateCardDialog() {
     if (!editor) return;
     const { from, to } = editor.state.selection;
-    htmlRangeRef.current = { from, to };
-    setHtmlDialogOpen(true);
+    affiliateCardRangeRef.current = { from, to };
+    setAffiliateCardDialogOpen(true);
   }
 
-  function handleHtmlConfirm(html: string) {
+  function handleAffiliateCardConfirm(value: AffiliateCardFormValue) {
     if (!editor) return;
-    const { from, to } = htmlRangeRef.current;
-    editor.chain().focus().insertContentAt({ from, to }, { type: 'rawHtmlBlock', attrs: { html } }).run();
-    setHtmlDialogOpen(false);
+    const { from, to } = affiliateCardRangeRef.current;
+    editor.chain().focus().insertContentAt({ from, to }, { type: 'affiliateCard', attrs: value }).run();
+    setAffiliateCardDialogOpen(false);
   }
 
   // Menu flutuante de seleção (estilo Medium/Notion): aparece acima de um
@@ -460,13 +468,28 @@ export function MarkdownToolbar({ editor, imageUpload }: MarkdownToolbarProps) {
               disabled: !imageUpload?.ready,
               disabledReason: 'Preencha o slug antes de enviar uma imagem no corpo.',
             },
-            {
-              label: 'Inserir HTML',
-              icon: <CodeBlockIcon />,
-              onSelect: openHtmlDialog,
-            },
           ]}
         />
+
+        <span className="md-toolbar__separator" aria-hidden="true" />
+
+        {/* Botão de PRIMEIRO NÍVEL (não enterrado no dropdown "Inserir") --
+            card de afiliado é conteúdo central pra monetização do site, ver
+            comentário grande acima de `openAffiliateCardDialog`. Mesmo gate
+            de `imageUpload.ready` do item "Inserir imagem" (o card SEMPRE
+            tem imagem, ver `AffiliateCardDialog`), com o mesmo motivo
+            explicado via `title` nativo quando desabilitado. */}
+        <button
+          ref={affiliateCardTriggerRef}
+          type="button"
+          className="md-toolbar__btn"
+          disabled={!editor || !imageUpload?.ready}
+          title={!imageUpload?.ready ? 'Preencha o slug antes de enviar uma imagem no corpo.' : undefined}
+          onClick={openAffiliateCardDialog}
+        >
+          <AffiliateCardIcon />
+          <span className="md-toolbar__btn-label">Card de Afiliado</span>
+        </button>
       </div>
 
       {floatingMenuVisible && floatingPos && (
@@ -543,13 +566,16 @@ export function MarkdownToolbar({ editor, imageUpload }: MarkdownToolbarProps) {
         />
       )}
 
-      <HtmlBlockDialog
-        open={htmlDialogOpen}
-        initialHtml=""
-        returnFocusRef={insertTriggerRef}
-        onConfirm={handleHtmlConfirm}
-        onCancel={() => setHtmlDialogOpen(false)}
-      />
+      {imageUpload && (
+        <AffiliateCardDialog
+          open={affiliateCardDialogOpen}
+          initialValue={DEFAULT_AFFILIATE_CARD_VALUE}
+          returnFocusRef={affiliateCardTriggerRef}
+          upload={imageUpload.upload}
+          onConfirm={handleAffiliateCardConfirm}
+          onCancel={() => setAffiliateCardDialogOpen(false)}
+        />
+      )}
     </>
   );
 }

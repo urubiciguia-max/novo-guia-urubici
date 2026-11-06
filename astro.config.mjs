@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import remarkDestaque from './src/lib/remark-destaque.mjs';
+import remarkAffiliateCard from './src/lib/remark-affiliate-card.mjs';
 
 // https://docs.astro.build/en/reference/configuration-reference/
 export default defineConfig({
@@ -13,11 +14,15 @@ export default defineConfig({
   compressHTML: true,
   integrations: [sitemap()],
   markdown: {
-    // Plugin próprio (zero dependência nova) que transforma blockquote com
-    // marcador `[!DICA]`/`[!ATENCAO]`/`[!IMPORTANTE]` na caixa de callout
-    // "Destaque" -- ver src/lib/remark-destaque.mjs pra sintaxe e decisão.
-    // Não substitui os plugins padrão do Astro (gfm/smartypants) -- eles
-    // continuam ativos, este só é anexado à lista.
-    remarkPlugins: [remarkDestaque],
+    // Plugins próprios (zero dependência nova) -- não substituem os plugins
+    // padrão do Astro (gfm/smartypants), só são anexados à lista:
+    // - remarkDestaque: blockquote com marcador `[!DICA]`/`[!ATENCAO]`/
+    //   `[!IMPORTANTE]` vira a caixa de callout "Destaque" (ver
+    //   src/lib/remark-destaque.mjs pra sintaxe e decisão).
+    // - remarkAffiliateCard: bloco de código cercado ```affiliate-card
+    //   (JSON) vira o card de afiliado com imagem + selo + CTAs (ver
+    //   src/lib/remark-affiliate-card.mjs e
+    //   src/components/AffiliateCard.astro).
+    remarkPlugins: [remarkDestaque, remarkAffiliateCard],
   },
 });

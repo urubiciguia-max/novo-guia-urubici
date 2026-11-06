@@ -3,8 +3,15 @@
  * Botao padrao pra qualquer link de afiliado do site (Booking, Rentcars,
  * Amazon, Mercado Livre...). Centraliza o rel/target corretos pra nunca
  * esquecer num componente novo.
+ *
+ * `blue-dark`/`orange`/`red` (2026-11-06, feature "Card de Afiliado") --
+ * paleta de cor GENÉRICA pro botão 1 (CTA primário) do
+ * `AffiliateCard.astro`, picker fechado de 4 opções (ver
+ * admin-app/web/src/lib/affiliateCardShared.ts: `verde` reusa a variant
+ * `green` já existente, as outras 3 são novas). Hex em
+ * `src/styles/tokens.css` (`--blue-dark`/`--orange`, `--red` já existia).
  */
-type Variant = 'green' | 'charcoal' | 'booking' | 'amazon' | 'ml';
+type Variant = 'green' | 'charcoal' | 'booking' | 'amazon' | 'ml' | 'blue-dark' | 'orange' | 'red';
 
 interface Props {
   href: string;
@@ -25,7 +32,20 @@ const { href, variant = 'green', size = 'md', class: className = '' } = Astro.pr
   <slot />
 </a>
 
-<style>
+{/*
+  `is:global` (não escopado) de propósito, desde 2026-11-06 -- o plugin
+  remark do Card de Afiliado (`src/lib/remark-affiliate-card.mjs`) emite
+  markup CRU com estas MESMAS classes pra renderizar o botão 1 dentro do
+  corpo de um post, SEM instanciar este componente Astro de verdade (remark
+  roda na camada mdast/hast, não dá pra invocar um componente `.astro` lá
+  dentro -- ver comentário grande no topo do plugin). Estilo escopado do
+  Astro injeta um atributo hash (`data-astro-cid-*`) só em elementos que
+  passam PELO COMPILADOR deste componente; o HTML do remark nunca tem esse
+  atributo, então um `<style>` escopado aqui NUNCA aplicaria lá. Tornar
+  global é o que permite as DUAS rotas (uso direto deste componente E saída
+  do remark) convergirem pro mesmo visual com uma única fonte de verdade.
+*/}
+<style is:global>
   .affiliate-btn--green {
     background: var(--green);
     color: #fff;
@@ -53,5 +73,32 @@ const { href, variant = 'green', size = 'md', class: className = '' } = Astro.pr
   .affiliate-btn--ml {
     background: var(--ml-yellow);
     color: var(--ink);
+  }
+
+  .affiliate-btn--blue-dark {
+    background: var(--blue-dark);
+    color: #fff;
+  }
+
+  .affiliate-btn--blue-dark:hover {
+    filter: brightness(1.15);
+  }
+
+  .affiliate-btn--orange {
+    background: var(--orange);
+    color: #fff;
+  }
+
+  .affiliate-btn--orange:hover {
+    filter: brightness(1.1);
+  }
+
+  .affiliate-btn--red {
+    background: var(--red);
+    color: #fff;
+  }
+
+  .affiliate-btn--red:hover {
+    filter: brightness(1.1);
   }
 </style>
