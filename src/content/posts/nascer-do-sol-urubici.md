@@ -57,11 +57,11 @@ Uma nota sobre o Morro do Campestre: na região ele é consagrado como o point d
 
 Alguns pontos práticos que fazem diferença real nessa experiência:
 
-Horário:** varia bastante com a estação. No verão, o sol costuma nascer por volta das 6h; no inverno, só depois das 7h. Confira o horário exato do dia da sua visita na noite anterior e chegue ao mirante escolhido com pelo menos 30 minutos de antecedência.
+Horário: varia bastante com a estação. No verão, o sol costuma nascer por volta das 6h; no inverno, só depois das 7h. Confira o horário exato do dia da sua visita na noite anterior e chegue ao mirante escolhido com pelo menos 30 minutos de antecedência.
 
-Roupa:** camadas, touca e luvas — mesmo em dezembro. A temperatura despenca antes do sol aparecer, e o vento nos mirantes costuma ser mais forte do que o esperado.
+Roupa: camadas, touca e luvas — mesmo em dezembro. A temperatura despenca antes do sol aparecer, e o vento nos mirantes costuma ser mais forte do que o esperado.
 
-Carro:** é indispensável. Nenhum desses pontos tem transporte público disponível nesse horário, e as estradas de acesso costumam ter neblina forte nas primeiras horas da manhã.
+Carro: é indispensável. Nenhum desses pontos tem transporte público disponível nesse horário, e as estradas de acesso costumam ter neblina forte nas primeiras horas da manhã.
 
 **Luz:** se o trecho até o mirante ainda estiver escuro, uma lanterna de cabeça resolve melhor do que a lanterna do celular.
 
