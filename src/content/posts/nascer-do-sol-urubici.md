@@ -9,6 +9,15 @@ coverAlt: Nascer do sol em Urubici visto do Morro da Igreja, com mar de nuvens c
 draft: false
 author: Equipe Guia de Urubici
 category: Geral
+faq:
+  - question: A que horas nasce o sol em Urubici?
+    answer: Varia bastante com a estação. No verão (dezembro a fevereiro), o sol nasce por volta das 6h. No inverno (junho a agosto), isso pode passar de 7h. A recomendação é sempre conferir o horário exato do dia da visita e chegar ao mirante escolhido com pelo menos 30 minutos de antecedência.
+  - question: Precisa pagar para ver o amanhecer no Morro da Igreja?
+    answer: Sim, o acesso ao Morro da Igreja e à Pedra Furada tem cobrança de entrada, administrada localmente. Os valores e o processo de agendamento mudam com frequência, então o ideal é conferir o guia atualizado antes da viagem.
+  - question: Qual a melhor época do ano para ver o mar de nuvens em Urubici?
+    answer: O mar de nuvens é mais frequente entre maio e setembro, nas madrugadas mais frias que seguem noites de céu limpo. Isso não significa que não aconteça em outras épocas, mas a frequência cai bastante fora desse período.
+  - question: Dá para ver o nascer do sol sem precisar caminhar muito?
+    answer: Dá sim. O Morro da Igreja tem acesso com piso preparado até os principais mirantes, sem exigir caminhada longa. Já o Cânion do Espraiado pede mais preparo físico — se esse não for o seu perfil, vale priorizar os pontos de acesso mais simples.
 legacySlug: nascer-do-sol-urubici
 ---
 
