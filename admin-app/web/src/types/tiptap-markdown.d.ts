@@ -12,6 +12,7 @@
  * pra bater com o que o código de verdade usa.
  */
 import type { MarkdownOptions } from 'tiptap-markdown';
+import type { MarkdownToolbarImageUpload } from '../components/MarkdownToolbar';
 
 declare module '@tiptap/core' {
   interface Storage {
@@ -24,6 +25,18 @@ declare module '@tiptap/core' {
       serializer: {
         serialize(content: unknown): string;
       };
+    };
+    /**
+     * `addStorage()` do node `AffiliateCard` (ver `lib/affiliateCardNode.tsx`)
+     * -- mesmo motivo da augmentação de `markdown` acima: sem isso,
+     * `editor.storage.affiliateCard.imageUpload` (lido/escrito em
+     * `AffiliateCardView`, `PostFormPage.tsx` e `PageFormPage.tsx`) não tipa
+     * (TS2339). Canal pelo qual o fluxo de EDITAR um card já inserido ganha
+     * acesso à mesma função de upload que o fluxo de INSERIR recebe via
+     * prop direta da `MarkdownToolbar`.
+     */
+    affiliateCard: {
+      imageUpload: MarkdownToolbarImageUpload | null;
     };
   }
 }

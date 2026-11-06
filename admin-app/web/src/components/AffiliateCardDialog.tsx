@@ -34,18 +34,17 @@ export interface AffiliateCardDialogProps {
    * aqui como mais um campo do formulário em vez de um diálogo aninhado
    * (nenhum precedente de diálogo-dentro-de-diálogo neste admin).
    *
-   * OPCIONAL: `undefined` no fluxo de EDITAR um card já inserido (botão
-   * "Editar" do `AffiliateCardView`, ver `lib/affiliateCardNode.tsx`) --
-   * o `NodeView` não tem acesso à função `upload` (ela só existe no
-   * componente pai que monta `useEditor()`/`MarkdownToolbar`, ver
-   * `PostFormPage.tsx`/`PageFormPage.tsx`, sem canal pra chegar até um
-   * NodeView montado dentro do schema). Sem `upload`, o campo de imagem
-   * mostra a imagem ATUAL como somente leitura (sem "Trocar imagem") --
-   * ainda é possível editar todos os outros campos (texto/link/cor/dica/
-   * layout) normalmente. Trocar a foto de um card já publicado exige
-   * remover o bloco e inserir um novo (mesma limitação que imagens de
-   * corpo comuns já têm hoje -- nenhum node de imagem deste editor permite
-   * re-upload in-place).
+   * No fluxo de INSERIR (botão "Card de Afiliado" da toolbar), vem direto
+   * de `MarkdownToolbarProps['imageUpload']`. No fluxo de EDITAR (botão
+   * "Editar" do `AffiliateCardView`, ver `lib/affiliateCardNode.tsx`), vem
+   * de `editor.storage.affiliateCard.imageUpload` -- o componente pai
+   * (`PostFormPage.tsx`/`PageFormPage.tsx`) sincroniza esse storage via
+   * `useEffect` toda vez que seu `imageUpload` (memo) muda, e a NodeView
+   * lê de lá, já que não recebe props diretamente do pai. `undefined`
+   * só quando o slug ainda não existe (`ready: false`, post novo sem slug
+   * salvo) -- nesse caso o campo de imagem mostra a imagem ATUAL como
+   * somente leitura (sem "Trocar imagem"), mesmo gate que desabilita o
+   * botão "Card de Afiliado" da toolbar pro fluxo de inserir.
    */
   upload?: (file: File) => Promise<{ path: string }>;
   /** "Inserir card de afiliado" (default) ou "Editar card de afiliado". */

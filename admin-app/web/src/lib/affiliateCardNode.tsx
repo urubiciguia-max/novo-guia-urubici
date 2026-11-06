@@ -10,6 +10,7 @@ import {
 } from './affiliateCardShared';
 import { AffiliateCardDialog } from '../components/AffiliateCardDialog';
 import { AffiliateCardPreview } from '../components/AffiliateCardPreview';
+import type { MarkdownToolbarImageUpload } from '../components/MarkdownToolbar';
 
 /**
  * `markdown.parse.setup`/`serialize` do node `affiliateCard`, no MESMO
@@ -139,14 +140,34 @@ export const AffiliateCard = Node.create({
   addStorage() {
     return {
       markdown: affiliateCardMarkdownSpec,
+      // Canal mutável pro `upload` chegar até esta NodeView (ver
+      // `AffiliateCardView` abaixo) -- `addStorage()` cria
+      // `editor.storage.affiliateCard`, acessível tanto de fora (componente
+      // pai que monta `useEditor()`, ver `PostFormPage.tsx`/
+      // `PageFormPage.tsx`) quanto de dentro de qualquer NodeView desta
+      // extension (`NodeViewProps.editor.storage.affiliateCard`). O pai
+      // sincroniza este campo via `useEffect` toda vez que seu `imageUpload`
+      // (memo) mudar -- é assim que o fluxo de EDITAR passa a ter acesso à
+      // mesma função de upload do fluxo de INSERIR.
+      imageUpload: null as MarkdownToolbarImageUpload | null,
     };
   },
 });
 
-function AffiliateCardView({ node, updateAttributes }: NodeViewProps) {
+function AffiliateCardView({ node, updateAttributes, editor }: NodeViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const value = node.attrs as AffiliateCardFormValue;
+
+  // Lido em CADA render (não guardado em estado/memo) -- o storage é
+  // mutado de fora pelo `useEffect` do componente pai sempre que o
+  // `imageUpload` dele mudar (ex.: slug passa a existir), e queremos o
+  // valor mais recente no instante em que o diálogo abre. Mesmo gate de
+  // `ready` que o botão "Card de Afiliado" da toolbar usa pro fluxo de
+  // INSERIR (ver `MarkdownToolbar.tsx`) -- sem slug válido ainda,
+  // `uploadContentImage` não tem como nomear o arquivo.
+  const cardImageUpload = editor.storage.affiliateCard?.imageUpload as MarkdownToolbarImageUpload | null | undefined;
+  const upload = cardImageUpload?.ready ? cardImageUpload.upload : undefined;
 
   return (
     <NodeViewWrapper className="affiliate-card-nodeview" data-drag-handle>
@@ -159,16 +180,13 @@ function AffiliateCardView({ node, updateAttributes }: NodeViewProps) {
 
       <AffiliateCardPreview value={value} />
 
-      {/* Sem `upload` -- o NodeView não tem acesso à função de upload do
-          post/página (só existe no componente pai, ver comentário grande em
-          `AffiliateCardDialog`'s prop `upload`). Editar aqui cobre todos os
-          campos exceto trocar a foto. */}
       <AffiliateCardDialog
         open={dialogOpen}
         initialValue={value}
         returnFocusRef={editButtonRef}
         title="Editar card de afiliado"
         confirmLabel="Salvar"
+        upload={upload}
         onConfirm={(next) => {
           updateAttributes(next);
           setDialogOpen(false);

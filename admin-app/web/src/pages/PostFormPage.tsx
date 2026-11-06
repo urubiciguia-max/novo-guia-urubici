@@ -146,6 +146,17 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
     [form.legacySlug, uploadContentImage],
   );
 
+  // Sincroniza pro storage da extension `AffiliateCard` (ver
+  // `addStorage()` em `lib/affiliateCardNode.tsx`) -- é o único canal pelo
+  // qual a NodeView de um card JÁ INSERIDO no corpo (botão "Editar") chega
+  // na mesma função de upload que o fluxo de INSERIR usa via prop direta
+  // (`MarkdownToolbar` -> `imageUpload`). Reroda sempre que `imageUpload`
+  // mudar (ex.: slug passa a existir e `ready` vira `true`).
+  useEffect(() => {
+    if (!editor) return;
+    editor.storage.affiliateCard.imageUpload = imageUpload;
+  }, [editor, imageUpload]);
+
   function addFaqItem() {
     setForm((f) => ({ ...f, faq: [...f.faq, { question: '', answer: '' }] }));
   }

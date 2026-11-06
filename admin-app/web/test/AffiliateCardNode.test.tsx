@@ -13,7 +13,7 @@
  * `info === 'affiliate-card'`, delegando pro renderer padrão em qualquer
  * outro caso (ver comentário grande em `affiliateCardNode.tsx`).
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -21,6 +21,29 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import { useEffect, useState } from 'react';
 import { createMarkdownEditorExtensions } from '../src/lib/markdownEditorExtensions';
 import { DEFAULT_AFFILIATE_CARD_VALUE, type AffiliateCardFormValue } from '../src/lib/affiliateCardShared';
+import type { MarkdownToolbarImageUpload } from '../src/components/MarkdownToolbar';
+
+// Mesmo padrão de `AffiliateCardDialog.test.tsx` -- `handleFileSelected`
+// chama `validateImageFile`/`compressCoverImage` antes de `upload`, mockados
+// aqui pra simular o fluxo feliz sem depender de decodificação real de
+// imagem no jsdom.
+const { validateImageFileMock, compressCoverImageMock } = vi.hoisted(() => ({
+  validateImageFileMock: vi.fn(),
+  compressCoverImageMock: vi.fn(),
+}));
+
+vi.mock('../src/lib/imageUpload', async () => {
+  const actual = await vi.importActual<typeof import('../src/lib/imageUpload')>('../src/lib/imageUpload');
+  return {
+    ...actual,
+    validateImageFile: validateImageFileMock,
+    compressCoverImage: compressCoverImageMock,
+  };
+});
+
+function makeImageFile(): File {
+  return new File([new Uint8Array([0xff, 0xd8, 0xff])], 'nova-foto.jpg', { type: 'image/jpeg' });
+}
 
 function getMarkdown(editor: Editor): string {
   return editor.storage.markdown.getMarkdown();
@@ -162,6 +185,13 @@ describe('affiliateCard: round-trip completo (insere -> serializa -> recarrega -
 });
 
 describe('affiliateCard: NodeView no editor (prévia fiel, não é placeholder cinza)', () => {
+  beforeEach(() => {
+    validateImageFileMock.mockReset();
+    compressCoverImageMock.mockReset();
+    URL.createObjectURL = vi.fn(() => 'blob:fake-preview');
+    URL.revokeObjectURL = vi.fn();
+  });
+
   function Harness({ value, onEditor }: { value: AffiliateCardFormValue; onEditor?: (e: Editor) => void }) {
     const [ready, setReady] = useState(false);
     const editor = useEditor({
@@ -213,4 +243,77 @@ describe('affiliateCard: NodeView no editor (prévia fiel, não é placeholder c
     expect(() => render(<Harness value={DEFAULT_AFFILIATE_CARD_VALUE} />)).not.toThrow();
     expect(screen.getByText('Card de Afiliado')).toBeInTheDocument();
   });
+
+  it(
+    'sem `editor.storage.affiliateCard.imageUpload` setado, o diálogo de EDITAR cai no fallback ' +
+      'read-only (regressão do comportamento antigo quando nenhum pai sincronizou o storage)',
+    async () => {
+      const user = userEvent.setup();
+      render(<Harness value={SAMPLE} />);
+
+      await user.click(screen.getByRole('button', { name: 'Editar' }));
+      const dialog = screen.getByRole('dialog');
+      expect(
+        within(dialog).getByText(/imagem já definida.*remova este bloco e insira um novo card/i),
+      ).toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /trocar imagem/i })).not.toBeInTheDocument();
+    },
+  );
+
+  it(
+    'com `editor.storage.affiliateCard.imageUpload` sincronizado pelo pai (ver `PostFormPage.tsx`/' +
+      '`PageFormPage.tsx`), o diálogo de EDITAR permite trocar a imagem in-place',
+    async () => {
+      const user = userEvent.setup();
+      const upload = vi.fn().mockResolvedValue({ path: './hotel-img-NOVO456.jpg' });
+      const imageUpload: MarkdownToolbarImageUpload = { ready: true, upload };
+      let editorRef: Editor | null = null;
+
+      render(
+        <Harness
+          value={SAMPLE}
+          onEditor={(e) => {
+            // Mesma mutação que `PostFormPage.tsx`/`PageFormPage.tsx` fazem
+            // via `useEffect` -- aqui simulada direto, sem precisar montar
+            // o componente de página inteiro.
+            e.storage.affiliateCard.imageUpload = imageUpload;
+            editorRef = e;
+          }}
+        />,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Editar' }));
+      const dialog = screen.getByRole('dialog');
+
+      // Campo de imagem deixou de ser texto read-only -- ganhou o mesmo
+      // botão "Trocar imagem" que o fluxo de INSERIR sempre teve.
+      expect(within(dialog).queryByText(/remova este bloco e insira um novo card/i)).not.toBeInTheDocument();
+      const trocarBtn = within(dialog).getByRole('button', { name: /trocar imagem/i });
+      expect(trocarBtn).toBeInTheDocument();
+
+      validateImageFileMock.mockResolvedValue({ ok: true, type: 'jpeg' });
+      compressCoverImageMock.mockResolvedValue({
+        ok: true,
+        blob: new Blob([new Uint8Array(1000)], { type: 'image/jpeg' }),
+        mimeType: 'image/jpeg',
+        width: 1200,
+        height: 800,
+      });
+
+      const input = within(dialog).getByTestId('affiliate-card-image-input') as HTMLInputElement;
+      await user.upload(input, makeImageFile());
+
+      await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
+
+      const confirmBtn = within(dialog).getByRole('button', { name: 'Salvar' });
+      await waitFor(() => expect(confirmBtn).not.toBeDisabled());
+      await user.click(confirmBtn);
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+      // Atualizou SÓ a imagem -- todos os outros campos (título, botões,
+      // selo, dica, layout) continuam idênticos ao `SAMPLE` original.
+      expect(findAffiliateCard(editorRef!)).toEqual({ ...SAMPLE, image: './hotel-img-NOVO456.jpg' });
+    },
+  );
 });

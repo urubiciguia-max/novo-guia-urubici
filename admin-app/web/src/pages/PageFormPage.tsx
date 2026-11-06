@@ -123,6 +123,17 @@ export function PageFormPage({ slug, onNavigate }: PageFormPageProps) {
     [slug, uploadContentImage],
   );
 
+  // Sincroniza pro storage da extension `AffiliateCard` (ver
+  // `addStorage()` em `lib/affiliateCardNode.tsx`) -- é o único canal pelo
+  // qual a NodeView de um card JÁ INSERIDO no corpo (botão "Editar") chega
+  // na mesma função de upload que o fluxo de INSERIR usa via prop direta
+  // (`MarkdownToolbar` -> `imageUpload`). Mesma nota equivalente em
+  // `PostFormPage.tsx`.
+  useEffect(() => {
+    if (!editor) return;
+    editor.storage.affiliateCard.imageUpload = imageUpload;
+  }, [editor, imageUpload]);
+
   async function submit(frontmatter: PageFrontmatter, opts?: { forceSha?: string }) {
     setSubmitting(true);
     try {
