@@ -223,6 +223,11 @@ export async function compressCoverImage(
   if (!ctx) {
     return { ok: false, error: 'Não foi possível processar a imagem neste navegador (canvas 2D indisponível).' };
   }
+  // JPEG não suporta transparência: preenche de branco antes de desenhar
+  // em cima, pra qualquer área transparente/alpha virar branco em vez de
+  // preto (comportamento padrão do canvas na conversão pra JPEG).
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
   ctx.drawImage(img, 0, 0, width, height);
 
   for (const quality of JPEG_QUALITY_STEPS) {

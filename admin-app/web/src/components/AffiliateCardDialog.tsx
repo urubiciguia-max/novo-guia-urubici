@@ -385,7 +385,11 @@ export function AffiliateCardDialog({
             value={badgeText}
             onChange={(e) => setBadgeText(e.target.value)}
             placeholder="Ex: Conforto & Charme"
+            maxLength={40}
           />
+          <span className="field-hint">
+            Texto curto, tipo selo -- ex: "SEGURANÇA MÁXIMA". Pra recomendação mais longa, use o campo Dica (abaixo).
+          </span>
         </label>
 
         <label className="form-field">

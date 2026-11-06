@@ -26,13 +26,13 @@ A explicação é basicamente física. Urubici está entre os municípios de mai
   "image": "./nascer-do-sol-urubici-img-mw5fybbr-fuk6zg.jpg",
   "imageAlt": "Alugue o seu SUV para desfrutar da sua viagem para Urubici",
   "badgeIcon": "carro",
-  "badgeText": "Recomendo alugar um SUV direto no aeroporto de Floripa para subir a serra com estabilidade e conforto",
+  "badgeText": "ALUGUEL RECOMENDADO",
   "title": "Aluguel de SUV 4x4",
   "button1Text": "Ver Preços",
   "button1Url": "https://guiadeurubici.com.br/rentcars",
   "button1Color": "green",
   "button2Text": "Modelos",
   "button2Url": "https://guiadeurubici.com.br/rentcars",
-  "tip": ""
+  "tip": "Recomendo alugar um SUV direto no aeroporto de Floripa para subir a serra com estabilidade e conforto"
 }
 ```

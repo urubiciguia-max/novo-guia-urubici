@@ -258,7 +258,7 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
     border-left-color: var(--red);
   }
 
-  .post-body :global(a) {
+  .post-body :global(a):not(.affiliate-card__btn) {
     color: var(--green);
     text-decoration: underline;
     text-underline-offset: 2px;

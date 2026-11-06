@@ -116,6 +116,8 @@ function stubCanvas(blobSizes: number[]) {
   let call = 0;
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
     drawImage: vi.fn(),
+    fillRect: vi.fn(),
+    fillStyle: '',
   } as unknown as CanvasRenderingContext2D);
   const toBlobSpy = vi
     .spyOn(HTMLCanvasElement.prototype, 'toBlob')

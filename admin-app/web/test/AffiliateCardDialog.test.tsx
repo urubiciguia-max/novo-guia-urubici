@@ -112,7 +112,7 @@ describe('AffiliateCardDialog', () => {
 
     await user.click(screen.getByRole('radio', { name: /horizontal \(imagem do lado\)/i }));
     await user.click(screen.getByRole('radio', { name: 'Escudo / Segurança' }));
-    await user.type(screen.getByLabelText('Texto do selo'), 'Segurança Máxima');
+    await user.type(screen.getByLabelText(/^texto do selo/i), 'Segurança Máxima');
     await user.type(screen.getByLabelText('Título'), 'Aluguel de SUV ou 4x4');
 
     await user.type(screen.getByLabelText('Texto do botão 1'), 'Ver Preços');
@@ -156,7 +156,7 @@ describe('AffiliateCardDialog', () => {
     await uploadHappyPathImage(user);
 
     await user.type(screen.getByLabelText(/texto alternativo da imagem/i), 'Vista da pousada');
-    await user.type(screen.getByLabelText('Texto do selo'), 'Conforto & Charme');
+    await user.type(screen.getByLabelText(/^texto do selo/i), 'Conforto & Charme');
     await user.type(screen.getByLabelText('Título'), 'La Mansarda Hotel');
     await user.type(screen.getByLabelText('Texto do botão 1'), 'Reservar Agora');
     await user.type(screen.getByLabelText('Link do botão 1'), 'https://booking.example.com/la-mansarda');
