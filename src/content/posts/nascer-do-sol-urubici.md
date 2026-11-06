@@ -23,7 +23,7 @@ A explicação é basicamente física. Urubici está entre os municípios de mai
 ```affiliate-card
 {
   "layout": "horizontal",
-  "image": "./nascer-do-sol-urubici-img-mw5fybbr-fuk6zg.jpg",
+  "image": "./nascer-do-sol-urubici-img-mw5hiyzi-ocembw.jpg",
   "imageAlt": "Alugue o seu SUV para desfrutar da sua viagem para Urubici",
   "badgeIcon": "carro",
   "badgeText": "ALUGUEL RECOMENDADO",
