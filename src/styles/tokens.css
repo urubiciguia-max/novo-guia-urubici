@@ -43,6 +43,11 @@
   /* sombra de hover de card */
   --shadow-card-hover: 0 16px 32px rgba(26, 26, 26, 0.12);
 
+  /* sombra de repouso -- mesma formula/cor de --shadow-card-hover, só mais
+     sutil (usada pelo Card de Afiliado pra separar da pagina sem precisar
+     de hover, ver polish 2026-11-06). */
+  --shadow-card-rest: 0 4px 16px rgba(26, 26, 26, 0.08);
+
   /* transicao padrao de micro-interacao */
   --ease: 0.18s ease;
 
@@ -327,6 +332,13 @@ button {
   border: 1px solid var(--line);
   overflow: hidden;
   margin: 28px 0;
+  box-shadow: var(--shadow-card-rest);
+  transition: transform var(--ease), box-shadow var(--ease);
+}
+
+.affiliate-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 @media (min-width: 560px) {
@@ -337,7 +349,7 @@ button {
 
 .affiliate-card__media {
   flex: 0 0 auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   background: var(--bg-soft);
   overflow: hidden;
 }
@@ -358,12 +370,23 @@ button {
   margin: 0;
 }
 
+/* Layout horizontal (ex. aluguel de carro): a foto costuma vir como "product
+   shot" isolado (fundo claro/transparente), não uma cena de paisagem --
+   `cover` cortava rodas/para-choque. `contain` com respiro deixa o carro
+   inteiro visível, flutuando sobre o fundo --bg-soft, igual à referência. */
+@media (min-width: 560px) {
+  .affiliate-card--horizontal .affiliate-card__media img {
+    object-fit: contain;
+    padding: 20px;
+  }
+}
+
 .affiliate-card__body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 22px 20px;
+  gap: 14px;
+  padding: 24px 22px;
   text-align: center;
 }
 
@@ -396,7 +419,8 @@ button {
 
 .affiliate-card__title {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.55rem;
+  line-height: 1.15;
 }
 
 .affiliate-card__actions {
@@ -408,6 +432,18 @@ button {
 
 .affiliate-card__actions--single {
   grid-template-columns: 1fr;
+}
+
+/* Layout horizontal (desktop): na referência os dois botões NÃO dividem a
+   largura em 50/50 -- cada um tem o tamanho do próprio conteúdo, lado a
+   lado. Só muda a partir do breakpoint em que a mídia também vira coluna
+   lateral; empilhado (mobile) os dois continuam full-width (Fitts' law --
+   alvo de toque grande). */
+@media (min-width: 560px) {
+  .affiliate-card--horizontal .affiliate-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
 }
 
 .affiliate-card__btn {
@@ -423,15 +459,16 @@ button {
   padding: 12px 20px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
+  background: var(--bg-soft);
+  color: var(--blue-dark);
   font-weight: 600;
   text-decoration: underline;
-  transition: background-color var(--ease);
+  transition: background-color var(--ease), transform var(--ease), filter var(--ease);
 }
 
 .affiliate-card__btn--secondary:hover {
-  background: var(--bg-soft);
+  filter: brightness(0.96);
+  transform: translateY(-2px);
 }
 
 .affiliate-card__tip {

@@ -1906,11 +1906,12 @@ a {
 .affiliate-card-preview {
   display: flex;
   flex-direction: column;
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   background: var(--surface);
   border: 1px solid var(--line);
   overflow: hidden;
   max-width: 320px;
+  box-shadow: var(--shadow-card);
 }
 
 @media (min-width: 480px) {
@@ -1921,7 +1922,7 @@ a {
 
 .affiliate-card-preview__media {
   flex: 0 0 auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   background: var(--neutral-bg);
   display: flex;
   align-items: center;
@@ -1943,6 +1944,15 @@ a {
   display: block;
 }
 
+/* Espelha o `object-fit: contain` do site (ver tokens.css) pro layout
+   horizontal -- mesma razão: foto de carro é "product shot", cover corta. */
+@media (min-width: 480px) {
+  .affiliate-card-preview--horizontal .affiliate-card-preview__media img {
+    object-fit: contain;
+    padding: 12px;
+  }
+}
+
 .affiliate-card-preview__media-placeholder {
   font-size: 2rem;
 }
@@ -1951,7 +1961,7 @@ a {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 14px;
   text-align: center;
 }
@@ -1981,9 +1991,10 @@ a {
 
 .affiliate-card-preview__title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.15;
 }
 
 .affiliate-card-preview__actions {
@@ -1991,6 +2002,16 @@ a {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 2px;
+}
+
+/* Espelha o `.affiliate-card--horizontal .affiliate-card__actions` do site
+   (tokens.css): no layout horizontal os botões não dividem 50/50, cada um
+   fica do tamanho do próprio conteúdo. */
+@media (min-width: 480px) {
+  .affiliate-card-preview--horizontal .affiliate-card-preview__actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
 }
 
 .affiliate-card-preview__btn {
@@ -2010,10 +2031,19 @@ a {
 }
 
 .affiliate-card-preview__btn--secondary {
-  background: transparent;
+  background: var(--neutral-bg);
   border: 1px solid var(--line);
-  color: var(--ink);
+  /* Hex REAL do site (--blue-dark em src/styles/tokens.css), hardcoded de
+     propósito -- mesma convenção do resto deste componente (ver comentário
+     no topo de AffiliateCardPreview.tsx): a prévia mostra a cor que vai
+     aparecer publicado, não a cor de marca roxa do admin. */
+  color: #1d3557;
   text-decoration: underline;
+  transition: filter var(--ease);
+}
+
+.affiliate-card-preview__btn--secondary:hover {
+  filter: brightness(0.96);
 }
 
 .affiliate-card-preview__tip {
