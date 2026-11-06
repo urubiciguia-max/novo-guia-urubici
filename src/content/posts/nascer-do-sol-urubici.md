@@ -23,7 +23,7 @@ legacySlug: nascer-do-sol-urubici
 
 Confesso que nas minhas primeiras viagens a Urubici eu achava exagero essa história de acordar de madrugada para "pegar o nascer do sol" estando de férias. Eu ia para descansar, não para programar despertador. Mudei de ideia numa viagem de julho, quando um grupo de amigos me arrastou ainda escuro até o Morro da Igreja, com o termômetro do carro marcando -2°C. De lá para cá, virou ritual: não fecho mais uma ida à serra sem reservar pelo menos uma manhã só para isso.
 
-Se você está organizando a viagem e quer saber exatamente para onde ir, a que horas sair da pousada e o que realmente vale encarar o frio de madrugada, separei aqui os pontos que entregaram de verdade nas minhas últimas idas à serra — e os que eu só indicaria como segunda opção.
+Se você está organizando a viagem e quer saber exatamente para [onde ir](https://guiadeurubici.com.br/o-que-fazer/), a que horas sair da pousada e o que realmente vale encarar o frio de madrugada, separei aqui os pontos que entregaram de verdade nas minhas últimas idas à serra — e os que eu só indicaria como segunda opção.
 
 ## Por Que o Amanhecer em Urubici é Diferente
 
@@ -50,17 +50,17 @@ A explicação é basicamente física. Urubici está entre os municípios de mai
 
 ### Morro da Igreja e Pedra Furada — O Mar de Nuvens Mais Famoso da Serra
 
-Se você só vai separar uma manhã da viagem para isso, vá para cá. É o ponto mais alto da região com estrutura de acesso, e é onde o mar de nuvens costuma se formar com mais frequência e mais "denso", principalmente em dias de céu limpo após uma noite fria. O detalhe que pouca gente avisa: o portão de acesso tem horário de abertura, e chegar "na hora do sol nascer" pode significar perder os primeiros minutos de luz se você não conferir o horário antes de sair. Deixei os detalhes de agendamento, preço e como chegar no [Guia do Morro da Igreja e Pedra Furada](#) — vale ler antes de definir o horário de saída da pousada.
+Se você só vai separar uma manhã da viagem para isso, vá para cá. É o ponto mais alto da região com estrutura de acesso, e é onde o mar de nuvens costuma se formar com mais frequência e mais "denso", principalmente em dias de céu limpo após uma noite fria. O detalhe que pouca gente avisa: o portão de acesso tem horário de abertura, e chegar "na hora do sol nascer" pode significar perder os primeiros minutos de luz se você não conferir o horário antes de sair. Deixei os detalhes de agendamento, preço e como chegar no [Guia do Morro da Igreja e Pedra Furad](https://guiadeurubici.com.br/morro-da-igreja-e-pedra-furada-em-urubici-como-agendar-e-dicas-de-quem-mora-aqui-guia/)[a](#) — vale ler antes de definir o horário de saída da pousada.
 
 ### Cânion do Espraiado — Para Fugir da Multidão
 
-Nos fins de semana de inverno, o Morro da Igreja enche. Se você prefere ter o amanhecer mais para você, o Cânion do Espraiado é a alternativa que recomendo com mais frequência para quem já conhece a serra. A trilha de acesso exige mais preparo físico que a do Morro da Igreja, mas a recompensa é não dividir o mirante com quarenta pessoas tentando tirar a mesma foto. Os detalhes de acesso e segurança da trilha estão no [Guia do Cânion do Espraiado](#).
+Nos fins de semana de inverno, o Morro da Igreja enche. Se você prefere ter o amanhecer mais para você, o Cânion do Espraiado é a alternativa que recomendo com mais frequência para quem já conhece a serra. A trilha de acesso exige mais preparo físico que a do Morro da Igreja, mas a recompensa é não dividir o mirante com quarenta pessoas tentando tirar a mesma foto. Os detalhes de acesso e segurança da trilha estão no [Guia do Cânion do Espraiado](https://guiadeurubici.com.br/canion-do-espraiado-urubici/).
 
 ### Serra do Corvo Branco — Quando Vale Estender o Roteiro
 
-Esse já fica um pouco mais longe do centro de Urubici, então só entra na lista se o seu roteiro já tiver um dia reservado para o Corvo Branco de qualquer forma. A estrada de acesso ao mirante dos cânions é de chão, e dirigir ainda de madrugada por ali exige atenção redobrada — não é o primeiro point que eu indicaria para quem está na primeira viagem à serra. Para quem já decidiu encarar, os detalhes de acesso estão no [Guia da Serra do Corvo Branco](#).
+Esse já fica um pouco mais longe do centro de Urubici, então só entra na lista se o seu roteiro já tiver um dia reservado para o Corvo Branco de qualquer forma. A estrada de acesso ao mirante dos cânions é de chão, e dirigir ainda de madrugada por ali exige atenção redobrada — não é o primeiro point que eu indicaria para quem está na primeira viagem à serra. Para quem já decidiu encarar, os detalhes de acesso estão no [Guia da Serra do Corvo Branco](https://guiadeurubici.com.br/serra-do-corvo-branco-e-altos-do-corvo-branco-o-guia-de-sobrevivencia/)[.](https://guiadeurubici.com.br/morro-do-campestre-urubici-por-do-sol/)
 
-Uma nota sobre o Morro do Campestre: na região ele é consagrado como o point do pôr do sol, com guia próprio só sobre isso — o [Guia do Pôr do Sol no Morro do Campestre](#). Ele até funciona para o amanhecer, mas prefiro não forçar a barra aqui: se o seu objetivo é o pôr do sol, é para esse guia que você
+Uma nota sobre o Morro do Campestre: na região ele é consagrado como o point do pôr do sol, com guia próprio só sobre isso — o [Guia do Pôr do Sol no Morro do Campestre](https://guiadeurubici.com.br/morro-do-campestre-urubici-por-do-sol/). Ele até funciona para o amanhecer, mas prefiro não forçar a barra aqui: se o seu objetivo é o pôr do sol, é para esse guia que você
 
 ## Como se Preparar para Pegar o Sol Nascendo na Serra
 
@@ -78,8 +78,7 @@ Carro: é indispensável. Nenhum desses pontos tem transporte público disponív
 
 Esse amanhecer costuma ser só um dos momentos do roteiro — para organizar o resto dos dias em Urubici, com trilhas, cachoeiras e os outros mirantes da região, vale conferir o [Guia Definitivo de O Que Fazer em Urubici](https://guiadeurubici.com.br/o-que-fazer/).
 
-> \[!DICA\]
-> Aviso prático: no inverno, as estradas de acesso aos mirantes podem formar gelo em trechos sombreados nas primeiras horas da manhã. Dirija com farol baixo nos trechos de neblina e reduza a velocidade nas curvas cegas.
+> \[!DICA\] Aviso prático: no inverno, as estradas de acesso aos mirantes podem formar gelo em trechos sombreados nas primeiras horas da manhã. Dirija com farol baixo nos trechos de neblina e reduza a velocidade nas curvas cegas.
 
 > ## Qual desses pontos está no seu roteiro?
 >
