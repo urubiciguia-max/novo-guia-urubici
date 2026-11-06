@@ -423,11 +423,27 @@ button {
   line-height: 1.15;
 }
 
+/* Mobile-first: 1 botão por linha, full-width. Testei o grid 50/50 com os
+   CTAs de exemplo dos prints ("Reservar Agora" / "📍 Ver Localização") em
+   várias larguras reais de telefone (360/375/390/412/430px, card sempre
+   ~viewport -40px de padding do `.container`) -- NENHUMA delas sobrava
+   espaço suficiente pras duas colunas sem quebrar linha, nem reduzindo
+   fonte+padding do botão até o limite legível (~0.74rem). Empilhado
+   resolve de vez: cada botão ganha a largura inteira do card, zero risco
+   de quebra pra qualquer texto razoável, alvo de toque maior (Fitts' law).
+   Os 2 botões só dividem a largura a partir do breakpoint desktop abaixo,
+   onde sobra espaço de verdade. */
 .affiliate-card__actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-top: 4px;
+}
+
+@media (min-width: 560px) {
+  .affiliate-card__actions {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .affiliate-card__actions--single {
@@ -436,9 +452,7 @@ button {
 
 /* Layout horizontal (desktop): na referência os dois botões NÃO dividem a
    largura em 50/50 -- cada um tem o tamanho do próprio conteúdo, lado a
-   lado. Só muda a partir do breakpoint em que a mídia também vira coluna
-   lateral; empilhado (mobile) os dois continuam full-width (Fitts' law --
-   alvo de toque grande). */
+   lado. Mesma breakpoint em que a mídia também vira coluna lateral. */
 @media (min-width: 560px) {
   .affiliate-card--horizontal .affiliate-card__actions {
     display: flex;
@@ -476,3 +490,4 @@ button {
   font-size: 0.9rem;
   color: var(--body-text);
 }
+

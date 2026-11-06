@@ -1997,9 +1997,17 @@ a {
   line-height: 1.15;
 }
 
+/* Empilhado sempre (não só "mobile-first") -- diferente do site, esta
+   prévia tem `max-width: 320px` FIXO não importa a largura da janela do
+   admin, ou seja está sempre abaixo do breakpoint de 560px em que o card
+   real do site libera o grid 50/50 (ver tokens.css do site: testei com os
+   CTAs de exemplo dos prints e nenhuma largura de telefone real sobrava
+   espaço pras 2 colunas sem quebrar o texto). Uma media query de VIEWPORT
+   aqui seria enganosa -- a largura da tela do admin não tem relação com a
+   largura real de 320px desta caixa. */
 .affiliate-card-preview__actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 2px;
 }
