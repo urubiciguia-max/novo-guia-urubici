@@ -36,3 +36,35 @@ A explicação é basicamente física. Urubici está entre os municípios de mai
   "tip": "Recomendo alugar um SUV direto no aeroporto de Floripa para subir a serra com estabilidade e conforto"
 }
 ```
+
+## Os Melhores Pontos para Ver o Nascer do Sol em Urubici
+
+### Morro da Igreja e Pedra Furada — O Mar de Nuvens Mais Famoso da Serra
+
+Se você só vai separar uma manhã da viagem para isso, vá para cá. É o ponto mais alto da região com estrutura de acesso, e é onde o mar de nuvens costuma se formar com mais frequência e mais "denso", principalmente em dias de céu limpo após uma noite fria. O detalhe que pouca gente avisa: o portão de acesso tem horário de abertura, e chegar "na hora do sol nascer" pode significar perder os primeiros minutos de luz se você não conferir o horário antes de sair. Deixei os detalhes de agendamento, preço e como chegar no [Guia do Morro da Igreja e Pedra Furada](#) — vale ler antes de definir o horário de saída da pousada.
+
+### Cânion do Espraiado — Para Fugir da Multidão
+
+Nos fins de semana de inverno, o Morro da Igreja enche. Se você prefere ter o amanhecer mais para você, o Cânion do Espraiado é a alternativa que recomendo com mais frequência para quem já conhece a serra. A trilha de acesso exige mais preparo físico que a do Morro da Igreja, mas a recompensa é não dividir o mirante com quarenta pessoas tentando tirar a mesma foto. Os detalhes de acesso e segurança da trilha estão no [Guia do Cânion do Espraiado](#).
+
+### Serra do Corvo Branco — Quando Vale Estender o Roteiro
+
+Esse já fica um pouco mais longe do centro de Urubici, então só entra na lista se o seu roteiro já tiver um dia reservado para o Corvo Branco de qualquer forma. A estrada de acesso ao mirante dos cânions é de chão, e dirigir ainda de madrugada por ali exige atenção redobrada — não é o primeiro point que eu indicaria para quem está na primeira viagem à serra. Para quem já decidiu encarar, os detalhes de acesso estão no [Guia da Serra do Corvo Branco](#).
+
+Uma nota sobre o Morro do Campestre: na região ele é consagrado como o point do pôr do sol, com guia próprio só sobre isso — o [Guia do Pôr do Sol no Morro do Campestre](#). Ele até funciona para o amanhecer, mas prefiro não forçar a barra aqui: se o seu objetivo é o pôr do sol, é para esse guia que você
+
+## Como se Preparar para Pegar o Sol Nascendo na Serra
+
+Alguns pontos práticos que fazem diferença real nessa experiência:
+
+Horário:** varia bastante com a estação. No verão, o sol costuma nascer por volta das 6h; no inverno, só depois das 7h. Confira o horário exato do dia da sua visita na noite anterior e chegue ao mirante escolhido com pelo menos 30 minutos de antecedência.
+
+Roupa:** camadas, touca e luvas — mesmo em dezembro. A temperatura despenca antes do sol aparecer, e o vento nos mirantes costuma ser mais forte do que o esperado.
+
+Carro:** é indispensável. Nenhum desses pontos tem transporte público disponível nesse horário, e as estradas de acesso costumam ter neblina forte nas primeiras horas da manhã.
+
+**Luz:** se o trecho até o mirante ainda estiver escuro, uma lanterna de cabeça resolve melhor do que a lanterna do celular.
+
+**Previsão do tempo:** céu nublado ou chuva cancela o mar de nuvens. Vale conferir a previsão específica da região antes de decidir acordar cedo.
+
+Esse amanhecer costuma ser só um dos momentos do roteiro — para organizar o resto dos dias em Urubici, com trilhas, cachoeiras e os outros mirantes da região, vale conferir o [Guia Definitivo de O Que Fazer em Urubici](https://guiadeurubici.com.br/o-que-fazer/).
