@@ -375,12 +375,13 @@ button {
    `cover` cortava rodas/para-choque. `contain` com respiro deixa o carro
    inteiro visível, flutuando sobre #fff -- o mesmo branco do upload (que
    preenche transparência com branco puro) e do fundo do card, sem emenda
-   visível. */
-@media (min-width: 560px) {
-  .affiliate-card--horizontal .affiliate-card__media img {
-    object-fit: contain;
-    padding: 20px;
-  }
+   visível. Vale em QUALQUER largura -- no mobile o layout horizontal empilha
+   (igual ao vertical) mas a imagem continua sendo "product shot", então
+   precisa do mesmo contain (sem isso, o cover padrão dava zoom e cortava a
+   foto no celular). */
+.affiliate-card--horizontal .affiliate-card__media img {
+  object-fit: contain;
+  padding: 20px;
 }
 
 .affiliate-card__body {
