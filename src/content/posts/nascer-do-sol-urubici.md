@@ -50,6 +50,8 @@ A explicação é basicamente física. Urubici está entre os municípios de mai
 
 ### Morro da Igreja e Pedra Furada — O Mar de Nuvens Mais Famoso da Serra
 
+![Autor Sharlene Melanie/wikimedia commons](./nascer-do-sol-urubici-img-mw5jr3cz-dzi8yw.jpg)
+
 Se você só vai separar uma manhã da viagem para isso, vá para cá. É o ponto mais alto da região com estrutura de acesso, e é onde o mar de nuvens costuma se formar com mais frequência e mais "denso", principalmente em dias de céu limpo após uma noite fria. O detalhe que pouca gente avisa: o portão de acesso tem horário de abertura, e chegar "na hora do sol nascer" pode significar perder os primeiros minutos de luz se você não conferir o horário antes de sair. Deixei os detalhes de agendamento, preço e como chegar no [Guia do Morro da Igreja e Pedra Furad](https://guiadeurubici.com.br/morro-da-igreja-e-pedra-furada-em-urubici-como-agendar-e-dicas-de-quem-mora-aqui-guia/)[a](#) — vale ler antes de definir o horário de saída da pousada.
 
 ### Cânion do Espraiado — Para Fugir da Multidão
