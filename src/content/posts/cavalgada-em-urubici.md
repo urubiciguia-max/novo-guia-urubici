@@ -9,6 +9,17 @@ coverAlt: Cavaleiro guiando cavalo por trilha de campo com araucárias na paisag
 draft: true
 author: Equipe Guia de Urubici
 category: Geral
+faq:
+  - question: Qual a melhor época do ano para fazer cavalgada em Urubici?
+    answer: Qualquer época do ano é válida, mas a experiência muda bastante. No outono e inverno (março a agosto), as manhãs são frias e a neblina dá um toque místico, mas é preciso ir bem agasalhado. Na primavera e verão (setembro a fevereiro), os campos estão mais verdes e os dias são mais longos, embora ocorram chuvas rápidas de fim de tarde.
+  - question: Crianças podem participar dos passeios a cavalo em Urubici?
+    answer: |+
+      Sim, a maioria das fazendas aceita crianças, mas a idade mínima varia (geralmente a partir de 7 ou 8 anos para montarem sozinhas). Para crianças menores, algumas fazendas oferecem passeios guiados à mão (pônei ou cavalo manso conduzido pelos pais ou monitores).
+
+  - question: Os passeios de cavalo acontecem em dias de chuva ou neblina?
+    answer: Garoinas leves e neblina comum de altitude não cancelam os passeios — até porque isso faz parte da rotina da serra. No entanto, em caso de temporais fortes ou raios, as operadoras cancelam ou reagendam a atividade por motivos de segurança.
+  - question: É necessário reservar o passeio com antecedência?
+    answer: Sim, especialmente em períodos de alta temporada, fins de semana e feriados prolongados. As fazendas costumam trabalhar com um número limitado de animais por dia para preservar o bem-estar deles e garantir grupos pequenos.
 legacySlug: cavalgada-em-urubici
 ---
 
