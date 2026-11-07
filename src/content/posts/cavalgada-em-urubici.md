@@ -27,3 +27,17 @@ Antes de subir a serra e escolher a sua fazenda ou agência de passeios, vale a 
 Diferente de praias turísticas onde os cavalos ficam amarrados em longas filas esperando turistas em ritmo monótono, em Urubici o turismo equestre está enraizado na cultura serrana. Os passeios geralmente acontecem dentro de grandes fazendas particulares, RPPNs (Reservas Particulares do Patrimônio Natural) ou vales de acesso restrito.
 
 O formato mais comum envolve a recepção em uma sede campeira, onde os condutores locais — geralmente peões ou guias que conhecem cada palmo daquelas taipas de pedra — ajustam os equipamentos e selecionam os animais de acordo com o seu perfil. As rotas costumam cruzar riachos de água cristalina, subir morros com vistas panorâmicas e margear paredões de rocha basáltica
+
+### Precisa ter experiência anterior para andar a cavalo?
+
+Não, não é preciso ter experiência. A grande maioria das fazendas e operadoras de turismo em Urubici trabalha com animais mansos, acostumados com o terreno irregular da serra e habituados a caminhar em fila indiana.
+
+Antes de sair da cocheira, os [guias](https://guiadeurubici.com.br/guia-pratico/) dão uma breve instrução (o famoso *briefing*) de como segurar as rédeas, parar e virar o animal. Se você nunca montou, avise o guia para que ele selecione um cavalo mais tranquilo e experiente para você. A segurança vem sempre em primeiro lugar, por isso, verifique sempre se a operadora segue as normas básicas de condução e utiliza equipamentos de qualidade.
+
+### Qual é a ideal vestimenta para a cavalgada na serra?
+
+O maior erro do iniciante é ir de bermuda ou calça jeans muito grossa. O atrito prolongado com a sela acaba machucando a pele, e o clima de Urubici muda rápido demais para arriscar um look despreparado.
+
+- **Calça:** Use calças compridas e confortáveis (legging grossa ou calça de trilha). O importante é ter flexibilidade e proteção.
+- **Calçado:** Botas de trilha ou sapatos fechados de sola firme. Evite tênis de corrida com sola muito macia ou aberta, pois eles não oferecem o apoio necessário no estribo.
+- **Proteção:** Mesmo em dias nublados, o vento gelado castiga. No inverno, leve luvas finas e uma boa jaqueta que não limite seus movimentos.
