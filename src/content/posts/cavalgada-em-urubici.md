@@ -159,3 +159,5 @@ Explorar a cavalo os vales e horizontes de Urubici é resgatar uma forma mais ge
 Depois de horas ao ar livre sentindo o ar puro da montanha, nada melhor do que repor as energias com a farta gastronomia campeira da região. Para fechar o dia com chave de ouro, descubra [onde comer bem conferindo a nossa curadoria completa de restaurantes](https://guiadeurubici.com.br/onde-comer-urubici/).
 
 Você já teve a oportunidade de andar a cavalo em alguma cidade de serra ou tem alguma dúvida sobre os passeios em Urubici? Deixe seu comentário abaixo! Vamos adorar conversar com você e ajudar a montar o roteiro ideal para sua viagem.
+
+> *🔎 Transparência: Este artigo foi escrito por nós, apaixonados por Urubici. Ele contém links de parceiros (afiliados) selecionados com cuidado. Ao reservar hospedagem, alugar carro ou comprar produtos através deles, o Guia de Urubici recebe uma pequena comissão, sem que você pague nem um centavo a mais por isso. É assim que mantemos nossas dicas atualizadas e gratuitas. Obrigado pelo apoio!*
