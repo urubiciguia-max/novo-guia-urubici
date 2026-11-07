@@ -75,3 +75,13 @@ O maior erro do iniciante é ir de bermuda ou calça jeans muito grossa. O atrit
   "tip": "No Cânion do Espraiado, o terreno é bruto. Uma bota impermeável com solado tratorado é a diferença entre curtir o balanço infinito ou voltar com o pé encharcado e gelado."
 }
 ```
+
+## As melhores rotas de cavalgada em Urubici
+
+As opções de trajeto variam conforme a operadora escolhida e o tempo que você tem disponível no roteiro. As duas principais vertentes de paisagem na região proporcionam experiências completamente distintas.
+
+### Cavalgada pelos vales e rios da região central
+
+Ideal para quem quer um passeio mais contemplativo, com duração média de 2 a 3 horas. Essas rotas costumam contornar rios de águas transparentes, atravessar campos de araucárias centenárias e passar por antigas cercas de pedra construídas pelos tropeiros. É uma excelente escolha para o primeiro dia de viagem, servindo como um “aquecimento” enquanto você se acostuma com o ritmo da montaria e com a altitude.
+
+Como as estradas de acesso a essas fazendas rurais podem ter trechos de terra batida e cascalho solto, [um bom planejamento de transporte](https://guiadeurubici.com.br/guia-pratico/) faz toda a diferença para não judiar do carro.
