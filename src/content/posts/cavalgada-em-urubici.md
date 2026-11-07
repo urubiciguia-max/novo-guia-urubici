@@ -41,3 +41,20 @@ O maior erro do iniciante é ir de bermuda ou calça jeans muito grossa. O atrit
 - **Calça:** Use calças compridas e confortáveis (legging grossa ou calça de trilha). O importante é ter flexibilidade e proteção.
 - **Calçado:** Botas de trilha ou sapatos fechados de sola firme. Evite tênis de corrida com sola muito macia ou aberta, pois eles não oferecem o apoio necessário no estribo.
 - **Proteção:** Mesmo em dias nublados, o vento gelado castiga. No inverno, leve luvas finas e uma boa jaqueta que não limite seus movimentos.
+
+```affiliate-card
+{
+  "layout": "horizontal",
+  "image": "./cavalgada-em-urubici-img-mw6k0n8r-xsc4xk.jpg",
+  "imageAlt": "Kit Segunda Pele Térmica",
+  "badgeIcon": "estrela",
+  "badgeText": "Essencial para a Neve",
+  "title": "Kit Segunda Pele Térmica",
+  "button1Text": "Ver Preços",
+  "button1Url": "https://guiadeurubici.com.br/roupas termicas",
+  "button1Color": "red",
+  "button2Text": "",
+  "button2Url": "",
+  "tip": "Sem uma segunda pele, o vento de 1.822m do Morro da Igreja atravessa qualquer casaco. É a camada 1 indispensável para não passar sufoco na neve."
+}
+```
