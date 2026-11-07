@@ -85,3 +85,20 @@ As opções de trajeto variam conforme a operadora escolhida e o tempo que você
 Ideal para quem quer um passeio mais contemplativo, com duração média de 2 a 3 horas. Essas rotas costumam contornar rios de águas transparentes, atravessar campos de araucárias centenárias e passar por antigas cercas de pedra construídas pelos tropeiros. É uma excelente escolha para o primeiro dia de viagem, servindo como um “aquecimento” enquanto você se acostuma com o ritmo da montaria e com a altitude.
 
 Como as estradas de acesso a essas fazendas rurais podem ter trechos de terra batida e cascalho solto, [um bom planejamento de transporte](https://guiadeurubici.com.br/guia-pratico/) faz toda a diferença para não judiar do carro.
+
+```affiliate-card
+{
+  "layout": "horizontal",
+  "image": "./cavalgada-em-urubici-img-mw6l9tyi-y7ning.jpg",
+  "imageAlt": "Aluguel de SUV ou 4×4",
+  "badgeIcon": "carro",
+  "badgeText": "Segurança Máxima",
+  "title": "Aluguel de SUV ou 4×4",
+  "button1Text": "Ver Preços",
+  "button1Url": "https://guiadeurubici.com.br/rentcars",
+  "button1Color": "red",
+  "button2Text": "Modelos",
+  "button2Url": "https://guiadeurubici.com.br/rentcars",
+  "tip": "Recomendo alugar um SUV direto no Aeroporto de Floripa para subir a serra com estabilidade e conforto."
+}
+```
