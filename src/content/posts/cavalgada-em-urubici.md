@@ -102,3 +102,49 @@ Como as estradas de acesso a essas fazendas rurais podem ter trechos de terra ba
   "tip": "Recomendo alugar um SUV direto no Aeroporto de Floripa para subir a serra com estabilidade e conforto."
 }
 ```
+
+### Passeios com vista para os cânions de altitude
+
+Para quem busca uma imersão mais dramática, existem rotas que se aproximam das bordas dos grandes cânions da região (como áreas próximas ao [Cânion do Espraiado](https://guiadeurubici.com.br/canion-do-espraiado-urubici/) ou bordas de vales profundos).
+
+Nessas cavalgadas, que costumam durar meio período ou o dia todo, o cenário muda drasticamente: você cavalga por campos de altitude aberta, onde o horizonte é dominado por paredões de rocha e o vento sopra forte. É o tipo de passeio que exige um pouco mais de resistência física devido ao tempo na sela, mas que recompensa com vistas que nenhum carro consegue alcançar.
+
+## Quanto custa e quanto tempo duram os passeios?
+
+Os valores e a duração das cavalgadas em Urubici variam conforme a complexidade da rota e a exclusividade da fazenda. Em média, os preços praticados seguem estas faixas em 2026:
+
+- **Passeios curtos (1h a 1h30):** Ideais para famílias com crianças ou para quem tem pouco tempo. Custam entre ***R$100 a R$1***80 por pessoa.
+- **Passeios de meio período (2h a 4h):** Os mais populares. Incluem travessia de riachos e mirantes naturais. Os valores giram em torno de ***R$200 a R$350*** por pessoa.
+- **Cavalgadas de dia inteiro (com piquenique ou almoço campeiro):** Experiências imersivas que incluem paradas estratégicas para refeições típicas. Podem custar de ***R$450 a R$700*** por pessoa.
+
+Geralmente, grupos menores têm atendimento mais personalizado. Se você estiver viajando em alta temporada (inverno ou feriados prolongados), agendar com antecedência é obrigatório para não ficar sem vaga nas principais fazendas de turismo rural. Para evitar perrengues com horários e agendamentos, consulte nosso [guia de agências de passeios em Urubici](https://guiadeurubici.com.br/o-que-fazer/).
+
+## Dicas de segurança e bem-estar animal em Urubici
+
+Praticar turismo equestre exige responsabilidade, tanto com a sua integridade física quanto com os animais que tornam a experiência possível. Um guia experiente e um cavalo bem tratado fazem toda a diferença entre um dia memorável e uma lembrança ruim.
+
+### Como ser um turista consciente
+
+- **Respeite o ritmo do animal:** O cavalo conhece o terreno melhor do que você. Nos trechos de descida íngreme ou de pedras soltas, deixe o animal encontrar o próprio equilíbrio sem puxar as rédeas bruscamente.
+- **Observe as condições dos cavalos:** Animais excessivamente ariscos, magros demais ou com ferimentos aparentes na cilha indicam falta de cuidado da fazenda. Opte sempre por operadoras transparentes que priorizam o bem-estar do plantel.
+- **Atenção ao clima:** Se o tempo fechar com tempestades de raios ou neblina muito fechada, os passeios de altitude costumam ser cancelados por segurança. Nunca force uma saída se o guia ponderar que o tempo está arriscado.
+
+## Como encaixar a cavalgada no seu roteiro de viagem
+
+Uma cavalgada exige tempo e disposição, por isso o ideal é não sobrecarregar o dia do passeio com trilhas muito longas a pé.
+
+### No planejamento do seu tempo
+
+Reserve uma manhã ou uma tarde dedicada exclusivamente a essa experiência. Para estruturar seus dias com calma, vale a pena conferir o nosso [guia definitivo](https://guiadeurubici.com.br/o-que-fazer/), onde mostramos como intercalar o turismo rural com as cachoeiras e os cânions mais tradicionais da serra.
+
+### Onde se hospedar estrategicamente
+
+Para acordar perto das fazendas de turismo rural e evitar longas estradas de terra logo cedo, escolha acomodações com localização estratégica. Veja as nossas recomendações e escolha entre as opções mais rústicas ou as de luxo em nosso [guia de pousadas](https://guiadeurubici.com.br/onde-ficar/).
+
+## Conclusão: Uma experiência autêntica na Serra Catarinense
+
+Explorar a cavalo os vales e horizontes de Urubici é resgatar uma forma mais genuína de viajar. Longe do barulho dos motores e do ritmo acelerado das grandes cidades, a sela se torna um convite para observar os detalhes que passam despercebidos — desde o orvalho nas araucárias até o comportamento dos animais no pasto.
+
+Depois de horas ao ar livre sentindo o ar puro da montanha, nada melhor do que repor as energias com a farta gastronomia campeira da região. Para fechar o dia com chave de ouro, descubra [onde comer bem conferindo a nossa curadoria completa de restaurantes](https://guiadeurubici.com.br/onde-comer-urubici/).
+
+Você já teve a oportunidade de andar a cavalo em alguma cidade de serra ou tem alguma dúvida sobre os passeios em Urubici? Deixe seu comentário abaixo! Vamos adorar conversar com você e ajudar a montar o roteiro ideal para sua viagem.
