@@ -58,3 +58,20 @@ O maior erro do iniciante é ir de bermuda ou calça jeans muito grossa. O atrit
   "tip": "Sem uma segunda pele, o vento de 1.822m do Morro da Igreja atravessa qualquer casaco. É a camada 1 indispensável para não passar sufoco na neve."
 }
 ```
+
+```affiliate-card
+{
+  "layout": "horizontal",
+  "image": "./cavalgada-em-urubici-img-mw6k7h3h-s3pa1x.jpg",
+  "imageAlt": "Bota de Trilha Impermeável",
+  "badgeIcon": "estrela",
+  "badgeText": "tem de Sobrevivência",
+  "title": "Bota de Trilha Impermeável",
+  "button1Text": "Ver Preços",
+  "button1Url": "https://guiadeurubici.com.br/botas de trilha",
+  "button1Color": "red",
+  "button2Text": "",
+  "button2Url": "",
+  "tip": "No Cânion do Espraiado, o terreno é bruto. Uma bota impermeável com solado tratorado é a diferença entre curtir o balanço infinito ou voltar com o pé encharcado e gelado."
+}
+```
