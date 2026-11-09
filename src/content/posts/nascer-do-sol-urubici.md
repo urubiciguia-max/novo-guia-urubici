@@ -85,7 +85,3 @@ Carro: é indispensável. Nenhum desses pontos tem transporte público disponív
 Esse amanhecer costuma ser só um dos momentos do roteiro — para organizar o resto dos dias em Urubici, com trilhas, cachoeiras e os outros mirantes da região, vale conferir o [Guia Definitivo de O Que Fazer em Urubici](https://guiadeurubici.com.br/o-que-fazer/).
 
 > \[!DICA\] Aviso prático: no inverno, as estradas de acesso aos mirantes podem formar gelo em trechos sombreados nas primeiras horas da manhã. Dirija com farol baixo nos trechos de neblina e reduza a velocidade nas curvas cegas.
-
-> ## Qual desses pontos está no seu roteiro?
->
-> Conta aqui nos comentários se você já viu o mar de nuvens em algum desses mirantes ou qual deles pretende visitar na próxima viagem. Todo relato ajuda o próximo viajante a escolher melhor.
