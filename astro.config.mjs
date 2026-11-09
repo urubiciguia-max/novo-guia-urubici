@@ -7,9 +7,12 @@ import remarkAffiliateCard from './src/lib/remark-affiliate-card.mjs';
 export default defineConfig({
   // SSG estático puro — stack obrigatória do projeto (ver .cursorrules / CLAUDE.md).
   output: 'static',
-  // TODO: confirmar dominio final de producao com o Genilson/Tiao antes do deploy.
-  // Usado como base para canonical e URLs absolutas de Open Graph.
-  site: 'https://www.guiaurubici.com.br',
+  // Dominio final confirmado em 2026-11-09 (Genilson verificou o site antigo ao
+  // vivo + usuario confirmou): guiadeurubici.com.br, SEM www (o antigo faz 301
+  // de www.guiadeurubici.com.br pra guiadeurubici.com.br, e o canonical dele
+  // usa sem www). "guiaurubici.com.br" (sem "de") nao existe, era erro de
+  // configuracao. Usado como base para canonical e URLs absolutas de Open Graph.
+  site: 'https://guiadeurubici.com.br',
   trailingSlash: 'never',
   compressHTML: true,
   integrations: [sitemap()],

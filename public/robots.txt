@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.guiaurubici.com.br/sitemap-index.xml
+Sitemap: https://guiadeurubici.com.br/sitemap-index.xml

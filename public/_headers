@@ -14,3 +14,27 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
+
+# Bloqueia indexação só do domínio .pages.dev (staging/transição), SEM afetar
+# o domínio final (guiadeurubici.com.br, sem www) quando ele for anexado a
+# este mesmo projeto Cloudflare Pages.
+#
+# O _headers do Cloudflare Pages permite escopar regra por hostname usando URL
+# absoluta (em vez de só o path) — então dá pra aplicar o X-Robots-Tag: noindex
+# só nesse hostname .pages.dev específico, sem precisar de nada no painel e
+# sem precisar reverter isso no dia do cutover (doc oficial confirma o padrão
+# ":version.:project.pages.dev" pra esse exato caso de uso):
+# https://developers.cloudflare.com/pages/configuration/headers/
+#
+# Cobre a URL de produção do projeto (novo-guia-urubici.pages.dev) e qualquer
+# preview de branch (ex: feat-x.novo-guia-urubici.pages.dev).
+https://novo-guia-urubici.pages.dev/*
+  X-Robots-Tag: noindex, nofollow
+
+https://:version.novo-guia-urubici.pages.dev/*
+  X-Robots-Tag: noindex, nofollow
+
+# NÃO precisa remover nada daqui quando o domínio final (guiadeurubici.com.br,
+# sem www) for anexado — essas regras só casam com o hostname .pages.dev, nunca com o
+# domínio final. Se um dia o projeto for renomeado no painel Cloudflare (o que
+# mudaria o subdomínio .pages.dev), atualize o hostname acima.

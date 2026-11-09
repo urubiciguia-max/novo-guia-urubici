@@ -45,4 +45,4 @@ sobre você, correção ou exclusão, pelo nosso [canal de contato](/contato).
 ## 5. Contato
 
 Dúvidas sobre esta política podem ser enviadas pra
-[contato@guiaurubici.com.br](mailto:contato@guiaurubici.com.br).
+[contato@guiadeurubici.com.br](mailto:contato@guiadeurubici.com.br).
