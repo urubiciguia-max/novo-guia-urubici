@@ -6,7 +6,7 @@ updatedDate: '2026-11-06'
 tags: []
 cover: ./nascer-do-sol-urubici-capa.jpg
 coverAlt: Nascer do sol em Urubici visto do Morro da Igreja, com mar de nuvens cobrindo o vale ao amanhecer
-draft: true
+draft: false
 author: Equipe Guia de Urubici
 category: Geral
 faq:
