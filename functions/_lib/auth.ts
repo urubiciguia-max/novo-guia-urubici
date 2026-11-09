@@ -48,6 +48,12 @@ export async function verifyAdminToken(token: string, owner: string, repo: strin
     return { ok: false, status: 401, reason: 'Erro de rede ao validar o token com o GitHub.' };
   }
 
+  // DIAGNÓSTICO TEMPORÁRIO (Genilson, 2026-11-09) -- confirmando se o fix
+  // de User-Agent resolveu de vez, remover depois.
+  if (!res.ok) {
+    console.log('[DIAG2] github status', res.status, 'body', (await res.clone().text()).slice(0, 300));
+  }
+
   if (res.status === 401) {
     return { ok: false, status: 401, reason: 'Token inválido ou expirado.' };
   }
