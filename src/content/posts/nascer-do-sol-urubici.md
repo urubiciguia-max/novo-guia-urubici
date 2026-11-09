@@ -18,6 +18,10 @@ faq:
     answer: O mar de nuvens é mais frequente entre maio e setembro, nas madrugadas mais frias que seguem noites de céu limpo. Isso não significa que não aconteça em outras épocas, mas a frequência cai bastante fora desse período.
   - question: Dá para ver o nascer do sol sem precisar caminhar muito?
     answer: Dá sim. O Morro da Igreja tem acesso com piso preparado até os principais mirantes, sem exigir caminhada longa. Já o Cânion do Espraiado pede mais preparo físico — se esse não for o seu perfil, vale priorizar os pontos de acesso mais simples.
+ctaComentarios: |-
+  Qual desses pontos está no seu roteiro?
+
+  Conta aqui nos comentários se você já viu o mar de nuvens em algum desses mirantes ou qual deles pretende visitar na próxima viagem. Todo relato ajuda o próximo viajante a escolher melhor.
 legacySlug: nascer-do-sol-urubici
 ---
 
