@@ -42,6 +42,11 @@ const posts = defineCollection({
           })
         )
         .optional(),
+      // Caixa verde de CTA (convite a comentar) renderizada no final do
+      // artigo, logo acima do FAQ (ver src/components/CtaComentarios.astro).
+      // Texto manual por post; quando ausente/vazio o componente cai pro
+      // texto padrão do dono do site.
+      ctaComentarios: z.string().optional(),
       affiliates: z
         .array(
           z.object({

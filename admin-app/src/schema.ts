@@ -51,6 +51,11 @@ export const postFrontmatterSchema = z.object({
       })
     )
     .optional(),
+  // Espelha `ctaComentarios` do config.ts -- texto manual da caixa verde de
+  // CTA no final do artigo (ver `CtaComentarios.astro`). Sem min(1): string
+  // vazia é válida aqui (o componente trata como "sem texto" e cai pro
+  // padrão), quem decide podar é `pruneEmpty` em `markdown.ts`.
+  ctaComentarios: z.string().optional(),
   affiliates: z
     .array(
       z.object({

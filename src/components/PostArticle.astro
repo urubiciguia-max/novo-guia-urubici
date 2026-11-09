@@ -8,6 +8,7 @@ import Footer from './Footer.astro';
 import Breadcrumb from './Breadcrumb.astro';
 import AuthorBox from './AuthorBox.astro';
 import FAQAccordion from './FAQAccordion.astro';
+import CtaComentarios from './CtaComentarios.astro';
 import AffiliateBox from './AffiliateBox.astro';
 import RelatedPosts from './RelatedPosts.astro';
 import Article from './schema/Article.astro';
@@ -126,6 +127,8 @@ const resolvedOgImage = new URL(post.data.cover?.src ?? '/og-default.jpg', Astro
           ))}
         </div>
       )}
+
+      <CtaComentarios text={post.data.ctaComentarios} />
 
       {post.data.faq && post.data.faq.length > 0 && <FAQAccordion items={post.data.faq} />}
     </article>

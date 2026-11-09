@@ -25,6 +25,7 @@ export interface PostFormState {
   coverAlt: string;
   coverCredit: string;
   faq: FaqItem[];
+  ctaComentarios: string;
   affiliates: AffiliateFormItem[];
   relatedSlugsText: string;
   legacySlug: string;
@@ -53,6 +54,7 @@ export function emptyFormState(): PostFormState {
     coverAlt: '',
     coverCredit: '',
     faq: [],
+    ctaComentarios: '',
     affiliates: [],
     relatedSlugsText: '',
     legacySlug: '',
@@ -118,6 +120,7 @@ export function recordToFormState(record: PostRecord, routeSlug: string): PostFo
     faq: Array.isArray(fm.faq)
       ? fm.faq.filter(isFaqItem).map((item) => ({ question: item.question, answer: item.answer }))
       : [],
+    ctaComentarios: str(fm.ctaComentarios),
     affiliates: Array.isArray(fm.affiliates)
       ? fm.affiliates.filter(isAffiliateItem).map((item) => ({
           label: item.label,
@@ -170,6 +173,7 @@ export function formStateToFrontmatter(form: PostFormState): PostFrontmatter {
     coverAlt: form.coverAlt.trim() === '' ? undefined : form.coverAlt.trim(),
     coverCredit: form.coverCredit.trim() === '' ? undefined : form.coverCredit.trim(),
     faq: form.faq.length === 0 ? undefined : form.faq,
+    ctaComentarios: form.ctaComentarios.trim() === '' ? undefined : form.ctaComentarios.trim(),
     affiliates: form.affiliates.length === 0 ? undefined : (form.affiliates as AffiliateLink[]),
     relatedSlugs: relatedSlugs.length === 0 ? undefined : relatedSlugs,
     legacySlug: form.legacySlug,

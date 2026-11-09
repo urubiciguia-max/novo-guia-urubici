@@ -53,6 +53,8 @@ export interface PostFrontmatter {
   author: string;
   category: Category;
   faq?: FaqItem[];
+  /** Texto da caixa verde de CTA no final do artigo, acima do FAQ. Vazio/ausente cai pro texto padrão (ver `CtaComentarios.astro`). */
+  ctaComentarios?: string;
   affiliates?: AffiliateLink[];
   relatedSlugs?: string[];
   legacySlug: string;

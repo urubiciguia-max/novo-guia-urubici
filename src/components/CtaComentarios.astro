@@ -1,0 +1,43 @@
+---
+/**
+ * Caixa verde de CTA convidando o leitor a comentar -- aparece no final de
+ * TODO artigo (ver PostArticle.astro), sempre logo ACIMA do FAQ quando ele
+ * existir. Zero JS, igual FAQAccordion.astro/AffiliateBox.astro.
+ *
+ * `text` e editavel manualmente por post (`post.data.ctaComentarios`, ver
+ * src/content/config.ts). Quando ausente/vazio, cai pro texto padrao
+ * definido pelo dono do site.
+ */
+interface Props {
+  text?: string;
+}
+
+const { text } = Astro.props;
+
+const DEFAULT_TEXT =
+  'Já visitou algum lugar deste guia ou tem uma dica que não está aqui? Conta nos comentários — isso ajuda muita gente que está planejando a viagem agora.';
+
+const resolvedText = text && text.trim() !== '' ? text : DEFAULT_TEXT;
+---
+
+<section class="cta-comentarios" aria-label="Convite para comentar">
+  <p>{resolvedText}</p>
+</section>
+
+<style>
+  .cta-comentarios {
+    margin-block: 24px 32px;
+    padding: 20px 28px;
+    background: var(--green);
+    border-radius: var(--radius-card);
+  }
+
+  .cta-comentarios p {
+    margin: 0;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+</style>

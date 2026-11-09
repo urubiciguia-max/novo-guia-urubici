@@ -496,6 +496,27 @@ export function PostFormPage({ slug, onNavigate }: PostFormPageProps) {
         </div>
 
         <div className="form-section">
+          <h2 className="section-label">CTA de comentários (opcional)</h2>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Texto do convite a comentar</span>
+              <textarea
+                value={form.ctaComentarios}
+                onChange={(e) => updateField('ctaComentarios', e.target.value)}
+                rows={3}
+                placeholder="Já visitou algum lugar deste guia ou tem uma dica que não está aqui? Conta nos comentários — isso ajuda muita gente que está planejando a viagem agora."
+              />
+              <span className="field-hint">
+                Aparece em uma caixa verde no final do artigo, acima do FAQ. Se deixar em branco, usamos um texto
+                padrão convidando o leitor a comentar.
+              </span>
+              {fieldErrors.ctaComentarios && <span className="field-error">{fieldErrors.ctaComentarios}</span>}
+            </label>
+          </div>
+        </div>
+
+        <div className="form-section">
           <h2 className="section-label">FAQ</h2>
 
           {form.faq.length === 0 && <p className="field-hint">Nenhuma pergunta ainda.</p>}

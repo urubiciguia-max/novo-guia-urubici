@@ -75,6 +75,7 @@ const FIELD_ORDER = [
   'author',
   'category',
   'faq',
+  'ctaComentarios',
   'affiliates',
   'relatedSlugs',
   'legacySlug',
