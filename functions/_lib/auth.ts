@@ -35,25 +35,18 @@ export async function verifyAdminToken(token: string, owner: string, repo: strin
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': API_VERSION,
+        // Obrigatório -- GitHub rejeita com 403 "Request forbidden by
+        // administrative rules" qualquer chamada à API sem User-Agent.
+        // Browsers mandam isso sozinhos (por isso postsClient.ts/pagesClient.ts
+        // nunca precisaram disso), mas o fetch() do Cloudflare Workers não
+        // seta um default -- achado em produção, 2026-11-09 (ver
+        // github-comments-client.ts, mesmo fix aplicado lá).
+        'User-Agent': 'guia-urubici-admin',
       },
     });
-  } catch (err) {
-    console.log('[DIAG verifyAdminToken] fetch threw', err instanceof Error ? err.message : String(err));
+  } catch {
     return { ok: false, status: 401, reason: 'Erro de rede ao validar o token com o GitHub.' };
   }
-
-  // DIAGNÓSTICO TEMPORÁRIO (Genilson, 2026-11-09) -- investigando 401
-  // inesperado em produção, remover depois de achar a causa raiz.
-  console.log(
-    '[DIAG verifyAdminToken] github status',
-    res.status,
-    'tokenPrefix',
-    token.slice(0, 5),
-    'tokenLen',
-    token.length,
-    'body',
-    (await res.clone().text()).slice(0, 300)
-  );
 
   if (res.status === 401) {
     return { ok: false, status: 401, reason: 'Token inválido ou expirado.' };

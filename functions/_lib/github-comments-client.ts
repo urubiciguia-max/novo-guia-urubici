@@ -164,6 +164,11 @@ export class GitHubCommentsClient {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': API_VERSION,
       'Content-Type': 'application/json',
+      // Obrigatório -- sem isso o GitHub responde 403 "Request forbidden by
+      // administrative rules" (fetch() do Cloudflare Workers não seta um
+      // User-Agent default como um browser faria). Achado em produção,
+      // 2026-11-09 -- ver auth.ts, mesmo fix.
+      'User-Agent': 'guia-urubici-admin',
     };
   }
 
