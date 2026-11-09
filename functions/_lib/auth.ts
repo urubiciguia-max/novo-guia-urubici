@@ -37,9 +37,23 @@ export async function verifyAdminToken(token: string, owner: string, repo: strin
         'X-GitHub-Api-Version': API_VERSION,
       },
     });
-  } catch {
+  } catch (err) {
+    console.log('[DIAG verifyAdminToken] fetch threw', err instanceof Error ? err.message : String(err));
     return { ok: false, status: 401, reason: 'Erro de rede ao validar o token com o GitHub.' };
   }
+
+  // DIAGNÓSTICO TEMPORÁRIO (Genilson, 2026-11-09) -- investigando 401
+  // inesperado em produção, remover depois de achar a causa raiz.
+  console.log(
+    '[DIAG verifyAdminToken] github status',
+    res.status,
+    'tokenPrefix',
+    token.slice(0, 5),
+    'tokenLen',
+    token.length,
+    'body',
+    (await res.clone().text()).slice(0, 300)
+  );
 
   if (res.status === 401) {
     return { ok: false, status: 401, reason: 'Token inválido ou expirado.' };
