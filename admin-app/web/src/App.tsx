@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { PostsProvider } from './data/PostsContext';
 import { PagesProvider } from './data/PagesContext';
+import { CommentsProvider } from './data/CommentsContext';
 import { ToastProvider } from './components/Toast';
 import { useHashRoute, matchEditRoute, matchPageEditRoute } from './lib/useHashRoute';
 import { Sidebar } from './components/Sidebar';
@@ -10,6 +11,7 @@ import { PostsListPage } from './pages/PostsListPage';
 import { PostFormPage } from './pages/PostFormPage';
 import { PagesListPage } from './pages/PagesListPage';
 import { PageFormPage } from './pages/PageFormPage';
+import { CommentsModerationPage } from './pages/CommentsModerationPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function AuthenticatedApp() {
@@ -18,11 +20,13 @@ function AuthenticatedApp() {
   const editSlug = matchEditRoute(path);
   const pageSlug = matchPageEditRoute(path);
 
-  const active: 'dashboard' | 'posts' | 'pages' = path.startsWith('/posts')
+  const active: 'dashboard' | 'posts' | 'pages' | 'comments' = path.startsWith('/posts')
     ? 'posts'
     : path.startsWith('/pages')
       ? 'pages'
-      : 'dashboard';
+      : path.startsWith('/comments')
+        ? 'comments'
+        : 'dashboard';
 
   let content;
   if (path === '/dashboard') {
@@ -37,6 +41,8 @@ function AuthenticatedApp() {
     content = <PagesListPage onNavigate={navigate} />;
   } else if (pageSlug) {
     content = <PageFormPage slug={pageSlug} onNavigate={navigate} />;
+  } else if (path === '/comments') {
+    content = <CommentsModerationPage />;
   } else {
     content = <NotFoundPage onNavigate={navigate} />;
   }
@@ -44,10 +50,12 @@ function AuthenticatedApp() {
   return (
     <PostsProvider>
       <PagesProvider>
-        <div className="app-shell">
-          <Sidebar active={active} onNavigate={navigate} onLogout={logout} />
-          <main className="app-shell__main">{content}</main>
-        </div>
+        <CommentsProvider>
+          <div className="app-shell">
+            <Sidebar active={active} onNavigate={navigate} onLogout={logout} />
+            <main className="app-shell__main">{content}</main>
+          </div>
+        </CommentsProvider>
       </PagesProvider>
     </PostsProvider>
   );

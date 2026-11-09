@@ -1,0 +1,305 @@
+---
+/**
+ * Seção de comentários no final de todo artigo -- form público (sem JS
+ * obrigatório, igual FAQAccordion.astro) + lista dos comentários JÁ
+ * APROVADOS daquele post.
+ *
+ * Contrato de backend (Jurandir, ver `.agents/inbox/francisgleydisson.md`):
+ * - `POST /api/comments` -- form HTML tradicional, redireciona de volta
+ *   pro artigo com `?comentario=enviado#comentarios` (sucesso) ou
+ *   `?comentario=erro&motivo=<X>#comentarios` (erro), nunca 200 com JSON.
+ * - Moderação (admin-app/web) decide o que entra na lista de `comments`
+ *   abaixo -- aqui só RENDERIZA o que já foi aprovado.
+ *
+ * SEGURANÇA: `name`/`text` são texto puro de visitante anônimo -- NUNCA
+ * `set:html`. `{comment.name}`/`{comment.text}` abaixo usa interpolação
+ * normal do Astro, que escapa por padrão. É a única forma certa.
+ */
+interface CommentItem {
+  name: string;
+  text: string;
+  date: Date;
+}
+
+interface Props {
+  slug: string;
+  comments: CommentItem[];
+}
+
+const { slug, comments } = Astro.props;
+
+const comentarioParam = Astro.url.searchParams.get('comentario');
+const motivoParam = Astro.url.searchParams.get('motivo');
+
+type FeedbackKind = 'success' | 'error';
+interface Feedback {
+  kind: FeedbackKind;
+  message: string;
+}
+
+const MOTIVO_MESSAGES: Record<string, string> = {
+  invalido: 'Revise os campos: nome (2 a 80 caracteres) e comentário (10 a 2000 caracteres), e tente novamente.',
+  consentimento: 'Marque a concordância com a Política de Privacidade para enviar seu comentário.',
+  // Propositalmente genérico -- nunca mencionar "limite"/rate-limit pro
+  // visitante (ver handoff do Jurandir).
+  limite: 'Não foi possível enviar agora. Tente novamente mais tarde.',
+  servidor: 'Ocorreu um erro ao enviar seu comentário. Tente novamente em alguns minutos.',
+};
+
+let feedback: Feedback | null = null;
+if (comentarioParam === 'enviado') {
+  feedback = { kind: 'success', message: 'Comentário enviado! Ele vai aparecer aqui depois de aprovado.' };
+} else if (comentarioParam === 'erro') {
+  const message = (motivoParam && MOTIVO_MESSAGES[motivoParam]) || 'Não foi possível enviar seu comentário. Tente novamente.';
+  feedback = { kind: 'error', message };
+}
+
+const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<section class="comments-section" id="comentarios" aria-labelledby="comments-heading">
+  <h2 id="comments-heading">Comentários</h2>
+
+  {comments.length === 0 ? (
+    <p class="comments-empty">Nenhum comentário ainda. Seja o primeiro a comentar!</p>
+  ) : (
+    <ul class="comments-list">
+      {comments.map((comment) => (
+        <li class="comment-item">
+          <p class="comment-item__body">
+            <strong class="comment-item__name">{comment.name}</strong> {comment.text}
+          </p>
+          <time class="comment-item__date" datetime={comment.date.toISOString()}>
+            {dateFormatter.format(comment.date)}
+          </time>
+        </li>
+      ))}
+    </ul>
+  )}
+
+  <div class="comments-form-wrap">
+    <h3 id="comments-form-heading">Deixe seu comentário</h3>
+    <p class="comments-form-notice">Seu comentário aparece aqui depois de revisado pela nossa equipe.</p>
+
+    {feedback && (
+      <p
+        class={`comments-feedback comments-feedback--${feedback.kind}`}
+        role={feedback.kind === 'error' ? 'alert' : 'status'}
+      >
+        {feedback.message}
+      </p>
+    )}
+
+    <form class="comments-form" method="post" action="/api/comments" aria-labelledby="comments-form-heading">
+      <input type="hidden" name="slug" value={slug} />
+
+      <!--
+        Honeypot anti-bot (ver handoff do Jurandir): escondido só via CSS
+        (NÃO `type="hidden"`, bot sofisticado ignora isso), nome que atrai
+        autofill de bot. `aria-hidden` + `tabindex="-1"` + `autocomplete="off"`
+        garantem que usuário real de teclado/leitor de tela nunca encontra
+        nem preenche este campo por acidente.
+      -->
+      <div class="comments-honeypot" aria-hidden="true">
+        <label for="comment-website">Site</label>
+        <input type="text" id="comment-website" name="website" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="comments-field">
+        <label for="comment-name">Nome</label>
+        <input type="text" id="comment-name" name="name" required minlength="2" maxlength="80" />
+      </div>
+
+      <div class="comments-field">
+        <label for="comment-text">Comentário</label>
+        <textarea id="comment-text" name="text" required minlength="10" maxlength="2000" rows="4"></textarea>
+      </div>
+
+      <div class="comments-field comments-field--checkbox">
+        <input type="checkbox" id="comment-consent" name="consent" required />
+        <label for="comment-consent">
+          Concordo que meu nome e comentário podem ser publicados no site após aprovação, conforme a
+          {' '}<a href="/politica-de-privacidade">Política de Privacidade</a>.
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn--green">Enviar comentário</button>
+    </form>
+  </div>
+</section>
+
+<style>
+  .comments-section {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+
+  .comments-section h2 {
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+    margin-bottom: 16px;
+  }
+
+  .comments-empty {
+    color: var(--body-text);
+    margin-bottom: 24px;
+  }
+
+  .comments-list {
+    list-style: none;
+    margin: 0 0 32px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .comment-item {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: 14px 18px;
+    background: var(--bg-soft);
+  }
+
+  .comment-item__body {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    color: var(--body-text);
+  }
+
+  .comment-item__name {
+    color: var(--ink);
+  }
+
+  .comment-item__date {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--body-text);
+  }
+
+  .comments-form-wrap {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: 20px;
+  }
+
+  .comments-form-wrap h3 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+
+  .comments-form-notice {
+    font-size: 0.88rem;
+    color: var(--body-text);
+    margin-bottom: 16px;
+  }
+
+  .comments-feedback {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin: 0 0 16px;
+  }
+
+  .comments-feedback--success {
+    background: rgba(15, 89, 52, 0.1);
+    color: var(--green);
+  }
+
+  .comments-feedback--error {
+    background: rgba(192, 57, 43, 0.1);
+    color: var(--red);
+  }
+
+  .comments-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /*
+   * Honeypot -- escondido via CSS (não `type="hidden"`). Off-screen em vez
+   * de só `display:none` pra reforçar contra bot que detecta esse padrão
+   * especificamente -- somado a `aria-hidden`/`tabindex="-1"` no markup,
+   * nunca aparece/foca pra usuário real.
+   */
+  .comments-honeypot {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    left: -9999px;
+    top: -9999px;
+  }
+
+  .comments-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .comments-field label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .comments-field input[type='text'],
+  .comments-field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: #fff;
+  }
+
+  .comments-field textarea {
+    resize: vertical;
+  }
+
+  .comments-field input[type='text']:focus-visible,
+  .comments-field textarea:focus-visible {
+    outline: 3px solid var(--charcoal);
+    outline-offset: 2px;
+  }
+
+  .comments-field--checkbox {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .comments-field--checkbox input[type='checkbox'] {
+    margin-top: 3px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    accent-color: var(--green);
+  }
+
+  .comments-field--checkbox label {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--body-text);
+  }
+
+  .comments-field--checkbox a {
+    color: var(--green);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .comments-form .btn {
+    align-self: flex-start;
+  }
+
+  @media (max-width: 480px) {
+    .comments-form .btn {
+      align-self: stretch;
+    }
+  }
+</style>

@@ -288,6 +288,16 @@ export function AffiliateCardIcon({ className }: IconProps) {
   );
 }
 
+/** Nav da Sidebar / cabeçalho da tela de moderação -- balão de fala clássico (pictograma universal de "comentário"), distinto de `PostsIcon` (documento com linhas) mesmo em 20px. */
+export function CommentIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M4 5h16v11H9l-4 4v-4H4z" />
+      <path d="M8 10h8M8 13h5" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ className }: IconProps) {
   return (
     <svg {...base} width={14} height={14} className={className} aria-hidden="true">

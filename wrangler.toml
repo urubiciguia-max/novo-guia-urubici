@@ -2,5 +2,42 @@ name = "guia-urubici"
 compatibility_date = "2026-10-29"
 
 # Projeto Cloudflare Pages — site estático gerado pelo Astro (output: 'static').
-# Sem Workers, sem bindings de KV/D1/R2. Build roda `astro build`, output fica em dist/.
+# Build roda `astro build`, output fica em dist/. O SITE em si continua 100%
+# estático/SSG — não tem adapter do Astro pra Cloudflare e não precisa ter
+# (ver nota abaixo). A ÚNICA peça dinâmica é o sistema de comentários
+# moderados: Pages Functions na pasta /functions (fora do dist/, processada
+# direto pelo Cloudflare Pages) com um KV namespace pra fila de comentários
+# pendentes de moderação + rate-limit por IP. Nada além disso usa Workers,
+# D1 ou R2.
+#
+# IMPORTANTE pra quem editar este arquivo: a partir do momento que
+# `pages_build_output_dir` está definido, o Cloudflare Pages usa ESTE
+# arquivo como fonte de verdade pros bindings (inclusive em build disparado
+# via Git integration, sem precisar de passo manual no dashboard). Qualquer
+# binding/env var que só exista no dashboard e não esteja aqui corre risco
+# de ser sobrescrito/removido no próximo deploy — ou seja, daqui pra frente
+# SEMPRE adicionar bindings novos aqui, nunca só no dashboard.
+#
+# NÃO adicionar o adapter `@astrojs/cloudflare` no astro.config.mjs: além de
+# não ser necessário (Pages Functions em /functions roda independente do
+# build do Astro), esse adapter usa por padrão o "advanced mode", que
+# DESATIVA o suporte à pasta /functions — ia quebrar o sistema de
+# comentários.
 pages_build_output_dir = "dist"
+
+# COMMENTS_KV — fila de comentários pendentes de moderação + rate-limit por
+# IP (usado por functions/api/comments.ts e functions/api/admin/comments/...).
+# Binding de topo = ambiente de Produção (branch main).
+[[kv_namespaces]]
+binding = "COMMENTS_KV"
+id = "baecf0aa93244323b2423f5cfc27715f"
+
+# Preview deploys (qualquer branch/PR que não seja main) NÃO herdam o
+# binding de topo automaticamente — Cloudflare trata kv_namespaces como
+# "non-inheritable". Por isso o bloco abaixo, com um namespace SEPARADO,
+# pra comentário de teste em preview nunca se misturar com a fila real de
+# produção.
+[env.preview]
+[[env.preview.kv_namespaces]]
+binding = "COMMENTS_KV"
+id = "f3bbc9a6d8154e98b56131ce49eec0fe"

@@ -15,16 +15,21 @@
     "astro": "astro",
     "deploy": "astro build && npx wrangler pages deploy dist",
     "build:admin": "npm install --prefix admin-app && npm install --prefix admin-app/web && npm run build --prefix admin-app/web && node scripts/admin-build-hash.mjs --write && echo '\\nSPA do admin buildada em public/admin/. Revise o diff (git status) e comite tudo junto (código + public/admin/ + .admin-build-hash).'",
-    "check:admin-drift": "node scripts/admin-build-hash.mjs --check"
+    "check:admin-drift": "node scripts/admin-build-hash.mjs --check",
+    "typecheck:functions": "tsc --noEmit -p functions/tsconfig.json",
+    "test:functions": "vitest run"
   },
   "dependencies": {
     "astro": "^5.1.1",
     "@astrojs/sitemap": "^3.2.1",
     "@fontsource/poppins": "^5.1.0",
-    "@fontsource/inter": "^5.1.0"
+    "@fontsource/inter": "^5.1.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
-    "typescript": "^5.7.2"
+    "@cloudflare/workers-types": "^5.20261109.1",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.5"
   }
 }

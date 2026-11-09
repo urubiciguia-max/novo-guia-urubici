@@ -13,7 +13,14 @@
   // `admin-app/web`, já roda limpo) e é validado nesse comando, não aqui.
   // `admin-app/src` e `admin-app/test` (camada de dados do Jurandir, sem
   // JSX/alias) continuam incluídos e passando normalmente.
-  "exclude": ["dist", "public", "admin-app/web"],
+  // "functions" excluído (feature de comentários, Jurandir 2026-11-09):
+  // roda no runtime do Workers (Cloudflare Pages Functions), não no
+  // browser -- precisa de `@cloudflare/workers-types` em vez do `lib: dom`
+  // implícito deste tsconfig, e os dois declaram Request/Response/Headers/
+  // fetch global de formas incompatíveis entre si. Tem tsconfig E
+  // typecheck próprios (`npm run typecheck:functions`), ver
+  // `functions/tsconfig.json`.
+  "exclude": ["dist", "public", "admin-app/web", "functions"],
   "compilerOptions": {
     "jsx": "preserve"
   }

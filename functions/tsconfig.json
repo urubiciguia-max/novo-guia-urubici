@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // Runtime real das Pages Functions é o Workers runtime, NÃO o browser
+    // -- precisa dos tipos de `@cloudflare/workers-types` (KVNamespace,
+    // PagesFunction, EventContext...) em vez do `lib: "dom"` que o
+    // tsconfig raiz do Astro usa por padrão. Os dois conjuntos de tipos
+    // declaram globals com o mesmo nome (Request/Response/Headers/fetch)
+    // de formas incompatíveis -- por isso esta pasta tem tsconfig PRÓPRIO
+    // (excluída do root `tsconfig.json`, ver comentário lá) em vez de
+    // estender `astro/tsconfigs/strict`. Mesmo padrão que `admin-app/web`
+    // já usa pelo motivo inverso (JSX/alias do Vite incompatível com o
+    // root).
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["**/*.ts"]
+}

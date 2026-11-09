@@ -84,4 +84,35 @@ const pages = defineCollection({
   }),
 });
 
-export const collections = { posts, pages };
+/**
+ * Comentários APROVADOS por post -- um arquivo por slug
+ * (`src/content/comments/<slug>.json`), mesmo slug do post correspondente
+ * em `posts`. `type: 'data'` (JSON puro, sem corpo markdown).
+ *
+ * Fluxo completo (Jurandir, 2026-11-09): visitante anônimo envia comentário
+ * via form HTML tradicional (`POST /api/comments`, Cloudflare Pages
+ * Function) -> fica "pendente" no Cloudflare KV (`COMMENTS_KV`), NÃO
+ * aparece no site -> Moises aprova/rejeita no admin-app -> aprovação faz
+ * append aqui via GitHub Contents API (ver
+ * `functions/_lib/github-comments-client.ts`) e remove do KV -> o commit
+ * dispara o rebuild normal do Cloudflare Pages, e esta collection é lida
+ * no BUILD do Astro como qualquer outra -- sem fetch em runtime, mantém a
+ * filosofia 100% SSG do projeto (ver CLAUDE.md).
+ *
+ * SEGURANÇA pro componente que for renderizar isto (Francisgleydisson):
+ * `name`/`text` são texto puro de visitante anônimo -- NUNCA usar
+ * `set:html` ou qualquer coisa que trate como HTML. `{name}`/`{text}` do
+ * Astro escapa por padrão, é a forma certa e única de renderizar.
+ */
+const comments = defineCollection({
+  type: 'data',
+  schema: z.array(
+    z.object({
+      name: z.string().min(1).max(80),
+      text: z.string().min(1).max(2000),
+      date: z.coerce.date(),
+    })
+  ),
+});
+
+export const collections = { posts, pages, comments };

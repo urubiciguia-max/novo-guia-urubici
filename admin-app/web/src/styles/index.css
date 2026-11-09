@@ -288,6 +288,27 @@ a {
   font-weight: 600;
 }
 
+/* Contador de comentários pendentes no link "Comentários" -- `margin-left:
+   auto` empurra pro fim do `.sidebar__link` (flex row) tanto no modo
+   ícone+label (desktop) quanto no modo ícone-only (mobile, ver breakpoint
+   abaixo), então continua visível como "badge ao lado do ícone" mesmo
+   quando o rótulo de texto desaparece. */
+.sidebar__link-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--purple-bright);
+  color: #1a1a2b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: auto;
+}
+
 .app-shell__main {
   flex: 1;
   padding: 20px 16px 48px;
@@ -833,6 +854,18 @@ a {
 .posts-table__actions {
   display: flex;
   gap: 6px;
+}
+
+/* Coluna "Comentário" da tela de moderação -- reusa `.posts-table` (ver
+   `pages/CommentsModerationPage.tsx`), só precisa de um teto de largura
+   pro texto do visitante (até 2000 caracteres) não esticar a tabela nem
+   virar uma única linha gigante. */
+.comments-table__text {
+  margin: 4px 0 0;
+  max-width: 360px;
+  color: var(--body-text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ==========================================================================

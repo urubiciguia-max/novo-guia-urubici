@@ -1,8 +1,9 @@
-import { DashboardIcon, DocIcon, LogoutIcon, PostsIcon, SiteIcon } from './icons';
+import { CommentIcon, DashboardIcon, DocIcon, LogoutIcon, PostsIcon, SiteIcon } from './icons';
 import { SITE_URL } from '../lib/env';
+import { useComments } from '../data/CommentsContext';
 
 export interface SidebarProps {
-  active: 'dashboard' | 'posts' | 'pages';
+  active: 'dashboard' | 'posts' | 'pages' | 'comments';
   onNavigate: (path: string) => void;
   onLogout: () => void;
 }
@@ -16,6 +17,8 @@ export interface SidebarProps {
  * texto") pra reforçar a diferença à primeira vista.
  */
 export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
+  const { items: pendingComments } = useComments();
+
   return (
     <aside className="sidebar">
       <div className="sidebar__logo">
@@ -44,6 +47,20 @@ export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
         >
           <PostsIcon />
           <span className="sidebar__link-label">Artigos</span>
+        </button>
+        <button
+          type="button"
+          className={`sidebar__link${active === 'comments' ? ' sidebar__link--active' : ''}`}
+          aria-current={active === 'comments' ? 'page' : undefined}
+          onClick={() => onNavigate('/comments')}
+        >
+          <CommentIcon />
+          <span className="sidebar__link-label">Comentários</span>
+          {pendingComments.length > 0 && (
+            <span className="sidebar__link-count" aria-label={`${pendingComments.length} pendentes`}>
+              {pendingComments.length}
+            </span>
+          )}
         </button>
 
         <p className="sidebar__section-label">Conteúdo institucional</p>
